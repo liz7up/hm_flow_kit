@@ -23,3 +23,6 @@ export { GridRenderer, GridType, GridConfig } from './src/main/ets/renderer/Grid
 export { CanvasManager } from './src/main/ets/renderer/CanvasManager'
 export { HitTestManager, HitResult, HitType } from './src/main/ets/renderer/HitTestManager'
 export { RenderConfig } from './src/main/ets/renderer/RenderConfig'
+
+// ── Parser 层 ──
+export { BpmnXmlParser } from './src/main/ets/parser/BpmnXmlParser'

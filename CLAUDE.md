@@ -106,7 +106,12 @@ hm-flow-kit/
 - ✅ 视觉 Demo 验证通过 + 14 项单元测试全部通过
 - 共约 1350 行渲染层代码
 
-**下一步：Spec 03 — BPMN 2.0 XML 解析器**
+**Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成**
+- 507 行，12 项测试全部通过
+- 支持命名空间前缀、6 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
+- 降级：无 DI 信息时使用默认坐标
+
+**下一步：Spec 04 — Interaction 交互层**
 
 ## 禁止事项
 

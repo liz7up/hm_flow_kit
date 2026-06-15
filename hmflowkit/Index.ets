@@ -1,0 +1,24 @@
+/**
+ * hm-flow-kit — 鸿蒙原生流程图组件库
+ *
+ * 公开 API 入口。只导出外部开发者需要使用的类型和类。
+ */
+
+// ── Model 层 ──
+export {
+  NodeType,
+  EdgeStyle,
+  GraphModel,
+  GraphModelSnapshot,
+  GraphNode,
+  GraphEdge,
+  Waypoint,
+  Viewport
+} from './src/main/ets/model/GraphModel'
+
+// ── Renderer 层 ──
+export { NodeRenderer } from './src/main/ets/renderer/NodeRenderer'
+export { EdgeRenderer, NodeRect } from './src/main/ets/renderer/EdgeRenderer'
+export { GridRenderer, GridType, GridConfig } from './src/main/ets/renderer/GridRenderer'
+export { CanvasManager } from './src/main/ets/renderer/CanvasManager'
+export { RenderConfig } from './src/main/ets/renderer/RenderConfig'

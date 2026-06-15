@@ -1,0 +1,10 @@
+{
+  "name": "hmflowkit",
+  "version": "0.1.0-alpha",
+  "description": "HM Flow Kit - A pure ArkTS graph editing engine for HarmonyOS. Render flowcharts, BPMN diagrams, org charts and more on ArkUI Canvas.",
+  "main": "Index.ets",
+  "author": "",
+  "license": "Apache-2.0",
+  "keywords": ["flowchart", "bpmn", "diagram", "graph", "canvas"],
+  "dependencies": {}
+}

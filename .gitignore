@@ -8,3 +8,15 @@
 **/.test
 /.appanalyzer
 /.bitfun
+
+# 本地配置
+local.properties
+*.log
+
+# IDE
+.idea
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

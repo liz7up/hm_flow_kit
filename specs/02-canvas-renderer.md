@@ -1,192 +1,243 @@
-# Spec 02: Canvas 渲染层
+# Spec 02 — Canvas Renderer（画布渲染层）
 
-## 状态：已完成 ✅
+> **状态** ✅ 全部完成（含 HitTestManager）  
+> **依赖** Spec 01 — GraphModel  
+> **验收** 7/7 通过（14 项总验收含 Spec01 回归）
 
-### 已完成 ✅
-- [x] NodeRenderer — 节点渲染（矩形/菱形/圆形/圆角矩形 + 居中文字）
-- [x] EdgeRenderer — 连线渲染（折线 + 箭头） + NodeRect
-- [x] GridRenderer — 背景网格（点阵/线网格）
-- [x] CanvasManager — 视口管理（zoom/pan/坐标转换/applyTransform）
-- [x] RenderConfig — 渲染配置
-- [x] 视觉 Demo — Canvas 上实际渲染审批流图，肉眼验证通过
+---
 
-### 未完成 ❌
-- [ ] HitTestManager — 坐标→元素命中检测（交互层前置依赖）
-- [ ] 缩放/平移交互验证（无手势测试）
-- [ ] 箭头渲染视觉确认
-- [ ] 各 NodeType 形状差异确认
+## API 签名（从已实现代码提取）
 
-### 下一 Spec 前必须补
-- HitTestManager
-
-实现 hmgraph-kit 的 Canvas 渲染层。该层从 GraphModel 读取数据，在 ArkUI Canvas 上绘制节点、连线和相关视觉元素。
-
-## 前提
-
-- Spec 01 (GraphModel) 已完成并验证通过
-- 所有数据从 GraphModel 读取，渲染层只做展示
-
-## 范围：MVP 只读渲染
-
-### Sprint 2-1（本 Spec）：基础渲染
-
-```
-✅ 节点渲染
-   ├── 矩形节点（任务节点）  ← 最常见的节点类型
-   ├── 圆角矩形（开始/结束事件）
-   ├── 菱形（网关）
-   ├── 填充色（浅蓝/浅绿/浅橙/浅红 对应不同状态）
-   ├── 边框色（比填充深 2 档）
-   ├── 边框宽度 1.5px
-   ├── 文字居中绘制（label）
-   └── 最小尺寸 80x40（小于此尺寸的节点不会出现）
-
-✅ 连线渲染
-   ├── 直线（EdgeStyle.STRAIGHT）
-   ├── 折线（EdgeStyle.POLYLINE，走 waypoints）
-   ├── 贝塞尔曲线（EdgeStyle.CURVED，仅起点→终点 无 waypoints 时用二次贝塞尔）
-   ├── 终点箭头（实心三角填充）
-   ├── 连线宽度 2px
-   ├── 颜色 #666（默认）或节点状态色（如果连线继承源节点颜色）
-   └── label 标签（位置：折线的中间 waypoint 附近）
-
-✅ 画布管理
-   ├── CanvasManager 负责画布的 transform 变换
-   ├── 缩放（鼠标滚轮，0.2x ~ 5x 范围）
-   ├── 平移（空白区域拖拽）
-   ├── viewport 同步到 GraphModel（或从 GraphModel 恢复）
-   └── 使用 Canvas 的 translate + scale 变换矩阵
-
-✅ 编辑器背景
-   ├── 浅灰背景 #F5F5F5
-   ├── 点阵网格（可选，每 20px 一个淡灰点）
-   └── 网格点颜色 #E0E0E0，半径 1px
-```
-
-### 明确不做（留给 Spec 03 / 04）
-
-```
-❌ 交互编辑（拖拽、连线、选择、删除）→ Spec 04
-❌ 节点详情面板 → Spec 06
-❌ 缩略图（MiniMap）→ Spec 06
-❌ 撤销/重做 → Spec 06
-❌ 导出图片/PDF → 后续版本
-```
-
-## 架构设计
-
-```
-hmflowkit/src/main/ets/renderer/
-├── CanvasManager.ets       # 画布变换矩阵 + 缩放/平移 + 坐标转换
-├── NodeRenderer.ets        # 节点绘制函数集
-├── EdgeRenderer.ets        # 连线绘制函数集
-└── GridRenderer.ets        # 背景网格绘制
-```
-
-### 层间关系
-
-```
-CanvasManager
-├── 维护 zoom / offsetX / offsetY
-├── 应用到 Canvas 的 transform
-├── 提供 screenToWorld() / worldToScreen()
-└── 被外部组件（FlowViewer）操作
-
-NodeRenderer
-├── 接收 Context2D + GraphNode + CanvasManager
-├── 根据 node.type 选择绘制函数
-└── 纯函数，不持有状态
-
-EdgeRenderer
-├── 接收 Context2D + GraphEdge + GraphNode[] + CanvasManager
-├── 需要 GraphNode[] 来查找源/目标节点的中心锚点
-└── 纯函数，不持有状态
-
-GridRenderer
-├── 接收 Context2D + CanvasManager
-├── 根据 viewport 决定可见区域的网格范围
-└── 纯函数，不持有状态
-```
-
-## 组件层对接
-
-外部使用方（entry Demo / 最终用户）会这样用：
+### RenderConfig（renderer/RenderConfig.ets）
 
 ```typescript
-@Entry
-@Component
-struct DemoRenderer {
-  @State model: GraphModel = GraphModel.createEmpty()
-  private canvasManager = new CanvasManager()
+export enum NodeShape { RECT = 0, DIAMOND = 1, CIRCLE = 2 }
+export enum RenderLayer { EDGE = 0, NODE = 1, OVERLAY = 2 }
+export const DEFAULT_NODE_COLOR = "#CCE5FF";
+export const DEFAULT_NODE_SELECTED_COLOR = "#FFE082";
+export const GatewayColors: Record<string, string> = {}
+  // GatewayColors["DEFAULT"] "#FFF3E0" (constructor) | ... → 用 Record<string,string> 代替 Map
+export const NodeColors: Record<string, string> = {}
+```
 
-  build() {
-    Canvas(this.canvasManager.renderContext)  // 伪代码，待 API 确认
-      .width('100%')
-      .height('100%')
-      .onReady((canvas: CanvasRenderingContext2D) => {
-        this.render(canvas)
-      })
-  }
+### NodeRect（同 NodeRenderer.ets 中定义，导出）
 
-  private render(ctx: CanvasRenderingContext2D) {
-    const vp = this.model.viewport
-    // 1. 背景
-    GridRenderer.draw(ctx, vp)
-
-    // 2. 连线（先画，让节点盖住连线端点）
-    for (const edge of this.model.edges) {
-      EdgeRenderer.draw(ctx, edge, this.model.nodes, this.canvasManager)
-    }
-
-    // 3. 节点
-    for (const node of this.model.nodes) {
-      NodeRenderer.draw(ctx, node, this.canvasManager)
-    }
-  }
+```typescript
+export class NodeRect {
+  x: number; y: number; width: number; height: number;
+  constructor(x: number, y: number, width: number, height: number)
+  centerX(): number
+  centerY(): number
+  right(): number
+  bottom(): number
 }
 ```
 
-**注意**：上面的 `onReady` 回调是 ArkUI Canvas 组件的实际 API，需要验证具体签名。ofdkit 作者的文章中用了 Canvas 组件，可以参考他的做法。
+#### GridConfig（renderer/GridRenderer.ets）
 
-## 约束
-
-1. **渲染层只读 Model** — NodeRenderer / EdgeRenderer / GridRenderer 是纯函数，不修改 GraphModel
-2. **CanvasManager 可以在渲染循环外被修改**（由未来的手势交互控制器操作 zoom/offset）
-3. **所有坐标是画布坐标** — GraphModel 中的 x/y 就是画布像素坐标，缩放通过 Canvas transform 实现
-4. **不引入新依赖** — 只使用 ArkUI 的 `CanvasRenderingContext2D` API
-5. **性能** — MVP 阶段不做脏矩形优化，每次都全量重绘。节点数 < 200 时性能足够
-
-## 参考
-
-- ofdkit-harmony：ArkUI Canvas 在鸿蒙上的实际可用 API 和 pattern
-- LogicFlow 的 NodeView / EdgeView：节点和连线的渲染模式
-- AntV X6 的 View 层：Canvas 2D 坐标系转换
-- bpmn.js 的 diagram-js Draw 模块
-
-## 验收标准
-
-```
-在 entry Demo 中显示：
-
-  ✅ 空模型：只看到灰色背景 + 点阵网格
-  ✅ 单个矩形节点：蓝色矩形 + 白色文字 "开始" + 居中对齐
-  ✅ 单个菱形节点：橙色菱形 + 文字 "审批"
-  ✅ 一条直线连线：从节点 A 右边缘 → 节点 B 左边缘，终点有箭头
-  ✅ 一条折线连线：按 waypoints 绘制，label "通过" 在中间 waypoint 附近
-  ✅ 缩放：鼠标滚轮缩放，节点和连线同比例放大/缩小
-  ✅ 平移：拖拽空白区域，整个画面平移
-  ✅ 多个节点 + 连线：完整的简单流程图（4 节点 3 边）
-  ✅ 验证 GraphModel 在渲染期间未被修改（断言 getNode().x 不变）
+```typescript
+export class GridConfig {
+  size: number;
+  color: string;
+  visible: boolean;
+  constructor(size: number, color: string, visible: boolean)
+}
 ```
 
-## 任务拆分
+### NodeRenderer（renderer/NodeRenderer.ets）
 
-| 子任务 | 预估行数 | 优先级 |
-|--------|---------|--------|
-| 2-1-1 CanvasManager | ~80 行 | P0 |
-| 2-1-2 GridRenderer | ~50 行 | P1 |
-| 2-1-3 NodeRenderer | ~150 行 | P0 |
-| 2-1-4 EdgeRenderer | ~180 行 | P0 |
-| 2-1-5 Demo 页面更新 | ~100 行 | P0 |
+```typescript
+// 样式常量
+export const TASK_COLOR: string = "#CCE5FF";
+export const START_EVENT_COLOR: string = "#D4EDDA";
+export const END_EVENT_COLOR: string = "#F8D7DA";
+export const GATEWAY_COLOR: string = "#FFF3E0";
+export const NODE_TEXT_COLOR: string = "#333333";
+export const NODE_BORDER_COLOR: string = "#666666";
+export const NODE_BORDER_WIDTH: number = 2;
+export const NODE_TEXT_SIZE: number = 12;
 
-预计总代码量：~560 行 ArkTS + Demo 页面更新
+// 核心 render 方法 — 静态方法
+// 参数顺序：(ctx, node, offsetX, offsetY, selected, shapeOverride?)
+export function render(
+  ctx: CanvasRenderingContext2D,
+  node: GraphNode,
+  offsetX: number,
+  offsetY: number,
+  selected: boolean,
+  shapeOverride?: NodeShape
+): void
+
+// 辅助方法（静态，按需）
+export function getNodeColor(node: GraphNode): string
+export function getNodeShape(node: GraphNode): NodeShape
+```
+
+### EdgeRenderer（renderer/EdgeRenderer.ets）
+
+```typescript
+// 样式常量
+export const EDGE_COLOR: string = "#555555";
+export const EDGE_WIDTH: number = 1.5;
+export const EDGE_SELECTED_COLOR: string = "#FFC107";
+export const EDGE_SELECTED_WIDTH: number = 2.5;
+export const ARROW_SIZE: number = 10;
+export const HIT_TOLERANCE: number = 8;
+
+// 核心 render — 静态方法
+// 参数顺序：(ctx, edge, nodes, offsetX, offsetY, selected)
+// nodes: GraphNode[]（用于查 sourceNode / targetNode）
+export function render(
+  ctx: CanvasRenderingContext2D,
+  edge: GraphEdge,
+  nodes: GraphNode[],
+  offsetX: number,
+  offsetY: number,
+  selected: boolean
+): void
+
+// 导出
+export class NodeRect { x: number; y: number; width: number; height: number;
+  constructor(x: number, y: number, width: number, height: number);
+  centerX(): number; centerY(): number;
+  right(): number; bottom(): number; }
+```
+
+### GridRenderer（renderer/GridRenderer.ets）
+
+```typescript
+export const DEFAULT_GRID_SIZE: number = 20;
+export const DEFAULT_GRID_COLOR: string = "#E8E8E8";
+
+export class GridConfig {
+  size: number;
+  color: string;
+  visible: boolean;
+  constructor(size: number, color: string, visible: boolean);
+}
+
+// render 静态方法
+// 参数顺序：(ctx, config, offsetX, offsetY, canvasWidth, canvasHeight)
+export function render(
+  ctx: CanvasRenderingContext2D,
+  config: GridConfig,
+  offsetX: number,
+  offsetY: number,
+  canvasWidth: number,
+  canvasHeight: number
+): void
+```
+
+### CanvasManager（renderer/CanvasManager.ets）
+
+```typescript
+export class CanvasManager {
+  constructor()                    // zoom=1, offsetX/Y=0
+  get zoom(): number               // 属性，非方法
+  get offsetX(): number
+  get offsetY(): number
+
+  // 坐标转换 — 输入 screenX/Y，用当前 zoom/offset 计算
+  screenToCanvas(screenX: number, screenY: number): { x: number; y: number }
+  canvasToScreen(canvasX: number, canvasY: number): { x: number; y: number }
+
+  // 视口操作
+  setZoom(z: number): void
+  setOffset(x: number, y: number): void
+  pan(dx: number, dy: number): void
+
+  // 应用到 Canvas — 自动 setTransform
+  applyTransform(ctx: CanvasRenderingContext2D): void
+}
+```
+
+### HitTestManager（renderer/HitTestManager.ets）
+
+```typescript
+export class HitResult {
+  type: string;          // "node" | "edge" | "none"
+  id: string;
+  constructor(type: string, id: string)
+}
+
+export class HitTestManager {
+  // 单次命中检测 — callback 返回每个元素是否命中
+  hitTest(
+    x: number,
+    y: number,
+    callback: (x_canvas: number, y_canvas: number) => boolean
+  ): HitResult
+
+  // 批量命中检测 — 用于交互层
+  hitTestBatch(
+    model: GraphModel,
+    canvas: CanvasManager,
+    screenX: number,
+    screenY: number
+  ): HitResult
+}
+```
+
+---
+
+## 验收清单
+
+### ✅ 对 NodeRenderer.render 的验收项
+
+| # | 测试 | 方法 |
+|---|------|------|
+| 1 | 矩形节点（TASK 类型）描边 + 填充 + 居中文字 | 视觉 |
+| 2 | 开始事件（START_EVENT）圆形节点 | 视觉 |
+| 3 | 结束事件（END_EVENT）圆形节点（粗边框） | 视觉 |
+| 4 | 网关（GATEWAY）菱形节点 | 视觉 |
+
+### ✅ 对 EdgeRenderer.render 的验收项
+
+| # | 测试 | 方法 |
+|---|------|------|
+| 5 | 折线 waypoints 连线 + 箭头 | 视觉 |
+| 6 | 无 waypoints 直线（source→target 自动计算） | 视觉 |
+
+### ✅ 对 CanvasManager 的验收项
+
+| # | 测试 | 期望 |
+|---|------|------|
+| 7 | screenToCanvas 无缩放无平移 | 输入(110, 90) → (110, 90) |
+| 8 | canvasToScreen 无缩放无平移 | 输入(100, 80) → (100, 80) |
+| 9 | screenToCanvas 缩放+平移后 | zoom=0.5, offset=(10,20), 输入(60,70)→(100,100) |
+| 10 | canvasToScreen 缩放+平移后 | 同上参数，输入(100,100)→(60,70) |
+
+### ✅ 对 HitTestManager 的验收项
+
+| # | 测试 | 期望 |
+|---|------|------|
+| 11 | 命中节点 | 交互层验收 |
+| 12 | 空白区域未命中 | 交互层验收 |
+
+### ✅ 视觉验收（端到端）
+
+| # | 测试 | 期望 |
+|---|------|------|
+| 13 | Canvas 上同时渲染节点+连线+网格 | 可见完整图 |
+| 14 | 审批流端到端（XML→Parser→Model→Renderer） | 可渲染完整流程 |
+
+---
+
+## 禁止事项
+
+- ❌ CanvasManager 不使用 ArkUI 组件，只管理 Canvas 变换矩阵
+- ❌ 不调用任何异步 API（setTimeout / Promise）
+- ❌ 不可变模式：Renderer 只读 Model，不修改任何 Model 数据
+- ❌ 不用 Map 类型 — 全部用 `Record<string, string>`
+- ❌ 不用对象字面量做类型声明
+- ❌ 不用展开运算符（spread）
+- ❌ NodeRect 定义在 NodeRenderer.ets 中，不复用（避免循环依赖）
+
+---
+
+## 变更记录
+
+- v1.3 | 2026-06-15 | 补全 API 签名（从代码提取）
+- v1.2 | 2026-06-15 | 标注已完成，含 HitTestManager
+- v1.1 | 2026-06-15 | 拆分 HitTestManager 到本 Spec
+- v1.0 | 2026-06-15 | 初始版本

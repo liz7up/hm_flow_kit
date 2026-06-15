@@ -20,9 +20,12 @@ export {
 export { NodeRenderer } from './src/main/ets/renderer/NodeRenderer'
 export { EdgeRenderer, NodeRect } from './src/main/ets/renderer/EdgeRenderer'
 export { GridRenderer, GridType, GridConfig } from './src/main/ets/renderer/GridRenderer'
-export { CanvasManager } from './src/main/ets/renderer/CanvasManager'
+export { CanvasManager, ViewportState, CanvasPoint, ScreenPoint } from './src/main/ets/renderer/CanvasManager'
 export { HitTestManager, HitResult, HitType } from './src/main/ets/renderer/HitTestManager'
 export { RenderConfig } from './src/main/ets/renderer/RenderConfig'
 
 // ── Parser 层 ──
 export { BpmnXmlParser } from './src/main/ets/parser/BpmnXmlParser'
+
+// ── UI 组件层 ──
+export { FlowViewer } from './src/main/ets/components/FlowViewer'

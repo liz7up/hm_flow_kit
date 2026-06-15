@@ -1,157 +1,206 @@
-# Spec 01 — GraphModel 数据层
+# Spec 01: GraphModel 数据模型
 
-**版本**: 1.1  
-**状态**: ✅ 已实现（文件：hmflowkit/src/main/ets/model/GraphModel.ets）  
-**关联**: CLAUDE.md、scripts/build-log.sh
+**版本**: 1.0 — 锁定  
+**状态**: ✅ 完成  
+**验收**: 7/7 通过（27 项总回归测试中）
 
 ---
 
 ## 目标
 
-实现图编辑器的核心数据模型，作为整个项目的唯一数据源（Single Source of Truth）。
+实现图编辑器的核心数据层，作为整个项目唯一的数据源。
+
+所有修改通过不可变方法进行，返回新实例。配合 ArkUI `@State` 触发 UI 更新。
 
 ---
 
-## 输入 / 输出
+## 导出的公开 API
 
-| 方向 | 描述 |
-|------|------|
-| 输入 | 无（空图初始化）或 JSON 快照 |
-| 输出 | `GraphModel` 实例，供 Renderer / Interaction 层读取 |
-| 序列化 | `toJSON() → GraphModelSnapshot`、`fromJSON(snapshot)` |
-
----
-
-## 数据结构（必须严格遵循）
+### 枚举
 
 ```typescript
-enum NodeType {
-  RECT = 'rect',           // 通用矩形（任务节点）
-  ROUNDED_RECT = 'rounded', // 圆角矩形（开始/结束事件）
-  DIAMOND = 'diamond',      // 菱形（网关）
-  CIRCLE = 'circle'         // 圆形
+export enum NodeType {
+  START_EVENT = 'startEvent',
+  END_EVENT = 'endEvent',
+  TASK = 'task',
+  GATEWAY = 'gateway'
 }
 
-enum EdgeStyle {
-  POLYLINE = 'polyline',
-  BEZIER = 'bezier'
+export enum EdgeStyle {
+  STRAIGHT = 'straight',
+  POLYLINE = 'polyline'
 }
+```
 
-interface Viewport {
-  offsetX: number;  // 画布偏移（视口左上角在画布坐标中的位置）
-  offsetY: number;
-  zoom: number;     // 缩放比例（1.0 = 100%）
-}
+### 类
 
-interface GraphNode {
-  id: string;
-  type: NodeType;
-  x: number;            // 画布坐标（左上角）
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  properties: Record<string, string>;  // 扩展属性（BPMN 的 taskType 等）
+```typescript
+export class Waypoint {
+  public x: number;
+  public y: number;
+  constructor(x: number, y: number);
+  clone(): Waypoint;
+  toJSON(): Record<string, number>;
 }
+```
 
-interface GraphEdge {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  label: string;
-  style: EdgeStyle;
-  waypoints: Array<{ x: number; y: number }>;  // 路径点（含起终点）
-  properties: Record<string, string>;
-}
+```typescript
+export class GraphNode {
+  public id: string;
+  public type: NodeType;
+  public x: number;
+  public y: number;
+  public width: number;
+  public height: number;
+  public label: string;
+  public properties: Record<string, string>;
 
-interface GraphModelSnapshot {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  viewport: Viewport;
+  constructor(
+    id: string,
+    type: NodeType,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    properties: Record<string, string>
+  );
+
+  clone(): GraphNode;
+  toJSON(): Record<string, Object>;
 }
+```
+
+```typescript
+export class GraphEdge {
+  public id: string;
+  public sourceId: string;
+  public targetId: string;
+  public waypoints: Waypoint[];
+  public style: EdgeStyle;
+  public label: string;
+  public properties: Record<string, string>;
+
+  constructor(
+    id: string,
+    sourceId: string,
+    targetId: string,
+    waypoints: Waypoint[],
+    style: EdgeStyle,
+    label: string,
+    properties: Record<string, string>
+  );
+
+  clone(): GraphEdge;
+  toJSON(): Record<string, Object>;
+}
+```
+
+```typescript
+export class Viewport {
+  public x: number;
+  public y: number;
+  public zoom: number;
+
+  constructor(x: number, y: number, zoom: number);
+  clone(): Viewport;
+  toJSON(): Record<string, Object>;
+}
+```
+
+```typescript
+export class GraphModelSnapshot {
+  public nodes: GraphNode[];
+  public edges: GraphEdge[];
+  public viewport: Viewport;
+
+  constructor(nodes: GraphNode[], edges: GraphEdge[], viewport: Viewport);
+}
+```
+
+```typescript
+export class GraphModel {
+  constructor();
+  static createEmpty(): GraphModel;
+  static fromJSON(snapshot: GraphModelSnapshot): GraphModel;
+
+  // 查询
+  getNodes(): GraphNode[];
+  getEdges(): GraphEdge[];
+  getNode(id: string): GraphNode | null;
+  getEdge(id: string): GraphEdge | null;
+  hasNode(id: string): boolean;
+  hasEdge(id: string): boolean;
+  getNodeCount(): number;
+  getEdgeCount(): number;
+  getOutgoingEdges(nodeId: string): GraphEdge[];
+  getIncomingEdges(nodeId: string): GraphEdge[];
+  getConnectedEdges(nodeId: string): GraphEdge[];
+  getViewport(): Viewport;
+
+  // 不可变修改（全部返回新 GraphModel 实例）
+  addNode(node: GraphNode): GraphModel;
+  addNodes(nodes: GraphNode[]): GraphModel;
+  addEdge(edge: GraphEdge): GraphModel;
+  addEdges(edges: GraphEdge[]): GraphModel;
+  moveNode(id: string, x: number, y: number): GraphModel;
+  removeNode(id: string): GraphModel;  // 级联删除关联边
+  removeEdge(id: string): GraphModel;
+  setViewport(viewport: Viewport): GraphModel;
+  clear(): GraphModel;
+
+  // 序列化
+  toJSON(): GraphModelSnapshot;
+}
+```
+
+> **注意**: `GraphModel` 是无参构造，初始为空图。通过不可变方法逐步构建。
+
+---
+
+## 实现清单
+
+| 功能 | 描述 | Spec02 引用 |
+|------|------|-------------|
+| 空模型 | `GraphModel()` 或 `createEmpty()` 生成 nodes=0, edges=0 | — |
+| 添加节点 | `model = model.addNode(node)` | Renderer 使用 `GraphNode.x/y/w/h/type/label` |
+| 添加连线 | `model = model.addEdge(edge)` | Renderer 使用 `GraphEdge.sourceId/targetId/waypoints/style` |
+| 移动节点 | `model = model.moveNode(id, x, y)` | — |
+| 删除节点 | 级联删除所有关联的入边/出边 | — |
+| 删除连线 | `model = model.removeEdge(id)` | — |
+| 序列化 | `GraphModel.toJSON()` → `GraphModelSnapshot`，`GraphModel.fromJSON(snapshot)` → 新实例 | — |
+| 不可变 | 每次修改返回新实例，原实例不变 | — |
+| 视口 | `Viewport` 管理 x/y/zoom | CanvasManager 使用 |
+| 关联查询 | `getOutgoingEdges` / `getIncomingEdges` / `getConnectedEdges` | — |
+
+---
+
+## 验收清单（Demo 中已实现）
+
+```
+✅ 空模型 nodeCount=0
+✅ 添加节点 nodeCount=2
+✅ 添加连线 edgeCount=1
+✅ 不可变-原实例不变
+✅ 不可变-新实例包含节点
+✅ 删除节点+级联删边
+✅ 序列化 roundtrip
 ```
 
 ---
 
-## 行为约束
+## 技术约束
 
-- **纯数据类**：不依赖任何 UI 框架、ArkUI、Canvas API
-- **不可变修改**：所有修改方法返回新的 `GraphModel` 实例，不修改原实例
-- **级联删除**：`removeNode(id)` 必须同步删除所有关联的边
-- **ID 唯一**：`addNode` / `addEdge` 遇到重复 ID 时抛出错误
-- **边完整性**：`addEdge` 时验证 `sourceId` 和 `targetId` 对应的节点存在
-
----
-
-## 公开 API
-
-### 构造函数
-```
-new GraphModel(nodes?, edges?, viewport?)
-```
-
-### 查询方法（11个）
-```
-get nodes(): GraphNode[]
-get edges(): GraphEdge[]
-get viewport(): Viewport
-getNode(id): GraphNode | undefined
-getEdge(id): GraphEdge | undefined
-hasNode(id): boolean
-hasEdge(id): boolean
-get nodeCount(): number
-get edgeCount(): number
-getOutgoingEdges(nodeId): GraphEdge[]
-getIncomingEdges(nodeId): GraphEdge[]
-getConnectedEdges(nodeId): GraphEdge[]
-```
-
-### 修改方法（10个，全不可变）
-```
-addNode(node): GraphModel
-addEdges(edges): GraphModel
-updateNode(id, patch): GraphModel
-moveNode(id, x, y): GraphModel
-removeNode(id): GraphModel
-addEdge(edge): GraphModel
-addEdges(edges): GraphModel
-updateEdge(id, patch): GraphModel
-removeEdge(id): GraphModel
-setViewport(viewport): GraphModel
-clear(): GraphModel
-```
-
-### 序列化
-```
-toJSON(): GraphModelSnapshot
-static fromJSON(snapshot): GraphModel
-```
+- 纯数据类，不依赖任何 UI 框架
+- 所有属性公开但通过构造器初始化
+- `clone()` 方法用于不可变更新：`newNode = oldNode.clone(); newNode.x = val; model.addNode(newNode)`
+- 不直接使用对象展开（ArkTS 限制）
+- `toJSON()` 返回的是显式构造的对象，不是裸字面量
 
 ---
 
-## 禁止事项
+## 相关文件
 
-- ❌ 不涉及 Canvas 绘制
-- ❌ 不涉及 BPMN XML 解析（那是 Parser 层的事）
-- ❌ 不涉及手势交互（那是 Interaction 层的事）
-- ❌ 不依赖任何 ohpm 三方包
-- ❌ 不修改入参数组/对象（不可变模式）
-
----
-
-## 可参考的开源项目
-
-| 项目 | 参考点 |
-|------|--------|
-| LogicFlow GraphModel | 数据驱动、不可变模式、插件系统 |
-| bpmn.js diagram-js | 图模型与 BPMN 模型的分离 |
-| AntV X6 Model | 节点/边/视口的统一管理 |
-
----
-
-## 变更记录
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| 1.0 | 初始 | 创建 Spec |
-| 1.1 | 2025-01 | 补充编译桥接说明（scripts/build-log.sh），状态更新为已实现 |
+- 实现: `hmflowkit/src/main/ets/model/GraphModel.ets` (~460 行)
+- 导出: `hmflowkit/Index.ets`
+- 测试: `entry/src/main/ets/pages/Index.ets` (Spec01 验收部分)

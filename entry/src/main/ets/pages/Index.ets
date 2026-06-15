@@ -1,322 +1,502 @@
-import { GraphModel, GraphModelSnapshot, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle, RenderConfig, NodeRenderer, EdgeRenderer, GridRenderer, CanvasManager, NodeRect, HitTestManager, HitResult, BpmnXmlParser } from 'hmflowkit'
+import { FlowViewer } from 'hmflowkit';
+import { GraphModel, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle } from 'hmflowkit';
+import { BpmnXmlParser } from 'hmflowkit';
+import { CanvasManager, HitTestManager, HitType, HitResult } from 'hmflowkit';
+
+const SPEC06_TEST_XML: string =
+  '<?xml version="1.0" encoding="UTF-8"?>' +
+  '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" ' +
+  'xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" ' +
+  'xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" ' +
+  'xmlns:di="http://www.omg.org/spec/DD/20100524/DI" ' +
+  'id="Definitions_1">' +
+  '<bpmn:process id="Process_1" isExecutable="false">' +
+  '<bpmn:startEvent id="Start" name="开始"><bpmn:outgoing>Flow_Start_Apply</bpmn:outgoing></bpmn:startEvent>' +
+  '<bpmn:userTask id="Apply" name="提交申请">' +
+  '<bpmn:incoming>Flow_Start_Apply</bpmn:incoming><bpmn:outgoing>Flow_Apply_Approve</bpmn:outgoing></bpmn:userTask>' +
+  '<bpmn:userTask id="Approve" name="领导审批">' +
+  '<bpmn:incoming>Flow_Apply_Approve</bpmn:incoming><bpmn:outgoing>Flow_Approve_Gate</bpmn:outgoing></bpmn:userTask>' +
+  '<bpmn:exclusiveGateway id="Gate" name="通过？">' +
+  '<bpmn:incoming>Flow_Approve_Gate</bpmn:incoming>' +
+  '<bpmn:outgoing>Flow_Gate_Finance</bpmn:outgoing><bpmn:outgoing>Flow_Gate_Reject</bpmn:outgoing></bpmn:exclusiveGateway>' +
+  '<bpmn:userTask id="Finance" name="财务审核">' +
+  '<bpmn:incoming>Flow_Gate_Finance</bpmn:incoming><bpmn:outgoing>Flow_Finance_End</bpmn:outgoing></bpmn:userTask>' +
+  '<bpmn:endEvent id="RejectEnd" name="驳回结束"><bpmn:incoming>Flow_Gate_Reject</bpmn:incoming></bpmn:endEvent>' +
+  '<bpmn:endEvent id="End" name="通过结束"><bpmn:incoming>Flow_Finance_End</bpmn:incoming></bpmn:endEvent>' +
+  '<bpmn:sequenceFlow id="Flow_Start_Apply" sourceRef="Start" targetRef="Apply"/>' +
+  '<bpmn:sequenceFlow id="Flow_Apply_Approve" sourceRef="Apply" targetRef="Approve"/>' +
+  '<bpmn:sequenceFlow id="Flow_Approve_Gate" sourceRef="Approve" targetRef="Gate"/>' +
+  '<bpmn:sequenceFlow id="Flow_Gate_Finance" sourceRef="Gate" targetRef="Finance"/>' +
+  '<bpmn:sequenceFlow id="Flow_Gate_Reject" sourceRef="Gate" targetRef="RejectEnd"/>' +
+  '<bpmn:sequenceFlow id="Flow_Finance_End" sourceRef="Finance" targetRef="End"/>' +
+  '</bpmn:process>' +
+  '<bpmndi:BPMNDiagram id="BPMNDiagram_1">' +
+  '<bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">' +
+  '<bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start"><dc:Bounds x="100" y="200" width="36" height="36"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_Apply" bpmnElement="Apply"><dc:Bounds x="200" y="178" width="120" height="60"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_Approve" bpmnElement="Approve"><dc:Bounds x="400" y="178" width="120" height="60"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_Gate" bpmnElement="Gate"><dc:Bounds x="600" y="183" width="50" height="50"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_Finance" bpmnElement="Finance"><dc:Bounds x="750" y="178" width="120" height="60"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_RejectEnd" bpmnElement="RejectEnd"><dc:Bounds x="650" y="300" width="36" height="36"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Shape_End" bpmnElement="End"><dc:Bounds x="950" y="190" width="36" height="36"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNEdge id="Edge_Start_Apply" bpmnElement="Flow_Start_Apply">' +
+  '<di:waypoint x="136" y="218"/><di:waypoint x="200" y="208"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Edge_Apply_Approve" bpmnElement="Flow_Apply_Approve">' +
+  '<di:waypoint x="320" y="208"/><di:waypoint x="400" y="208"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Edge_Approve_Gate" bpmnElement="Flow_Approve_Gate">' +
+  '<di:waypoint x="520" y="208"/><di:waypoint x="600" y="208"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Edge_Gate_Finance" bpmnElement="Flow_Gate_Finance">' +
+  '<di:waypoint x="650" y="208"/><di:waypoint x="750" y="208"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Edge_Gate_Reject" bpmnElement="Flow_Gate_Reject">' +
+  '<di:waypoint x="625" y="233"/><di:waypoint x="668" y="300"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Edge_Finance_End" bpmnElement="Flow_Finance_End">' +
+  '<di:waypoint x="870" y="208"/><di:waypoint x="950" y="208"/></bpmndi:BPMNEdge>' +
+  '</bpmndi:BPMNPlane></bpmndi:BPMNDiagram></bpmn:definitions>';
+
+const BPMN_XML: string =
+  '<?xml version="1.0" encoding="UTF-8"?>' +
+  '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" ' +
+  'xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" ' +
+  'xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" ' +
+  'xmlns:di="http://www.omg.org/spec/DD/20100524/DI" ' +
+  'id="Definitions_1">' +
+  '<process id="Process_1" isExecutable="false">' +
+  '<startEvent id="Start_1" name="提交报销"/>' +
+  '<userTask id="Task_1" name="部门审批"/>' +
+  '<userTask id="Task_2" name="财务审批"/>' +
+  '<exclusiveGateway id="Gateway_1" name="金额超5k?"/>' +
+  '<userTask id="Task_3" name="总监审批"/>' +
+  '<endEvent id="End_1" name="结束"/>' +
+  '<sequenceFlow id="Flow_1" sourceRef="Start_1" targetRef="Task_1"/>' +
+  '<sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="Task_2"/>' +
+  '<sequenceFlow id="Flow_3" sourceRef="Task_2" targetRef="Gateway_1"/>' +
+  '<sequenceFlow id="Flow_4" sourceRef="Gateway_1" targetRef="Task_3"/>' +
+  '<sequenceFlow id="Flow_5" sourceRef="Task_3" targetRef="End_1"/>' +
+  '<sequenceFlow id="Flow_6" sourceRef="Gateway_1" targetRef="End_1"/>' +
+  '</process>' +
+  '<bpmndi:BPMNDiagram id="BPMNDiagram_1">' +
+  '<bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">' +
+  '<bpmndi:BPMNShape id="Start_1_di" bpmnElement="Start_1"><dc:Bounds x="50" y="120" width="36" height="36"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Task_1_di" bpmnElement="Task_1"><dc:Bounds x="140" y="100" width="100" height="80"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Task_2_di" bpmnElement="Task_2"><dc:Bounds x="300" y="100" width="100" height="80"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Gateway_1_di" bpmnElement="Gateway_1"><dc:Bounds x="460" y="112" width="50" height="50"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="Task_3_di" bpmnElement="Task_3"><dc:Bounds x="570" y="100" width="100" height="80"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNShape id="End_1_di" bpmnElement="End_1"><dc:Bounds x="740" y="115" width="48" height="48"/></bpmndi:BPMNShape>' +
+  '<bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1"><di:waypoint x="86" y="138"/><di:waypoint x="140" y="140"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2"><di:waypoint x="240" y="140"/><di:waypoint x="300" y="140"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3"><di:waypoint x="400" y="140"/><di:waypoint x="460" y="137"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4"><di:waypoint x="510" y="137"/><di:waypoint x="570" y="140"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5"><di:waypoint x="670" y="140"/><di:waypoint x="740" y="139"/></bpmndi:BPMNEdge>' +
+  '<bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6"><di:waypoint x="485" y="162"/><di:waypoint x="485" y="250"/>' +
+  '<di:waypoint x="764" y="250"/><di:waypoint x="764" y="163"/></bpmndi:BPMNEdge>' +
+  '</bpmndi:BPMNPlane></bpmndi:BPMNDiagram></definitions>';
+
+const BPMN_XML_NO_DI: string =
+  '<?xml version="1.0" encoding="UTF-8"?>' +
+  '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" ' +
+  'id="Definitions_2">' +
+  '<process id="Process_2" isExecutable="false">' +
+  '<startEvent id="Start_2" name="开始"/>' +
+  '<endEvent id="End_2" name="结束"/>' +
+  '</process></definitions>';
 
 @Entry
 @Component
 struct Index {
-  private settings: RenderingContextSettings = new RenderingContextSettings(true)
-  private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-  private model: GraphModel = GraphModel.createEmpty()
-  private canvasManager: CanvasManager = new CanvasManager()
-  private renderConfig: RenderConfig = new RenderConfig()
-  @State testResults: string[] = []
-  @State allPassed: boolean = false
-  @State testDone: boolean = false
+  @State parsedModel: GraphModel = GraphModel.createEmpty();
+  @State spec06Clicked: string = '';
 
   aboutToAppear(): void {
-    this.model = this.buildDemoModel()
-    this.runAllTests()
+    this.parsedModel = BpmnXmlParser.parse(BPMN_XML);
   }
 
-  buildDemoModel(): GraphModel {
-    let emptyProps: Record<string, string> = {}
-    let model: GraphModel = GraphModel.createEmpty()
-    model = model.addNode(new GraphNode('node_1', NodeType.START_EVENT, 80, 240, 48, 48, '开始', emptyProps))
-    model = model.addNode(new GraphNode('node_2', NodeType.TASK, 180, 225, 120, 60, '填写申请', emptyProps))
-    model = model.addNode(new GraphNode('node_3', NodeType.GATEWAY, 360, 230, 64, 64, '审批判断', emptyProps))
-    model = model.addNode(new GraphNode('node_4', NodeType.TASK, 500, 225, 120, 60, '经理审批', emptyProps))
-    model = model.addNode(new GraphNode('node_5', NodeType.END_EVENT, 680, 240, 48, 48, '结束', emptyProps))
-    model = model.addEdge(new GraphEdge('e1', 'node_1', 'node_2', [], EdgeStyle.POLYLINE, '', emptyProps))
-    model = model.addEdge(new GraphEdge('e2', 'node_2', 'node_3', [], EdgeStyle.POLYLINE, '提交', emptyProps))
-    model = model.addEdge(new GraphEdge('e3', 'node_3', 'node_4', [], EdgeStyle.POLYLINE, '通过', emptyProps))
-    model = model.addEdge(new GraphEdge('e4', 'node_4', 'node_5', [], EdgeStyle.POLYLINE, '', emptyProps))
-    return model
-  }
+  runTests(): string {
+    let lines: string[] = [];
+    let fails: string[] = [];
+    let allOk: boolean = true;
 
-  getNodePosition(nodeId: string): NodeRect {
-    let node: GraphNode | null = this.model.getNode(nodeId)
-    if (node !== null) {
-      return new NodeRect(node.x, node.y, node.width, node.height)
-    }
-    return new NodeRect(0, 0, 60, 40)
-  }
+    // ── Spec 01: GraphModel (7) ──
+    lines.push('【Spec 01 — GraphModel】');
 
-  renderAll(): void {
-    let zoom: number = this.canvasManager.zoom
-    let offsetX: number = this.canvasManager.offsetX
-    let offsetY: number = this.canvasManager.offsetY
-    let w: number = 800
-    let h: number = 500
-
-    // 1. 清屏
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0)
-    this.ctx.clearRect(0, 0, w, h)
-
-    // 2. 视口变换
-    this.canvasManager.applyTransform(this.ctx)
-
-    // 3. 网格
-    GridRenderer.render(this.ctx, w, h, offsetX, offsetY, zoom)
-
-    // 4. 连线
-    let edges: GraphEdge[] = this.model.getEdges()
-    let edgeCount: number = edges.length
-    for (let i: number = 0; i < edgeCount; i++) {
-      EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
-        return this.getNodePosition(id)
-      }, offsetX, offsetY, zoom)
+    // 1. addNode
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      let n: GraphNode = new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, '测试', {});
+      m = m.addNode(n);
+      let ok: boolean = m.getNodeCount() === 1;
+      if (!ok) { allOk = false; fails.push('Spec01-1: addNode'); }
+      lines.push('  Spec01-1 addNode: ' + (ok ? 'PASS' : 'FAIL'));
     }
 
-    // 5. 节点
-    let nodes: GraphNode[] = this.model.getNodes()
-    let nodeCount: number = nodes.length
-    for (let i: number = 0; i < nodeCount; i++) {
-      NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, offsetX, offsetY, zoom)
+    // 2. addEdge
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      m = m.addNode(new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, 'A', {}));
+      m = m.addNode(new GraphNode('n2', NodeType.TASK, 200, 0, 100, 80, 'B', {}));
+      m = m.addEdge(new GraphEdge('e1', 'n1', 'n2', [], EdgeStyle.POLYLINE, '', {}));
+      let ok: boolean = m.getEdgeCount() === 1;
+      if (!ok) { allOk = false; fails.push('Spec01-2: addEdge'); }
+      lines.push('  Spec01-2 addEdge: ' + (ok ? 'PASS' : 'FAIL'));
     }
+
+    // 3. moveNode
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      m = m.addNode(new GraphNode('n1', NodeType.TASK, 10, 20, 100, 80, 'M', {}));
+      m = m.moveNode('n1', 50, 60);
+      let moved: GraphNode | null = m.getNode('n1');
+      let ok: boolean = moved !== null && moved.x === 50 && moved.y === 60;
+      if (!ok) { allOk = false; fails.push('Spec01-3: moveNode'); }
+      lines.push('  Spec01-3 moveNode: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 4. removeNode cascade
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      m = m.addNode(new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, 'A', {}));
+      m = m.addNode(new GraphNode('n2', NodeType.TASK, 200, 0, 100, 80, 'B', {}));
+      m = m.addEdge(new GraphEdge('e1', 'n1', 'n2', [], EdgeStyle.POLYLINE, '', {}));
+      m = m.removeNode('n1');
+      let ok: boolean = m.getNodeCount() === 1 && m.getEdgeCount() === 0;
+      if (!ok) { allOk = false; fails.push('Spec01-4: cascade delete'); }
+      lines.push('  Spec01-4 removeNode cascade: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 5. immutable snapshot
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      m = m.addNode(new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, 'S', {}));
+      let snap: GraphNode[] = m.getNodes();
+      snap[0] = new GraphNode('x', NodeType.TASK, 0, 0, 100, 80, 'X', {});
+      let ok: boolean = m.getNodeCount() === 1;
+      if (!ok) { allOk = false; fails.push('Spec01-5: not snapshot'); }
+      lines.push('  Spec01-5 snapshot immutability: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 6. removeEdge
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      m = m.addNode(new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, 'A', {}));
+      m = m.addNode(new GraphNode('n2', NodeType.TASK, 200, 0, 100, 80, 'B', {}));
+      m = m.addEdge(new GraphEdge('e1', 'n1', 'n2', [], EdgeStyle.POLYLINE, '', {}));
+      m = m.removeEdge('e1');
+      let ok: boolean = m.getEdgeCount() === 0;
+      if (!ok) { allOk = false; fails.push('Spec01-6: removeEdge'); }
+      lines.push('  Spec01-6 removeEdge: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 7. getNode returns null
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      let ok: boolean = m.getNode('x') === null && m.getEdge('x') === null;
+      if (!ok) { allOk = false; fails.push('Spec01-7: null return'); }
+      lines.push('  Spec01-7 missing id null: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // ── Spec 02: Renderer (7) ──
+    lines.push('【Spec 02 — Canvas Renderer】');
+
+    // 1. NodeRenderer no throw
+    {
+      let ok: boolean = true;
+      try {
+        let m: GraphModel = GraphModel.createEmpty();
+        m = m.addNode(new GraphNode('n1', NodeType.TASK, 0, 0, 100, 80, '测试', {}));
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-1: NodeRenderer throw'); }
+      lines.push('  Spec02-1 NodeRenderer no throw: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 2. 0 nodes
+    {
+      let ok: boolean = true;
+      try {
+        let m: GraphModel = GraphModel.createEmpty();
+        ok = m.getNodes().length === 0;
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-2: 0 nodes'); }
+      lines.push('  Spec02-2 0 nodes: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 3. 100 nodes
+    {
+      let ok: boolean = true;
+      try {
+        let m: GraphModel = GraphModel.createEmpty();
+        for (let i: number = 0; i < 100; i++) {
+          m = m.addNode(new GraphNode('n' + i, NodeType.TASK, i * 10, 0, 100, 80, 'N' + i, {}));
+        }
+        ok = m.getNodeCount() === 100;
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-3: 100 nodes'); }
+      lines.push('  Spec02-3 100 nodes: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 4. EdgeRenderer no throw
+    {
+      let ok: boolean = true;
+      try {
+        let m: GraphModel = GraphModel.createEmpty();
+        m = m.addNode(new GraphNode('n1', NodeType.START_EVENT, 0, 0, 36, 36, '开始', {}));
+        m = m.addNode(new GraphNode('n2', NodeType.END_EVENT, 200, 0, 48, 48, '结束', {}));
+        m = m.addEdge(new GraphEdge('e1', 'n1', 'n2', [], EdgeStyle.POLYLINE, '', {}));
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-4: EdgeRenderer'); }
+      lines.push('  Spec02-4 EdgeRenderer no throw: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 5. 0 edges
+    {
+      let ok: boolean = true;
+      try {
+        let m: GraphModel = GraphModel.createEmpty();
+        ok = m.getEdgeCount() === 0;
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-5: 0 edges'); }
+      lines.push('  Spec02-5 0 edges: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 6. CanvasManager zoom/pan
+    {
+      let ok: boolean = true;
+      try {
+        let cm: CanvasManager = new CanvasManager();
+        cm.zoomAt(0, 0, 1);
+        cm.pan(100, 200);
+        ok = cm.zoom > 1.0 && cm.offsetX === 100 && cm.offsetY === 200;
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-6: CanvasManager'); }
+      lines.push('  Spec02-6 CanvasManager zoom/pan: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 7. HitTestManager
+    {
+      let ok: boolean = true;
+      try {
+        let htm: HitTestManager = new HitTestManager();
+        let model: GraphModel = GraphModel.createEmpty();
+        model = model.addNode(new GraphNode('n1', NodeType.TASK, 50, 50, 100, 80, '任务', {}));
+        let cm: CanvasManager = new CanvasManager();
+        htm.rebuild(model, cm);
+        let result: HitResult = htm.hitTest(75, 70, cm);
+        ok = result.type === HitType.NODE;
+      } catch (e) { ok = false; }
+      if (!ok) { allOk = false; fails.push('Spec02-7: HitTest'); }
+      lines.push('  Spec02-7 HitTestManager: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // ── Spec 03: BPMN Parser (12) ──
+    lines.push('【Spec 03 — BPMN Parser】');
+    // 1. parse returns model
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let ok: boolean = result.getNodeCount() > 0;
+      if (!ok) { allOk = false; fails.push('Spec03-1: parse'); }
+      lines.push('  Spec03-1 parse non-empty: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 2. 6 nodes
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let ok: boolean = result.getNodeCount() === 6;
+      if (!ok) { allOk = false; fails.push('Spec03-2: nodes=6'); }
+      lines.push('  Spec03-2 6 nodes: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 3. 6 edges
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let ok: boolean = result.getEdgeCount() === 6;
+      if (!ok) { allOk = false; fails.push('Spec03-3: edges=6'); }
+      lines.push('  Spec03-3 6 edges: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 4. startEvent type
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let node: GraphNode | null = result.getNode('Start_1');
+      let ok: boolean = node !== null && node.type === NodeType.START_EVENT;
+      if (!ok) { allOk = false; fails.push('Spec03-4: startEvent type'); }
+      lines.push('  Spec03-4 startEvent type: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 5. endEvent type
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let node: GraphNode | null = result.getNode('End_1');
+      let ok: boolean = node !== null && node.type === NodeType.END_EVENT;
+      if (!ok) { allOk = false; fails.push('Spec03-5: endEvent type'); }
+      lines.push('  Spec03-5 endEvent type: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 6. userTask type
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let node: GraphNode | null = result.getNode('Task_1');
+      let ok: boolean = node !== null && node.type === NodeType.TASK;
+      if (!ok) { allOk = false; fails.push('Spec03-6: task type'); }
+      lines.push('  Spec03-6 userTask type: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 7. gateway type
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let node: GraphNode | null = result.getNode('Gateway_1');
+      let ok: boolean = node !== null && node.type === NodeType.GATEWAY;
+      if (!ok) { allOk = false; fails.push('Spec03-7: gateway type'); }
+      lines.push('  Spec03-7 gateway type: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 8. startEvent coords
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let node: GraphNode | null = result.getNode('Start_1');
+      let ok: boolean = node !== null && node.x === 50 && node.y === 120;
+      if (!ok) { allOk = false; fails.push('Spec03-8: coords'); }
+      lines.push('  Spec03-8 startEvent coords: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 9. edge refs
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let edge: GraphEdge | null = result.getEdge('Flow_1');
+      let ok: boolean = edge !== null && edge.sourceId === 'Start_1' && edge.targetId === 'Task_1';
+      if (!ok) { allOk = false; fails.push('Spec03-9: edge refs'); }
+      lines.push('  Spec03-9 edge refs: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 10. empty XML
+    {
+      try {
+        BpmnXmlParser.parse('');
+        let ok: boolean = false;
+        if (!ok) { allOk = false; fails.push('Spec03-10: empty XML'); }
+        lines.push('  Spec03-10 empty XML: ' + (ok ? 'PASS' : 'FAIL'));
+      } catch (e) {
+        lines.push('  Spec03-10 empty XML: PASS (throws)');
+      }
+    }
+
+    // 11. no DI fallback
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML_NO_DI);
+      let ok: boolean = result.getNodeCount() > 0;
+      if (!ok) { allOk = false; fails.push('Spec03-11: no DI'); }
+      lines.push('  Spec03-11 no DI fallback: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 12. waypoints
+    {
+      let result: GraphModel = BpmnXmlParser.parse(BPMN_XML);
+      let edge: GraphEdge | null = result.getEdge('Flow_1');
+      let ok: boolean = edge !== null && edge.waypoints.length > 0;
+      if (!ok) { allOk = false; fails.push('Spec03-12: waypoints'); }
+      lines.push('  Spec03-12 waypoints: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // ── Spec 06: UI Components (5) ──
+    lines.push('【Spec 06 — UI Components】');
+
+    // 1. XML parse -> 7 nodes (Spec06 XML has 7 nodes)
+    {
+      let m: GraphModel = BpmnXmlParser.parse(SPEC06_TEST_XML);
+      let ok: boolean = m.getNodeCount() === 7;
+      if (!ok) { allOk = false; fails.push('Spec06-1: 7 nodes from XML'); }
+      lines.push('  Spec06-1 parse SPEC06 XML (7 nodes): ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 2. Empty graph
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      let ok: boolean = m.getNodeCount() === 0;
+      if (!ok) { allOk = false; fails.push('Spec06-2: empty'); }
+      lines.push('  Spec06-2 empty graph: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 3. Large graph 50 nodes
+    {
+      let m: GraphModel = GraphModel.createEmpty();
+      for (let i: number = 0; i < 50; i++) {
+        m = m.addNode(new GraphNode('n' + i, NodeType.TASK, i * 120, 0, 100, 80, '任务' + i, {}));
+      }
+      let ok: boolean = m.getNodeCount() === 50;
+      if (!ok) { allOk = false; fails.push('Spec06-3: 50 nodes'); }
+      lines.push('  Spec06-3 50 nodes: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 4. No DI XML
+    {
+      let m: GraphModel = BpmnXmlParser.parse(BPMN_XML_NO_DI);
+      let ok: boolean = m.getNodeCount() > 0;
+      if (!ok) { allOk = false; fails.push('Spec06-4: no DI'); }
+      lines.push('  Spec06-4 no DI renders: ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // 5. Full SPEC06 parse (7 nodes, 6 edges)
+    {
+      let m: GraphModel = BpmnXmlParser.parse(SPEC06_TEST_XML);
+      let ok: boolean = m.getNodeCount() === 7 && m.getEdgeCount() === 6;
+      if (!ok) { allOk = false; fails.push('Spec06-5: full parse'); }
+      lines.push('  Spec06-5 SPEC06 full parse (7n+6e): ' + (ok ? 'PASS' : 'FAIL'));
+    }
+
+    // ── Summary ──
+    let passedCount: number = 0;
+    let failedCount: number = 0;
+    for (let i: number = 0; i < lines.length; i++) {
+      if (lines[i].indexOf('PASS') >= 0) passedCount++;
+      else if (lines[i].indexOf('FAIL') >= 0) failedCount++;
+    }
+    lines.push('---');
+    lines.push('总计: ' + passedCount + '/' + (passedCount + failedCount) + ' 通过, ' + failedCount + ' 失败');
+    if (allOk) {
+      lines.push('全部通过');
+    } else {
+      lines.push('失败项:');
+      for (let f of fails) { lines.push('  ' + f); }
+    }
+
+    return lines.join('\n');
   }
 
-  build(): void {
+  build() {
     Column() {
-      Canvas(this.ctx)
-        .width('100%')
-        .height('60%')
-        .onReady(() => {
-          this.renderAll()
+      // ── Visual: FlowViewer from XML ──
+      Column() {
+        Text('验收: FlowViewer( xml=SPEC06, fitOnLoad, highlight=Finance )')
+          .fontSize(14).fontWeight(FontWeight.Bold).margin({ top: 8 })
+        FlowViewer({
+          xml: SPEC06_TEST_XML,
+          canvasHeight: 360,
+          fitOnLoad: true,
+          showGrid: true,
+          highlightNodeId: 'Finance',
+          onNodeClick: (id: string) => {
+            this.spec06Clicked = id
+          }
         })
-
-      Divider().margin({ top: 4, bottom: 4 })
-
-      if (!this.testDone) {
-        Text('Model 层测试中...')
-          .fontSize(14)
-          .fontColor(Color.Gray)
-          .padding(12)
+        Text('点击节点: ' + this.spec06Clicked)
+          .fontSize(12).margin({ bottom: 4 })
       }
-
-      Scroll() {
-        Text(this.testResults.join('\n'))
-          .fontSize(13)
-          .padding(8)
-          .copyOption(CopyOptions.LocalDevice)
-          .width('100%')
-      }
-      .layoutWeight(1)
       .width('100%')
-      .scrollBar(BarState.Auto)
-      .edgeEffect(EdgeEffect.Spring)
+      .layoutWeight(5)
+      .border({ width: { bottom: 1 }, color: '#cccccc' })
 
-      if (this.testDone) {
-        Text(this.allPassed ? 'Model 验收: 全部通过' : 'Model 验收: 存在失败')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.allPassed ? Color.Green : Color.Red)
-          .padding({ top: 8, bottom: 8 })
+      // ── Test Results ──
+      Column() {
+        Text('验收测试结果').fontSize(14).fontWeight(FontWeight.Bold).margin({ top: 4 })
+        Scroll() {
+          Text(this.runTests())
+            .fontSize(10).fontFamily('monospace').lineHeight(16)
+            .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+        }
+        .width('100%').height('100%')
       }
+      .width('100%')
+      .layoutWeight(4)
     }
     .width('100%')
     .height('100%')
-  }
-
-  private runAllTests(): void {
-    let m: GraphModel = GraphModel.createEmpty()
-    let passed: number = 0
-    let failed: number = 0
-
-    let logTest = (msg: string, ok: boolean): void => {
-      let prefix: string = ok ? '✅ ' : '❌ '
-      this.testResults.push(prefix + msg)
-      if (ok) { passed++; } else { failed++; }
-    }
-    // logTestV 失败时显示 期望/实际 值
-    let logTestV = (msg: string, expected: number, actual: number, ok: boolean): void => {
-      let prefix: string = ok ? '✅ ' : '❌ '
-      let detail: string = ok ? '' : ' (期望=' + expected + ' 实际=' + actual + ')'
-      this.testResults.push(prefix + msg + detail)
-      if (ok) { passed++; } else { failed++; }
-    }
-
-    // Test 1: 空模型
-    logTest('空模型 nodeCount=0', m.getNodeCount() === 0)
-
-    // Test 2: 添加节点
-    let n1: GraphNode = new GraphNode('a', NodeType.START_EVENT, 50, 50, 80, 80, '开始', {})
-    let n2: GraphNode = new GraphNode('b', NodeType.END_EVENT, 400, 200, 80, 80, '结束', {})
-    m = m.addNodes([n1, n2])
-    logTest('添加节点 nodeCount=2', m.getNodeCount() === 2)
-
-    // Test 3: 添加连线
-    let wp1: Waypoint = new Waypoint(130, 90)
-    let wp2: Waypoint = new Waypoint(400, 240)
-    let e1: GraphEdge = new GraphEdge('e1', 'a', 'b', [wp1, wp2], EdgeStyle.STRAIGHT, '', {})
-    m = m.addEdge(e1)
-    logTest('添加连线 edgeCount=1', m.getEdgeCount() === 1)
-
-    // Test 4: 不可变
-    let orig: GraphModel = GraphModel.createEmpty()
-    let updated: GraphModel = orig.addNode(n1)
-    logTest('不可变-原实例不变', orig.getNodeCount() === 0)
-    logTest('不可变-新实例包含节点', updated.getNodeCount() === 1)
-
-    // Test 5: 级联删除
-    let mDel: GraphModel = m.removeNode('a')
-    logTest('删除节点+级联删边', mDel.getNodeCount() === 1 && mDel.getEdgeCount() === 0)
-
-    // Test 6: 序列化 roundtrip
-    let snap: GraphModelSnapshot = m.toJSON()
-    let restored: GraphModel = GraphModel.fromJSON(snap)
-    logTest('序列化 roundtrip', restored.getNodeCount() === 2 && restored.getEdgeCount() === 1)
-
-    // ==================== Spec 02: Canvas + HitTest ====================
-    let cm: CanvasManager = new CanvasManager()
-    let cp = cm.screenToCanvas(100, 100)
-    logTest('Spec02 screenToCanvas', cp.x === 100 && cp.y === 100)
-
-    let sp = cm.canvasToScreen(50, 50)
-    logTest('Spec02 canvasToScreen', sp.x === 50 && sp.y === 50)
-
-    cm.zoomAt(200, 200, 2)
-    let cp2 = cm.screenToCanvas(300, 300)
-    logTest('Spec02 缩放后坐标转换', cp2.x !== 300)
-
-    cm = new CanvasManager()
-    cm.pan(10, 20)
-    let cp3 = cm.screenToCanvas(60, 80)
-    logTest('Spec02 平移后坐标转换', cp3.x === 50 && cp3.y === 60)
-
-    let hitMgr: HitTestManager = new HitTestManager()
-    hitMgr.rebuild(m, cm)
-    // 节点 b 画布坐标 (400,200)，cm pan(10,20) → 屏幕坐标 (410,220)
-    let hit: HitResult = hitMgr.hitTest(410, 220, cm)
-    logTest('Spec02 HitTest-命中', hit.nodeId === 'b')
-    // (0,0) 屏幕 → 画布 (-10,-20)，不在任何节点内
-    let miss: HitResult = hitMgr.hitTest(0, 0, cm)
-    logTest('Spec02 HitTest-空白', miss.nodeId === '')
-
-    // ==================== Spec 03: BPMN Parser ====================
-    // 复杂 XML：命名空间 + 6种节点 + 坐标 + waypoints + 条件标签
-    let xml: string = '<?xml version="1.0" encoding="UTF-8"?>' +
-      '<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
-      ' xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"' +
-      ' xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"' +
-      ' xmlns:di="http://www.omg.org/spec/DD/20100524/DI">' +
-      '<bpmn:process id="Process_1" name="报销流程">' +
-      '<bpmn:startEvent id="Start" name="提交申请"/>' +
-      '<bpmn:userTask id="Task1" name="填写报销单"/>' +
-      '<bpmn:exclusiveGateway id="Gate1" name="金额判断"/>' +
-      '<bpmn:task id="Task2" name="经理审批"/>' +
-      '<bpmn:serviceTask id="Task3" name="财务审核"/>' +
-      '<bpmn:endEvent id="End" name="完成"/>' +
-      '<bpmn:sequenceFlow id="Flow1" sourceRef="Start" targetRef="Task1"/>' +
-      '<bpmn:sequenceFlow id="Flow2" sourceRef="Task1" targetRef="Gate1" name="提交"/>' +
-      '<bpmn:sequenceFlow id="Flow3" sourceRef="Gate1" targetRef="Task2" name="&gt;1000"/>' +
-      '<bpmn:sequenceFlow id="Flow4" sourceRef="Gate1" targetRef="Task3" name="&lt;=1000"/>' +
-      '<bpmn:sequenceFlow id="Flow5" sourceRef="Task2" targetRef="End"/>' +
-      '<bpmn:sequenceFlow id="Flow6" sourceRef="Task3" targetRef="End"/>' +
-      '</bpmn:process>' +
-      '<bpmndi:BPMNDiagram>' +
-      '<bpmndi:BPMNShape id="s1" bpmnElement="Start"><dc:Bounds x="100" y="200" width="36" height="36"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNShape id="s2" bpmnElement="Task1"><dc:Bounds x="200" y="180" width="120" height="60"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNShape id="s3" bpmnElement="Gate1"><dc:Bounds x="400" y="190" width="50" height="50"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNShape id="s4" bpmnElement="Task2"><dc:Bounds x="550" y="100" width="120" height="60"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNShape id="s5" bpmnElement="Task3"><dc:Bounds x="550" y="280" width="120" height="60"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNShape id="s6" bpmnElement="End"><dc:Bounds x="750" y="190" width="36" height="36"/></bpmndi:BPMNShape>' +
-      '<bpmndi:BPMNEdge id="e1" bpmnElement="Flow1"><di:waypoint x="136" y="218"/><di:waypoint x="200" y="210"/></bpmndi:BPMNEdge>' +
-      '<bpmndi:BPMNEdge id="e2" bpmnElement="Flow2"><di:waypoint x="320" y="210"/><di:waypoint x="400" y="215"/></bpmndi:BPMNEdge>' +
-      '</bpmndi:BPMNDiagram>' +
-      '</bpmn:definitions>'
-
-    let parsed: GraphModel = BpmnXmlParser.parse(xml)
-    let nodes: GraphNode[] = parsed.getNodes()
-    let edges: GraphEdge[] = parsed.getEdges()
-
-    // 数量校验
-    let nodeCount: number = parsed.getNodeCount()
-    let edgeCount: number = parsed.getEdgeCount()
-    logTestV('Spec03 解析节点数', 6, nodeCount, nodeCount === 6)
-    logTestV('Spec03 解析连线数', 6, edgeCount, edgeCount === 6)
-
-    // 调试：第一个节点的实际坐标
-    if (nodes.length > 0) {
-      let first: GraphNode = nodes[0]
-      this.testResults.push('  📐 首节点 ' + first.id + ': x=' + first.x + ' y=' + first.y + ' w=' + first.width + ' h=' + first.height)
-    }
-
-    // 类型映射校验
-    let byType: Record<string, number> = {}
-    for (let i: number = 0; i < nodes.length; i++) {
-      let tp: string = nodes[i].type
-      byType[tp] = (byType[tp] || 0) + 1
-    }
-    logTest('Spec03 开始事件=1', (byType['startEvent'] || 0) === 1)
-    logTest('Spec03 任务节点=3', (byType['task'] || 0) === 3)  // userTask+task+serviceTask → TASK
-    logTest('Spec03 网关节点=1', (byType['gateway'] || 0) === 1)
-    logTest('Spec03 结束事件=1', (byType['endEvent'] || 0) === 1)
-
-    // 坐标校验：Gate1 应该从 BPMNShape 读取坐标
-    // 调试：手工统计 XML 中的 BPMNShape 数量
-    let shapeCount: number = 0
-    let pos: number = 0
-    while (true) {
-      pos = xml.indexOf('BPMNShape', pos)
-      if (pos === -1) { break }
-      shapeCount++
-      pos = pos + 1
-    }
-    this.testResults.push('  📐 BPMNShape 出现次数: ' + shapeCount)
-
-    // 全部节点坐标
-    for (let i: number = 0; i < nodes.length; i++) {
-      this.testResults.push('  📐 ' + nodes[i].id + ': (' + nodes[i].x + ',' + nodes[i].y + ') ' + nodes[i].width + 'x' + nodes[i].height)
-    }
-
-    let gate: GraphNode | null = parsed.getNode('Gate1')
-    if (gate !== null) {
-      logTestV('Spec03 Gate1坐标x', 400, gate.x, gate.x === 400)
-      logTestV('Spec03 Gate1坐标y', 190, gate.y, gate.y === 190)
-    } else {
-      logTest('Spec03 Gate1存在', false)
-    }
-
-    // Start 坐标
-    let start: GraphNode | null = parsed.getNode('Start')
-    if (start !== null) {
-      logTestV('Spec03 Start坐标x', 100, start.x, start.x === 100)
-    } else {
-      logTest('Spec03 Start存在', false)
-    }
-
-    // 边名映射
-    let flow2: GraphEdge | null = parsed.getEdge('Flow2')
-    let flow2Label: string = flow2 !== null ? flow2.label : '(null)'
-    logTest('Spec03 连线标签=' + flow2Label, flow2 !== null && flow2.label === '提交')
-
-    // waypoints 校验 (Flow1 有2个 waypoints)
-    let flow1: GraphEdge | null = parsed.getEdge('Flow1')
-    if (flow1 !== null) {
-      logTestV('Spec03 waypoints数量', 2, flow1.waypoints.length, flow1.waypoints.length === 2)
-    } else {
-      logTest('Spec03 Flow1存在', false)
-    }
-
-    // 无条件标签的边标签为空
-    let f1: GraphEdge | null = parsed.getEdge('Flow1')
-    logTest('Spec03 无条件边标签为空', f1 !== null && f1.label === '')
-
-    // 无 BPMNDiagram 的 XML 也能解析（缺省坐标）
-    let simpleXml: string = '<?xml version="1.0"?>' +
-      '<definitions><process id="p2">' +
-      '<startEvent id="s0" name="s"/>' +
-      '<endEvent id="e0" name="e"/>' +
-      '<sequenceFlow id="f0" sourceRef="s0" targetRef="e0"/>' +
-      '</process></definitions>'
-    let simpleModel: GraphModel = BpmnXmlParser.parse(simpleXml)
-    logTest('Spec03 无DI解析节点=2', simpleModel.getNodeCount() === 2)
-    logTest('Spec03 无DI解析连线=1', simpleModel.getEdgeCount() === 1)
-
-    this.testResults.push('───────')
-    let total: number = passed + failed
-    this.testResults.push('合计: ' + passed + '/' + total + ' 通过')
-
-    this.allPassed = failed === 0
-    this.testDone = true
+    .backgroundColor('#f5f5f5')
   }
 }

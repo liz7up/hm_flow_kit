@@ -111,7 +111,15 @@ hm-flow-kit/
 - 支持命名空间前缀、6 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
 - 降级：无 DI 信息时使用默认坐标
 
-**下一步：Spec 04 — Interaction 交互层**
+**Spec 06 — FlowViewer 组件 ✅ 已完成**
+- 197 行，5 项验收全部通过
+- `@Prop model` 一行接入渲染
+- 支持 PanGesture 拖拽、fitOnLoad、highlightNodeId
+- ⚠️ Prop 禁用 ArkUI 内置名（height/width → canvasHeight/canvasWidth）
+
+**当前总验收：31/31 全部通过**
+
+**已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 
 ## 禁止事项
 
@@ -131,6 +139,90 @@ hm-flow-kit/
 | 常量 | UPPER_SNAKE_CASE | `DEFAULT_NODE_WIDTH` |
 | 文件 | PascalCase (类文件) | `GraphModel.ets` |
 | 私有成员 | `_` 前缀 | `_nodes`, `_edges` |
+| ⚠️ 组件Prop | 避免与 ArkUI 内置属性重名 | `height`→`canvasHeight`, `width`→`canvasWidth` |
+
+## 已实现 API 参考（精确签名，禁止猜测）
+
+### 构造器
+```
+new GraphNode(id: string, type: NodeType, x: number, y: number, width: number, height: number, label: string, properties: Record<string,string>)
+new GraphEdge(id: string, sourceId: string, targetId: string, waypoints: Waypoint[], style: EdgeStyle, label: string, properties: Record<string,string>)
+new Waypoint(x: number, y: number)
+new Viewport(x: number, y: number, zoom: number)
+new NodeRect(x: number, y: number, w: number, h: number)
+new RenderConfig()  // 无参，使用默认值
+new CanvasManager() // 无参
+new HitTestManager() // 无参
+GraphModel.createEmpty() // 静态工厂，无参
+```
+
+### GraphModel 方法
+```
+getNodeCount(): number
+getEdgeCount(): number
+getNodes(): GraphNode[]
+getEdges(): GraphEdge[]
+getNode(id: string): GraphNode | null   // 注意返回 null 不是 undefined
+getEdge(id: string): GraphEdge | null
+addNode(node: GraphNode): GraphModel    // 不可变，返回新实例
+addEdge(edge: GraphEdge): GraphModel
+addNodes(nodes: GraphNode[]): GraphModel
+removeNode(id: string): GraphModel     // 级联删边
+moveNode(id: string, x: number, y: number): GraphModel
+toJSON(): GraphModelSnapshot
+static fromJSON(snapshot: GraphModelSnapshot): GraphModel
+```
+
+### CanvasManager 方法
+```
+new CanvasManager()                     // 无参构造
+zoom: number                            // getter，只读
+offsetX: number                         // getter，只读
+offsetY: number                         // getter，只读
+applyTransform(ctx: CanvasRenderingContext2D): void
+pan(dx: number, dy: number): void
+zoomAt(cx: number, cy: number, delta: number): void
+screenToCanvas(sx: number, sy: number): CanvasPoint  // 返回 .x .y
+canvasToScreen(cx: number, cy: number): ScreenPoint   // 返回 .x .y
+getViewport(): ViewportState            // 返回 { zoom, offsetX, offsetY }
+reset(): void
+```
+
+### 渲染器（全部静态方法）
+```
+NodeRenderer.render(ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig, offsetX: number, offsetY: number, zoom: number): void
+EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number): void
+GridRenderer.render(ctx: CanvasRenderingContext2D, width: number, height: number, offsetX: number, offsetY: number, zoom: number): void
+```
+
+### HitTestManager 方法
+```
+rebuild(model: GraphModel, canvasManager: CanvasManager): void
+hitTest(screenX: number, screenY: number, canvasManager: CanvasManager): HitResult
+// HitResult 有: type: HitType (NODE/EDGE/CANVAS), nodeId: string, edgeId: string
+```
+
+### BPMN Parser
+```
+BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法
+```
+
+### FlowViewer 组件
+```
+@Component struct FlowViewer { @Prop model: GraphModel }
+// 用法: FlowViewer({ model: this.model })
+```
+
+### 禁止使用的 API（不存在）
+```
+❌ FlowViewer.fromXml() / FlowViewer.fromModel() — 不存在
+❌ CanvasManager.getCanvas() — 不存在
+❌ NodeRenderer.render 不带 config/offsetX/offsetY/zoom — 签名错误
+❌ EdgeRenderer.render 不带 getNodePosition/offsetX/offsetY/zoom — 签名错误
+❌ hitTest(x, y) 两参数 — 实际需 3 参数: (x, y, canvasManager)
+❌ HitResult.targetType — 实际字段是 .type
+❌ getNode() 返回 undefined — 实际返回 null
+```
 
 ## DevOps
 

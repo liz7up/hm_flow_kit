@@ -101,16 +101,12 @@ hm-flow-kit/
 - 268 行，7 项测试全部通过
 - 不可变数据模式、序列化、级联删除
 
-**Spec 02 — Canvas 渲染层 ⚠️ 部分完成**
-- ✅ NodeRenderer / EdgeRenderer / GridRenderer / CanvasManager / RenderConfig
-- ✅ 视觉 Demo 验证通过（Canvas 渲染审批流图）
-- ❌ HitTestManager 未实现（交互层前置依赖，下个 Spec 前必须补）
-- ❌ 缩放/平移交互未验证
+**Spec 02 — Canvas 渲染层 ✅ 已完成**
+- ✅ NodeRenderer / EdgeRenderer / GridRenderer / CanvasManager / RenderConfig / HitTestManager
+- ✅ 视觉 Demo 验证通过 + 14 项单元测试全部通过
+- 共约 1350 行渲染层代码
 
-**下一步：HitTestManager**
-- 坐标→元素命中检测
-- 维护节点边界盒索引
-- `hitTest(screenX, screenY) → nodeId | null`
+**下一步：Spec 03 — BPMN 2.0 XML 解析器**
 
 ## 禁止事项
 

@@ -1,4 +1,4 @@
-import { GraphModel, GraphModelSnapshot, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle, RenderConfig, NodeRenderer, EdgeRenderer, GridRenderer, CanvasManager, NodeRect } from 'hmflowkit'
+import { GraphModel, GraphModelSnapshot, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle, RenderConfig, NodeRenderer, EdgeRenderer, GridRenderer, CanvasManager, NodeRect, HitTestManager, HitResult } from 'hmflowkit'
 
 @Entry
 @Component
@@ -14,7 +14,7 @@ struct Index {
 
   aboutToAppear(): void {
     this.model = this.buildDemoModel()
-    this.runModelTests()
+    this.runAllTests()
   }
 
   buildDemoModel(): GraphModel {
@@ -117,7 +117,7 @@ struct Index {
     .height('100%')
   }
 
-  private runModelTests(): void {
+  private runAllTests(): void {
     let m: GraphModel = GraphModel.createEmpty()
     let passed: number = 0
     let failed: number = 0
@@ -158,6 +158,36 @@ struct Index {
     let snap: GraphModelSnapshot = m.toJSON()
     let restored: GraphModel = GraphModel.fromJSON(snap)
     logTest('序列化 roundtrip', restored.getNodeCount() === 2 && restored.getEdgeCount() === 1)
+
+    // ==================== Spec 02: Canvas + HitTest ====================
+    let cm: CanvasManager = new CanvasManager()
+    let cp = cm.screenToCanvas(100, 100)
+    logTest('Spec02 screenToCanvas', cp.x === 100 && cp.y === 100)
+
+    let sp = cm.canvasToScreen(50, 50)
+    logTest('Spec02 canvasToScreen', sp.x === 50 && sp.y === 50)
+
+    cm.zoomAt(200, 200, 2)
+    let cp2 = cm.screenToCanvas(300, 300)
+    logTest('Spec02 缩放后坐标转换', cp2.x !== 300)
+
+    cm = new CanvasManager()
+    cm.pan(10, 20)
+    let cp3 = cm.screenToCanvas(60, 80)
+    logTest('Spec02 平移后坐标转换', cp3.x === 50 && cp3.y === 60)
+
+    let hitMgr: HitTestManager = new HitTestManager()
+    hitMgr.rebuild(m, cm)
+    // 节点 b 画布坐标 (400,200)，cm pan(10,20) → 屏幕坐标 (410,220)
+    let hit: HitResult = hitMgr.hitTest(410, 220, cm)
+    logTest('Spec02 HitTest-命中', hit.nodeId === 'b')
+    // (0,0) 屏幕 → 画布 (-10,-20)，不在任何节点内
+    let miss: HitResult = hitMgr.hitTest(0, 0, cm)
+    logTest('Spec02 HitTest-空白', miss.nodeId === '')
+
+    this.testResults.push('───────')
+    let total: number = passed + failed
+    this.testResults.push('合计: ' + passed + '/' + total + ' 通过')
 
     this.allPassed = failed === 0
     this.testDone = true

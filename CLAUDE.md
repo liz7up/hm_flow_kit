@@ -112,12 +112,14 @@ hm-flow-kit/
 - 降级：无 DI 信息时使用默认坐标
 
 **Spec 06 — FlowViewer 组件 ✅ 已完成**
-- 197 行，5 项验收全部通过
-- `@Prop model` 一行接入渲染
-- 支持 PanGesture 拖拽、fitOnLoad、highlightNodeId
-- ⚠️ Prop 禁用 ArkUI 内置名（height/width → canvasHeight/canvasWidth）
+- 186 行，一行接入 `FlowViewer({ model })`
+- 自动适配内容缩放（auto-fit）、点击高亮、点击空白取消高亮、PanGesture 拖拽
+- 全屏覆盖层支持
 
 **当前总验收：31/31 全部通过**
+
+**已实现完整功能：**
+- BPMN XML 解析 → 渲染 → 点击高亮 → 拖拽平移 → 自动缩放适配
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

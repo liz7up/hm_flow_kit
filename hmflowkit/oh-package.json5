@@ -6,6 +6,6 @@
   "author": "lizhen",
   "license": "Apache-2.0",
   "keywords": ["flowchart","bpmn","diagram","graph","canvas","鸿蒙","流程图","审批流"],
-  "repository": "https://gitee.com/notcoder/hm-flow-kit",
+  "repository": "https://gitee.com/liz7up/hm-flow-kit",
   "dependencies": {}
 }

@@ -1,4 +1,5 @@
 import { GraphModel, GraphNode, NodeType, NodeRect, Waypoint, GraphEdge, EdgeStyle, BpmnXmlParser, FlowViewer } from 'hmflowkit'
+import { LARGE_BPMN_XML, CPLX1_BPMN_XML } from './SampleData'
 
 const SAMPLE_BPMN_XML: string = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -94,6 +95,7 @@ struct Index {
   @State viewId: number = 0
   @State fullscreen: boolean = false
   @State highlightId: string = ''
+  @State showSample: boolean = false
 
   aboutToAppear(): void {
     try {
@@ -152,6 +154,13 @@ struct Index {
           Button('🔍 新窗口查看')
             .fontSize(12)
             .onClick(() => { this.fullscreen = true; this.viewId++ })
+          Button('🧩 复杂流程图')
+            .fontSize(11)
+            .onClick(() => {
+              this.showSample = true
+              this.parsedModel = BpmnXmlParser.parse(CPLX1_BPMN_XML)
+              this.viewId++
+            })
         }
         .justifyContent(FlexAlign.SpaceEvenly)
         .width('100%')

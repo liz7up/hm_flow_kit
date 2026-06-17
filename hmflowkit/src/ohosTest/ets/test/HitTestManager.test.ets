@@ -1,6 +1,6 @@
 import { describe, beforeEach, it, expect } from '@ohos/hypium';
 import { HitTestManager, HitResult, HitType } from '../../../main/ets/renderer/HitTestManager';
-import { GraphModel, GraphNode, GraphEdge, NodeType, EdgeStyle } from '../../../main/ets/model/GraphModel';
+import { GraphModel, GraphNode, GraphEdge, NodeType, EdgeStyle, Pool, Lane, PoolBounds } from '../../../main/ets/model/GraphModel';
 import { CanvasManager } from '../../../main/ets/renderer/CanvasManager';
 
 function makeNode(id: string, x: number, y: number, w?: number, h?: number): GraphNode {
@@ -107,6 +107,56 @@ export default function hitTestManagerTest(): void {
       hitMgr.clear();
       let r: HitResult = hitMgr.hitTest(50, 50, canvasMgr);
       expect(r.type).assertEqual(HitType.CANVAS);
+    });
+
+    // ── Pool/Lane 命中 ──
+
+    it('pool_header_should_return_POOL_type', 0, () => {
+      let pool: Pool = new Pool('P1', 'Sales', true,
+        new PoolBounds(100, 100, 400, 200), []);
+      model = model.addPool(pool);
+      hitMgr.rebuild(model, canvasMgr);
+      // 水平 Pool 标题栏在左侧 (x:100..130)
+      let r: HitResult = hitMgr.hitTest(115, 200, canvasMgr);
+      expect(r.type).assertEqual(HitType.POOL);
+      expect(r.poolId).assertEqual('P1');
+    });
+
+    it('lane_header_should_return_LANE_type', 0, () => {
+      let lane: Lane = new Lane('L1', 'Manager',
+        new PoolBounds(100, 100, 400, 200), [], []);
+      let pool: Pool = new Pool('P1', 'Sales', true,
+        new PoolBounds(100, 100, 400, 200), [lane]);
+      model = model.addPool(pool);
+      hitMgr.rebuild(model, canvasMgr);
+      // 水平 Lane 标题栏在左侧 (x:100..120)
+      let r: HitResult = hitMgr.hitTest(110, 200, canvasMgr);
+      expect(r.type).assertEqual(HitType.LANE);
+      expect(r.laneId).assertEqual('L1');
+    });
+
+    it('node_inside_lane_still_returns_NODE', 0, () => {
+      let lane: Lane = new Lane('L1', 'Manager',
+        new PoolBounds(100, 100, 400, 200), [], ['n1']);
+      let pool: Pool = new Pool('P1', 'Sales', true,
+        new PoolBounds(100, 100, 400, 200), [lane]);
+      model = model.addNode(makeNode('n1', 150, 150, 120, 60))
+        .addPool(pool);
+      hitMgr.rebuild(model, canvasMgr);
+      // 点击节点中心 → NODE 优先
+      let r: HitResult = hitMgr.hitTest(210, 180, canvasMgr);
+      expect(r.type).assertEqual(HitType.NODE);
+      expect(r.nodeId).assertEqual('n1');
+    });
+
+    it('vertical_pool_header_should_be_on_top', 0, () => {
+      let pool: Pool = new Pool('P1', 'Vertical', false,
+        new PoolBounds(100, 100, 400, 300), []);
+      model = model.addPool(pool);
+      hitMgr.rebuild(model, canvasMgr);
+      // 垂直 Pool 标题栏在顶部 (y:100..130)
+      let r: HitResult = hitMgr.hitTest(300, 115, canvasMgr);
+      expect(r.type).assertEqual(HitType.POOL);
     });
   });
 }

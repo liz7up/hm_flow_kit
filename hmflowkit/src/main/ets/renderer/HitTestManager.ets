@@ -15,7 +15,7 @@
  *   const hit = hitMgr.hitTest(clickX, clickY)  // 点击时查询
  */
 
-import { GraphModel, GraphNode, GraphEdge } from '../model/GraphModel'
+import { GraphModel, GraphNode, GraphEdge, Pool, Lane } from '../model/GraphModel'
 import { NodeRect } from './EdgeRenderer'
 import { CanvasManager } from './CanvasManager'
 
@@ -25,10 +25,14 @@ import { CanvasManager } from './CanvasManager'
 export class HitResult {
   /** 命中类型 */
   readonly type: HitType
-  /** 命中的节点（仅当 type 为 NODE 或 EDGE_LABEL 时） */
+  /** 命中的节点（仅当 type 为 NODE 时） */
   readonly nodeId: string
   /** 命中的连线（仅当 type 为 EDGE 时） */
   readonly edgeId: string
+  /** 命中的 Pool（仅当 type 为 POOL 时） */
+  readonly poolId: string
+  /** 命中的 Lane（仅当 type 为 LANE 时） */
+  readonly laneId: string
   /** 命中点在画布坐标系中的位置 */
   readonly canvasX: number
   readonly canvasY: number
@@ -37,12 +41,16 @@ export class HitResult {
     type: HitType,
     nodeId: string,
     edgeId: string,
+    poolId: string,
+    laneId: string,
     canvasX: number,
     canvasY: number
   ) {
     this.type = type
     this.nodeId = nodeId
     this.edgeId = edgeId
+    this.poolId = poolId
+    this.laneId = laneId
     this.canvasX = canvasX
     this.canvasY = canvasY
   }
@@ -64,7 +72,11 @@ export enum HitType {
   /** 命中连线 */
   EDGE = 2,
   /** 命中画布背景 */
-  CANVAS = 3
+  CANVAS = 3,
+  /** 命中泳池 (Pool) */
+  POOL = 4,
+  /** 命中泳道 (Lane) */
+  LANE = 5
 }
 
 /**
@@ -144,6 +156,30 @@ class WaypointEntry {
   }
 }
 
+/** 泳池/泳道标题栏包围盒 */
+class PoolLaneHitBox {
+  readonly poolId: string
+  readonly laneId: string
+  readonly left: number
+  readonly top: number
+  readonly right: number
+  readonly bottom: number
+
+  constructor(poolId: string, laneId: string, left: number, top: number, right: number, bottom: number) {
+    this.poolId = poolId
+    this.laneId = laneId
+    this.left = left
+    this.top = top
+    this.right = right
+    this.bottom = bottom
+  }
+
+  contains(cx: number, cy: number): boolean {
+    return cx >= this.left && cx <= this.right &&
+           cy >= this.top && cy <= this.bottom
+  }
+}
+
 /**
  * 命中检测管理器
  */
@@ -152,12 +188,17 @@ export class HitTestManager {
   private nodeBoxes: NodeHitBox[]
   /** 连线包围盒索引 */
   private edgeBoxes: EdgeHitBox[]
+  /** 泳池/泳道标题栏索引 */
+  private poolHeaders: PoolLaneHitBox[]
+  private laneHeaders: PoolLaneHitBox[]
   /** 连线的命中容忍距离（画布像素） */
   private edgeHitTolerance: number
 
   constructor() {
     this.nodeBoxes = []
     this.edgeBoxes = []
+    this.poolHeaders = []
+    this.laneHeaders = []
     this.edgeHitTolerance = 12
   }
 
@@ -248,6 +289,51 @@ export class HitTestManager {
       )
       this.edgeBoxes.push(eb)
     }
+
+    // 重建泳道/泳池标题栏索引
+    this.poolHeaders = []
+    this.laneHeaders = []
+    let pools: Pool[] = model.getPools()
+    for (let pi: number = 0; pi < pools.length; pi++) {
+      let pool: Pool = pools[pi]
+      this.addPoolHeader(pool)
+      this.addLaneHeaders(pool.lanes, pool.isHorizontal)
+    }
+  }
+
+  private addPoolHeader(pool: Pool): void {
+    let headerW: number = 30 // poolHeaderWidth (synchronised with RenderConfig)
+    let hb: PoolLaneHitBox
+    if (pool.isHorizontal) {
+      hb = new PoolLaneHitBox(pool.id, '',
+        pool.bounds.x, pool.bounds.y,
+        pool.bounds.x + headerW, pool.bounds.y + pool.bounds.height)
+    } else {
+      hb = new PoolLaneHitBox(pool.id, '',
+        pool.bounds.x, pool.bounds.y,
+        pool.bounds.x + pool.bounds.width, pool.bounds.y + headerW)
+    }
+    this.poolHeaders.push(hb)
+  }
+
+  private addLaneHeaders(lanes: Lane[], isHorizontal: boolean): void {
+    for (let i: number = 0; i < lanes.length; i++) {
+      let lane: Lane = lanes[i]
+      let headerW: number = 20 // laneHeaderWidth (synchronised with RenderConfig)
+      let hb: PoolLaneHitBox
+      if (isHorizontal) {
+        hb = new PoolLaneHitBox('', lane.id,
+          lane.bounds.x, lane.bounds.y,
+          lane.bounds.x + headerW, lane.bounds.y + lane.bounds.height)
+      } else {
+        hb = new PoolLaneHitBox('', lane.id,
+          lane.bounds.x, lane.bounds.y,
+          lane.bounds.x + lane.bounds.width, lane.bounds.y + headerW)
+      }
+      this.laneHeaders.push(hb)
+      // 递归子泳道
+      this.addLaneHeaders(lane.childLanes, isHorizontal)
+    }
   }
 
   /**
@@ -270,7 +356,7 @@ export class HitTestManager {
     for (let i = this.nodeBoxes.length - 1; i >= 0; i--) {
       const box: NodeHitBox = this.nodeBoxes[i]
       if (box.contains(cx, cy)) {
-        return new HitResult(HitType.NODE, box.id, '', cx, cy)
+        return new HitResult(HitType.NODE, box.id, '', '', '', cx, cy)
       }
     }
 
@@ -283,12 +369,28 @@ export class HitTestManager {
       }
       // 精确距离检测：计算点击点到每条线段的距离
       if (this.hitTestEdgeSegments(eb, cx, cy)) {
-        return new HitResult(HitType.EDGE, '', eb.id, cx, cy)
+        return new HitResult(HitType.EDGE, '', eb.id, '', '', cx, cy)
       }
     }
 
-    // 3. 未命中任何元素
-    return new HitResult(HitType.CANVAS, '', '', cx, cy)
+    // 3. 检查泳池标题栏命中
+    for (let pk = this.poolHeaders.length - 1; pk >= 0; pk--) {
+      let ph: PoolLaneHitBox = this.poolHeaders[pk]
+      if (ph.contains(cx, cy)) {
+        return new HitResult(HitType.POOL, '', '', ph.poolId, '', cx, cy)
+      }
+    }
+
+    // 4. 检查泳道标题栏命中
+    for (let lk = this.laneHeaders.length - 1; lk >= 0; lk--) {
+      let lh: PoolLaneHitBox = this.laneHeaders[lk]
+      if (lh.contains(cx, cy)) {
+        return new HitResult(HitType.LANE, '', '', '', lh.laneId, cx, cy)
+      }
+    }
+
+    // 5. 未命中任何元素
+    return new HitResult(HitType.CANVAS, '', '', '', '', cx, cy)
   }
 
   /**
@@ -321,6 +423,8 @@ export class HitTestManager {
   clear(): void {
     this.nodeBoxes = []
     this.edgeBoxes = []
+    this.poolHeaders = []
+    this.laneHeaders = []
   }
 
   // ========== 私有方法 ==========

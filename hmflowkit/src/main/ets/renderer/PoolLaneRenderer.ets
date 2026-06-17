@@ -10,18 +10,6 @@ export class PoolLaneRenderer {
     offsetY: number,
     zoom: number
   ): void {
-    // DIAG: draw magenta squares = pool count (top-left corner)
-    for (let pi: number = 0; pi < pools.length; pi++) {
-      ctx.fillStyle = '#FF00FF';
-      ctx.fillRect(5 + pi * 22, 5, 18, 18);
-      // Draw pool name next to square
-      ctx.fillStyle = '#000000';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(pools[pi].name, 5 + pi * 22, 26);
-    }
-
     for (let i: number = 0; i < pools.length; i++) {
       PoolLaneRenderer.renderPool(ctx, pools[i], config, offsetX, offsetY, zoom);
     }
@@ -49,20 +37,13 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Lanes first (background layer)
+    // Render lanes inside pool (background layer)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
     }
 
-    // Pool header on top (bg + text, last to stay visible)
+    // Pool header — rendered AFTER lanes so it stays on top
     PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);
-
-    // DIAG: RED cross at pool center (drawn LAST to be visible)
-    let cx: number = x + w / 2;
-    let cy: number = y + h / 2;
-    ctx.fillStyle = '#FF0000';
-    ctx.fillRect(cx - 20, cy - 2, 40, 4);
-    ctx.fillRect(cx - 2, cy - 20, 4, 40);
   }
 
   private static renderPoolHeader(
@@ -78,23 +59,23 @@ export class PoolLaneRenderer {
     const headerW: number = config.poolHeaderWidth * zoom;
     const fontSize: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
 
-    // Background — use bright orange for diagnosis
-    ctx.fillStyle = '#FF8C00';
+    // Header background
+    ctx.fillStyle = config.poolHeaderFillColor;
     if (pool.isHorizontal) {
       ctx.fillRect(x, y, headerW, h);
     } else {
       ctx.fillRect(x, y, w, headerW);
     }
 
-    // Text — use bright red, larger font for diagnosis
-    ctx.fillStyle = '#FF0000';
-    ctx.font = 'bold 16px ' + config.fontFamily;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Header text
+    ctx.fillStyle = config.poolHeaderTextColor;
+    ctx.font = fontSize + 'px ' + config.fontFamily;
 
     if (pool.isHorizontal) {
-      ctx.fillText(pool.name, x + headerW, y + h / 2);
+      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + headerW / 2, y + h / 2, fontSize);
     } else {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(pool.name, x + w / 2, y + headerW / 2);
     }
   }
@@ -125,7 +106,7 @@ export class PoolLaneRenderer {
     // Lane header
     PoolLaneRenderer.renderLaneHeader(ctx, lane, laneX, laneY, laneW, laneH, parentPool.isHorizontal, config, zoom);
 
-    // Child lanes
+    // Child lanes recursively
     for (let i: number = 0; i < lane.childLanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, lane.childLanes[i], parentPool, config, offsetX, offsetY, zoom);
     }
@@ -145,7 +126,7 @@ export class PoolLaneRenderer {
     const headerW: number = config.laneHeaderWidth * zoom;
     const fontSize: number = Math.max(10, Math.round(config.laneHeaderFontSize * zoom));
 
-    // Background
+    // Header background
     ctx.fillStyle = config.laneHeaderFillColor;
     if (isHorizontal) {
       ctx.fillRect(x, y, headerW, h);
@@ -153,7 +134,7 @@ export class PoolLaneRenderer {
       ctx.fillRect(x, y, w, headerW);
     }
 
-    // Text
+    // Header text
     ctx.fillStyle = config.laneHeaderTextColor;
     ctx.font = fontSize + 'px ' + config.fontFamily;
 
@@ -166,7 +147,7 @@ export class PoolLaneRenderer {
     }
   }
 
-  // Draw text vertically, one character per line, centered, bottom-to-top
+  // Draw text vertically, one character per line, centered
   private static fillVerticalText(
     ctx: CanvasRenderingContext2D,
     text: string,
@@ -174,13 +155,13 @@ export class PoolLaneRenderer {
     centerY: number,
     fontSize: number
   ): void {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
     const len: number = text.length;
     if (len === 0) {
       return;
     }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     const lineH: number = fontSize * 1.2;
     const totalH: number = (len - 1) * lineH;

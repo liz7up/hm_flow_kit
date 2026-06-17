@@ -1,47 +1,73 @@
-import { GraphModel, GraphNode, NodeType, NodeRect, Waypoint, GraphEdge, EdgeStyle, BpmnXmlParser, FlowViewer } from 'hmflowkit'
+import { GraphModel, GraphNode, NodeType, NodeRect, Waypoint, GraphEdge, EdgeStyle, BpmnXmlParser, FlowViewer, Pool } from 'hmflowkit'
 import { LARGE_BPMN_XML, CPLX1_BPMN_XML } from './SampleData'
 
-const SAMPLE_BPMN_XML: string = `<?xml version="1.0" encoding="UTF-8"?>
+// ── Pool/Lane 泳道 Demo ──
+const POOL_LANE_XML: string = `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-             targetNamespace="http://bpmn.io/schema/bpmn">
-  <process id="Process_1" isExecutable="false">
-    <startEvent id="StartEvent_1" name="开始" />
-    <task id="Task_1" name="审批任务" />
-    <task id="Task_2" name="会签任务" />
-    <endEvent id="EndEvent_1" name="结束" />
-    <sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
-    <sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="Task_2" />
-    <sequenceFlow id="Flow_3" sourceRef="Task_2" targetRef="EndEvent_1" />
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC">
+  <collaboration id="Collab_1">
+    <participant id="Pool_Sales" name="销售部" processRef="Process_1"/>
+    <participant id="Pool_Finance" name="财务部" processRef="Process_1"/>
+  </collaboration>
+  <process id="Process_1">
+    <laneSet>
+      <lane id="Lane_Manager" name="经理">
+        <flowNodeRef>Task_Approve</flowNodeRef>
+      </lane>
+      <lane id="Lane_Staff" name="员工">
+        <flowNodeRef>Start_1</flowNodeRef>
+        <flowNodeRef>Task_Fill</flowNodeRef>
+        <flowNodeRef>Gateway_1</flowNodeRef>
+        <flowNodeRef>Task_Pay</flowNodeRef>
+        <flowNodeRef>End_1</flowNodeRef>
+      </lane>
+    </laneSet>
+    <startEvent id="Start_1" name="发起"/>
+    <userTask id="Task_Fill" name="填写报销单"/>
+    <userTask id="Task_Approve" name="经理审批"/>
+    <exclusiveGateway id="Gateway_1" name="通过?"/>
+    <userTask id="Task_Pay" name="财务打款"/>
+    <endEvent id="End_1" name="完成"/>
+    <sequenceFlow id="Flow_s_f" sourceRef="Start_1" targetRef="Task_Fill"/>
+    <sequenceFlow id="Flow_f_g" sourceRef="Task_Fill" targetRef="Gateway_1"/>
+    <sequenceFlow id="Flow_g_a" sourceRef="Gateway_1" targetRef="Task_Approve" name="是"/>
+    <sequenceFlow id="Flow_a_p" sourceRef="Task_Approve" targetRef="Task_Pay"/>
+    <sequenceFlow id="Flow_g_f" sourceRef="Gateway_1" targetRef="Task_Fill" name="否"/>
+    <sequenceFlow id="Flow_p_e" sourceRef="Task_Pay" targetRef="End_1"/>
   </process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
-      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
-        <dc:Bounds x="100" y="200" width="36" height="36" />
+  <bpmndi:BPMNDiagram>
+    <bpmndi:BPMNPlane bpmnElement="Process_1">
+      <bpmndi:BPMNShape bpmnElement="Pool_Sales" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="720" height="260"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_1_di" bpmnElement="Task_1">
-        <dc:Bounds x="220" y="180" width="100" height="80" />
+      <bpmndi:BPMNShape bpmnElement="Lane_Staff" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="720" height="130"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_2_di" bpmnElement="Task_2">
-        <dc:Bounds x="400" y="180" width="100" height="80" />
+      <bpmndi:BPMNShape bpmnElement="Lane_Manager" isHorizontal="true">
+        <dc:Bounds x="40" y="170" width="720" height="130"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
-        <dc:Bounds x="580" y="200" width="36" height="36" />
+      <bpmndi:BPMNShape bpmnElement="Pool_Finance" isHorizontal="true">
+        <dc:Bounds x="40" y="320" width="720" height="150"/>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
-        <di:waypoint x="136" y="218" />
-        <di:waypoint x="220" y="220" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
-        <di:waypoint x="320" y="220" />
-        <di:waypoint x="400" y="220" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
-        <di:waypoint x="500" y="220" />
-        <di:waypoint x="580" y="218" />
-      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape bpmnElement="Start_1">
+        <dc:Bounds x="80" y="65" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Task_Fill">
+        <dc:Bounds x="160" y="55" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_1">
+        <dc:Bounds x="310" y="58" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Task_Approve">
+        <dc:Bounds x="420" y="205" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Task_Pay">
+        <dc:Bounds x="560" y="365" width="100" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="End_1">
+        <dc:Bounds x="710" y="377" width="36" height="36"/>
+      </bpmndi:BPMNShape>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>`
@@ -99,7 +125,7 @@ struct Index {
 
   aboutToAppear(): void {
     try {
-      this.parsedModel = BpmnXmlParser.parse(SAMPLE_BPMN_XML)
+      this.parsedModel = BpmnXmlParser.parse(POOL_LANE_XML)
     } catch (e) {
       console.error('BPMN XML parse error:', e)
     }
@@ -127,7 +153,7 @@ struct Index {
             .onClick(() => {
               this.model = buildDemoModel()
               try {
-                this.parsedModel = BpmnXmlParser.parse(SAMPLE_BPMN_XML)
+                this.parsedModel = BpmnXmlParser.parse(POOL_LANE_XML)
               } catch (e) {
                 console.error('BPMN XML parse error:', e)
               }
@@ -149,7 +175,7 @@ struct Index {
               this.model = buildDemoModel()
               this.parsedModel = GraphModel.createEmpty()
               try {
-                this.parsedModel = BpmnXmlParser.parse(SAMPLE_BPMN_XML)
+                this.parsedModel = BpmnXmlParser.parse(POOL_LANE_XML)
               } catch (e) {
                 console.error('BPMN XML parse error:', e)
               }
@@ -169,7 +195,7 @@ struct Index {
         .width('100%')
         .padding(8)
 
-        Text(`节点数: ${this.parsedModel.getNodeCount()} | 边数: ${this.parsedModel.getEdgeCount()}`)
+        Text(`节点: ${this.parsedModel.getNodeCount()} | 连线: ${this.parsedModel.getEdgeCount()} | 泳池: ${this.parsedModel.getPoolCount()}`)
           .fontSize(12)
           .padding(8)
       }

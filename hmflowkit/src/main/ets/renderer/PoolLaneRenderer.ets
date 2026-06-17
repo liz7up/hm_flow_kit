@@ -2,10 +2,6 @@ import { Pool, Lane, PoolBounds } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
 
 export class PoolLaneRenderer {
-  /**
-   * Render all pools and their lanes as background layers.
-   * Must be called BEFORE nodes and edges are rendered.
-   */
   static render(
     ctx: CanvasRenderingContext2D,
     pools: Pool[],
@@ -32,8 +28,6 @@ export class PoolLaneRenderer {
     const w: number = pool.bounds.width * zoom;
     const h: number = pool.bounds.height * zoom;
 
-    ctx.save();
-
     // Pool background
     ctx.fillStyle = config.poolFillColor;
     ctx.fillRect(x, y, w, h);
@@ -43,21 +37,16 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Pool header background (lanes will cover it, but text stays on top)
-    PoolLaneRenderer.renderPoolHeaderBg(ctx, pool, x, y, w, h, config, zoom);
-
-    // Render lanes inside pool
+    // Lanes first (background layer)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
     }
 
-    // Pool header text — rendered last to stay on top of lane headers
-    PoolLaneRenderer.renderPoolHeaderText(ctx, pool, x, y, w, h, config, zoom);
-
-    ctx.restore();
+    // Pool header on top (bg + text, last to stay visible)
+    PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);
   }
 
-  private static renderPoolHeaderBg(
+  private static renderPoolHeader(
     ctx: CanvasRenderingContext2D,
     pool: Pool,
     x: number,
@@ -68,41 +57,28 @@ export class PoolLaneRenderer {
     zoom: number
   ): void {
     const headerW: number = config.poolHeaderWidth * zoom;
+    const fontSize: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
+
+    // Background
     ctx.fillStyle = config.poolHeaderFillColor;
     if (pool.isHorizontal) {
       ctx.fillRect(x, y, headerW, h);
     } else {
       ctx.fillRect(x, y, w, headerW);
     }
-  }
 
-  private static renderPoolHeaderText(
-    ctx: CanvasRenderingContext2D,
-    pool: Pool,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    config: RenderConfig,
-    zoom: number
-  ): void {
-    const headerW: number = config.poolHeaderWidth * zoom;
-
-    ctx.save();
+    // Text
     ctx.fillStyle = config.poolHeaderTextColor;
-    ctx.font = Math.max(11, Math.round(config.poolHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.font = fontSize + 'px ' + config.fontFamily;
 
     if (pool.isHorizontal) {
-      ctx.translate(x + headerW / 2, y + h / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillText(pool.name, 0, 0);
+      // Draw pool name vertically, centered in header, bottom-to-top
+      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + headerW / 2, y + h / 2, fontSize);
     } else {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(pool.name, x + w / 2, y + headerW / 2);
     }
-
-    ctx.restore();
   }
 
   private static renderLane(
@@ -119,8 +95,6 @@ export class PoolLaneRenderer {
     const laneW: number = lane.bounds.width * zoom;
     const laneH: number = lane.bounds.height * zoom;
 
-    ctx.save();
-
     // Lane background
     ctx.fillStyle = config.laneFillColor;
     ctx.fillRect(laneX, laneY, laneW, laneH);
@@ -133,12 +107,10 @@ export class PoolLaneRenderer {
     // Lane header
     PoolLaneRenderer.renderLaneHeader(ctx, lane, laneX, laneY, laneW, laneH, parentPool.isHorizontal, config, zoom);
 
-    // Render child lanes recursively
+    // Child lanes
     for (let i: number = 0; i < lane.childLanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, lane.childLanes[i], parentPool, config, offsetX, offsetY, zoom);
     }
-
-    ctx.restore();
   }
 
   private static renderLaneHeader(
@@ -153,37 +125,52 @@ export class PoolLaneRenderer {
     zoom: number
   ): void {
     const headerW: number = config.laneHeaderWidth * zoom;
+    const fontSize: number = Math.max(10, Math.round(config.laneHeaderFontSize * zoom));
 
-    ctx.save();
+    // Background
+    ctx.fillStyle = config.laneHeaderFillColor;
+    if (isHorizontal) {
+      ctx.fillRect(x, y, headerW, h);
+    } else {
+      ctx.fillRect(x, y, w, headerW);
+    }
+
+    // Text
+    ctx.fillStyle = config.laneHeaderTextColor;
+    ctx.font = fontSize + 'px ' + config.fontFamily;
 
     if (isHorizontal) {
-      // Header on left side
-      ctx.fillStyle = config.laneHeaderFillColor;
-      ctx.fillRect(x, y, headerW, h);
-
-      // Lane name rotated
-      ctx.save();
-      ctx.translate(x + headerW / 2, y + h / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.fillStyle = config.laneHeaderTextColor;
-      ctx.font = Math.max(10, Math.round(config.laneHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(lane.name, 0, 0);
-      ctx.restore();
+      PoolLaneRenderer.fillVerticalText(ctx, lane.name, x + headerW / 2, y + h / 2, fontSize);
     } else {
-      // Header on top
-      ctx.fillStyle = config.laneHeaderFillColor;
-      ctx.fillRect(x, y, w, headerW);
-
-      // Lane name horizontal
-      ctx.fillStyle = config.laneHeaderTextColor;
-      ctx.font = Math.max(10, Math.round(config.laneHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(lane.name, x + w / 2, y + headerW / 2);
     }
+  }
 
-    ctx.restore();
+  // Draw text vertically, one character per line, centered, bottom-to-top
+  private static fillVerticalText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    centerX: number,
+    centerY: number,
+    fontSize: number
+  ): void {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const len: number = text.length;
+    if (len === 0) {
+      return;
+    }
+
+    const lineH: number = fontSize * 1.2;
+    const totalH: number = (len - 1) * lineH;
+    let curY: number = centerY - totalH / 2;
+
+    for (let i: number = 0; i < len; i++) {
+      ctx.fillText(text.charAt(i), centerX, curY);
+      curY = curY + lineH;
+    }
   }
 }

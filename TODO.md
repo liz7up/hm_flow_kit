@@ -215,10 +215,10 @@ throw new BpmnParseError(
 );
 ```
 
-### 5.3 无 example 代码更新
+### 5.3 无 example 代码更新 ✅ 已修复 (2026-06-17)
 
-- `examples/hello-graph/` 和 `examples/bpmn-viewer/` 目录存在但内容为空
-- 用户无法通过示例快速上手
+- `examples/hello-graph/MainPage.ets` — 代码构建 GraphModel + FlowViewer 渲染
+- `examples/bpmn-viewer/MainPage.ets` — BPMN XML 解析 + 渲染
 
 ### 5.4 无插件/扩展机制
 

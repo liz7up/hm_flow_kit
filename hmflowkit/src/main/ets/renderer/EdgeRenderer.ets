@@ -52,7 +52,7 @@ export class EdgeRenderer {
     offsetX: number,
     offsetY: number,
     zoom: number,
-    config: RenderConfig
+    config: RenderConfig = new RenderConfig()
   ): void {
     ctx.save();
     ctx.translate(offsetX, offsetY);

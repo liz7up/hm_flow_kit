@@ -13,7 +13,10 @@ export {
   GraphNode,
   GraphEdge,
   Waypoint,
-  Viewport
+  Viewport,
+  Pool,
+  Lane,
+  PoolBounds
 } from './src/main/ets/model/GraphModel'
 
 // ── Renderer 层 ──

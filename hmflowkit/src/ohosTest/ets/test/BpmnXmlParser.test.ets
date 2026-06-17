@@ -500,5 +500,109 @@ export default function bpmnXmlParserTest(): void {
       expect(pool !== null ? pool.lanes[0].bounds.y : -1).assertEqual(0);
       expect(pool !== null ? pool.lanes[0].bounds.height : -1).assertEqual(200);
     });
+
+    it('parse_lane_without_shape_has_default_bounds', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Manager"/>' +
+            '</laneSet>' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let pool: Pool | null = model.getPool('Pool1');
+      expect(pool !== null ? pool.lanes.length : -1).assertEqual(1);
+      expect(pool !== null ? pool.lanes[0].bounds.x : -1).assertEqual(0);
+      expect(pool !== null ? pool.lanes[0].bounds.y : -1).assertEqual(0);
+      expect(pool !== null ? pool.lanes[0].bounds.width : -1).assertEqual(0);
+      expect(pool !== null ? pool.lanes[0].bounds.height : -1).assertEqual(0);
+    });
+
+    it('parse_full_collaboration_end_to_end', 0, () => {
+      // 完整 BPMN：collaboration + 多 pool + laneSet + nodes + edges + shapes
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+            '<participant id="Pool2" name="Finance" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Manager">' +
+                '<flowNodeRef>task1</flowNodeRef>' +
+                '<flowNodeRef>task2</flowNodeRef>' +
+              '</lane>' +
+              '<lane id="Lane2" name="Staff">' +
+                '<flowNodeRef>task3</flowNodeRef>' +
+              '</lane>' +
+            '</laneSet>' +
+            '<startEvent id="start1"/>' +
+            '<userTask id="task1" name="Approve"/>' +
+            '<userTask id="task2" name="Review"/>' +
+            '<userTask id="task3" name="Execute"/>' +
+            '<endEvent id="end1"/>' +
+            '<sequenceFlow id="f1" sourceRef="start1" targetRef="task1"/>' +
+            '<sequenceFlow id="f2" sourceRef="task1" targetRef="task2"/>' +
+            '<sequenceFlow id="f3" sourceRef="task2" targetRef="task3"/>' +
+            '<sequenceFlow id="f4" sourceRef="task3" targetRef="end1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool1" isHorizontal="true">' +
+              '<Bounds x="100" y="100" width="600" height="400"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool2" isHorizontal="true">' +
+              '<Bounds x="100" y="520" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Lane1" isHorizontal="true">' +
+              '<Bounds x="100" y="100" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Lane2" isHorizontal="true">' +
+              '<Bounds x="100" y="300" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="start1">' +
+              '<Bounds x="120" y="130" width="36" height="36"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="task1">' +
+              '<Bounds x="210" y="130" width="120" height="60"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="task2">' +
+              '<Bounds x="380" y="130" width="120" height="60"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="task3">' +
+              '<Bounds x="210" y="330" width="120" height="60"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="end1">' +
+              '<Bounds x="550" y="130" width="36" height="36"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      // Pools
+      expect(model.getPoolCount()).assertEqual(2);
+      let p1: Pool | null = model.getPool('Pool1');
+      expect(p1 !== null ? p1.name : '').assertEqual('Sales');
+      expect(p1 !== null ? p1.lanes.length : -1).assertEqual(2);
+      let p2: Pool | null = model.getPool('Pool2');
+      expect(p2 !== null ? p2.name : '').assertEqual('Finance');
+      // Nodes
+      expect(model.getNodeCount()).assertEqual(5);
+      // Edges
+      expect(model.getEdgeCount()).assertEqual(4);
+      // Lane-node association
+      let lane: Lane | null = model.getLaneByNode('task1');
+      expect(lane !== null ? lane.id : '').assertEqual('Lane1');
+      let lane2: Lane | null = model.getLaneByNode('task3');
+      expect(lane2 !== null ? lane2.id : '').assertEqual('Lane2');
+      // Node coordinates from BPMNShape
+      let t1 = model.getNode('task1');
+      expect(t1 !== null ? t1.x : -1).assertEqual(210);
+      expect(t1 !== null ? t1.y : -1).assertEqual(130);
+    });
   });
 }

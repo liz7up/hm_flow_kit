@@ -43,18 +43,40 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Pool header
-    PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);
+    // Pool header background (lanes will cover it, but text stays on top)
+    PoolLaneRenderer.renderPoolHeaderBg(ctx, pool, x, y, w, h, config, zoom);
 
     // Render lanes inside pool
     for (let i: number = 0; i < pool.lanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
     }
 
+    // Pool header text — rendered last to stay on top of lane headers
+    PoolLaneRenderer.renderPoolHeaderText(ctx, pool, x, y, w, h, config, zoom);
+
     ctx.restore();
   }
 
-  private static renderPoolHeader(
+  private static renderPoolHeaderBg(
+    ctx: CanvasRenderingContext2D,
+    pool: Pool,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    config: RenderConfig,
+    zoom: number
+  ): void {
+    const headerW: number = config.poolHeaderWidth * zoom;
+    ctx.fillStyle = config.poolHeaderFillColor;
+    if (pool.isHorizontal) {
+      ctx.fillRect(x, y, headerW, h);
+    } else {
+      ctx.fillRect(x, y, w, headerW);
+    }
+  }
+
+  private static renderPoolHeaderText(
     ctx: CanvasRenderingContext2D,
     pool: Pool,
     x: number,
@@ -67,32 +89,16 @@ export class PoolLaneRenderer {
     const headerW: number = config.poolHeaderWidth * zoom;
 
     ctx.save();
+    ctx.fillStyle = config.poolHeaderTextColor;
+    ctx.font = Math.max(11, Math.round(config.poolHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     if (pool.isHorizontal) {
-      // Header on left side
-      ctx.fillStyle = config.poolHeaderFillColor;
-      ctx.fillRect(x, y, headerW, h);
-
-      // Pool name rotated -90 degrees
-      ctx.save();
       ctx.translate(x + headerW / 2, y + h / 2);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillStyle = config.poolHeaderTextColor;
-      ctx.font = Math.max(11, Math.round(config.poolHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(pool.name, 0, 0);
-      ctx.restore();
     } else {
-      // Header on top
-      ctx.fillStyle = config.poolHeaderFillColor;
-      ctx.fillRect(x, y, w, headerW);
-
-      // Pool name horizontal
-      ctx.fillStyle = config.poolHeaderTextColor;
-      ctx.font = Math.max(11, Math.round(config.poolHeaderFontSize * zoom)) + 'px ' + config.fontFamily;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(pool.name, x + w / 2, y + headerW / 2);
     }
 

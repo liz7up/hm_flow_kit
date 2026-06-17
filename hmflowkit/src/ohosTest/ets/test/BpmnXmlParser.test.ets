@@ -279,7 +279,7 @@ export default function bpmnXmlParserTest(): void {
       // 缺少 </process></definitions> 闭合标签
       let result: ParseResult = BpmnXmlParser.parseBestEffort(xml);
       expect(result.isPartial).assertEqual(true);
-      expect(result.warnings.length).assertGreater(0);
+      expect(result.warnings.length > 0).assertEqual(true);
     });
 
     it('parse_still_throws_on_malformed_xml', 0, () => {

@@ -133,6 +133,7 @@ class _Collector {
       }
       let props: Record<string, string> = {};
       if (nd.tagName.length > 0) {
+        // key 'bpmnElement' 由 NodeRenderer 读取用于子类型配色，保持同步
         props['bpmnElement'] = nd.tagName;
       }
       model = model.addNode(

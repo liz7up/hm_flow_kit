@@ -71,7 +71,7 @@ export class NodeRenderer {
       fill = config.taskFillColor;
       textColor = config.taskTextColor;
       lineW = config.strokeWidth;
-      // 查子类型边框色
+      // 查子类型边框色（key 'bpmnElement' 由 BpmnXmlParser 写入，保持同步）
       let subtype: string | undefined = node.properties['bpmnElement'];
       stroke = config.taskStrokeColor;
       if (subtype !== undefined) {
@@ -90,11 +90,16 @@ export class NodeRenderer {
       stroke = config.eventStartStrokeColor;
       textColor = config.textColor;
       lineW = config.eventStartStrokeWidth;
-    } else {
+    } else if (node.type === NodeType.END_EVENT) {
       fill = config.eventEndFillColor;
       stroke = config.eventEndStrokeColor;
       textColor = config.textColor;
       lineW = config.eventEndStrokeWidth;
+    } else {
+      fill = config.fillColor;
+      stroke = config.strokeColor;
+      textColor = config.textColor;
+      lineW = config.strokeWidth;
     }
 
     ctx.fillStyle = fill;

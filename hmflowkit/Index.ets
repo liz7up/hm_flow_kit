@@ -26,6 +26,7 @@ export { GridRenderer, GridType, GridConfig } from './src/main/ets/renderer/Grid
 export { CanvasManager, ViewportState, CanvasPoint, ScreenPoint } from './src/main/ets/renderer/CanvasManager'
 export { HitTestManager, HitResult, HitType } from './src/main/ets/renderer/HitTestManager'
 export { RenderConfig, NodeShape } from './src/main/ets/renderer/RenderConfig'
+export { PoolLaneRenderer } from './src/main/ets/renderer/PoolLaneRenderer'
 
 // ── Parser 层 ──
 export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'

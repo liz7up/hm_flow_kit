@@ -3,8 +3,9 @@ import { EdgeRenderer, NodeRect } from '../renderer/EdgeRenderer'
 import { GridRenderer, GridType, GridConfig } from '../renderer/GridRenderer'
 import { CanvasManager, ViewportState } from '../renderer/CanvasManager'
 import { HitTestManager, HitType, HitResult } from '../renderer/HitTestManager'
-import { GraphModel, GraphNode, GraphEdge } from '../model/GraphModel'
+import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
+import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser } from '../parser/BpmnXmlParser'
 
 @Component
@@ -130,16 +131,26 @@ export struct FlowViewer {
     this.ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.ctx.clearRect(0, 0, w, h)
 
-    // Auto-fit: 首次渲染时自动缩放使所有节点可见
+    // Auto-fit: 首次渲染时自动缩放使所有节点和泳道可见
     if (this._needFit) {
       this._needFit = false
       let allNodes: GraphNode[]
       allNodes = this.model.getNodes()
-      if (allNodes.length > 0 && w > 0 && h > 0) {
-        let minX: number = allNodes[0].x
-        let minY: number = allNodes[0].y
-        let maxX: number = allNodes[0].x + allNodes[0].width
-        let maxY: number = allNodes[0].y + allNodes[0].height
+      let allPools: Pool[]
+      allPools = this.model.getPools()
+      let hasContent: boolean = false
+      let minX: number = 0
+      let minY: number = 0
+      let maxX: number = 0
+      let maxY: number = 0
+
+      // 考虑节点范围
+      if (allNodes.length > 0) {
+        minX = allNodes[0].x
+        minY = allNodes[0].y
+        maxX = allNodes[0].x + allNodes[0].width
+        maxY = allNodes[0].y + allNodes[0].height
+        hasContent = true
         for (let i: number = 1; i < allNodes.length; i++) {
           let nd: GraphNode = allNodes[i]
           if (nd.x < minX) { minX = nd.x }
@@ -149,6 +160,29 @@ export struct FlowViewer {
           if (rx > maxX) { maxX = rx }
           if (ry > maxY) { maxY = ry }
         }
+      }
+
+      // 考虑泳道范围
+      if (allPools.length > 0) {
+        for (let i: number = 0; i < allPools.length; i++) {
+          let pool: Pool = allPools[i]
+          let px: number = pool.bounds.x
+          let py: number = pool.bounds.y
+          let prx: number = px + pool.bounds.width
+          let pry: number = py + pool.bounds.height
+          if (!hasContent) {
+            minX = px; minY = py; maxX = prx; maxY = pry
+            hasContent = true
+          } else {
+            if (px < minX) { minX = px }
+            if (py < minY) { minY = py }
+            if (prx > maxX) { maxX = prx }
+            if (pry > maxY) { maxY = pry }
+          }
+        }
+      }
+
+      if (hasContent && w > 0 && h > 0) {
         let contentW: number = maxX - minX
         let contentH: number = maxY - minY
         if (contentW > 0 && contentH > 0) {
@@ -173,6 +207,13 @@ export struct FlowViewer {
 
     // Apply canvas transform for content
     this.canvasManager.applyTransform(this.ctx)
+
+    // Pools & Lanes (background, before nodes and edges)
+    let pools: Pool[]
+    pools = this.model.getPools()
+    if (pools.length > 0) {
+      PoolLaneRenderer.render(this.ctx, pools, this.renderConfig, 0, 0, 1)
+    }
 
     // Edges
     let edges: GraphEdge[]

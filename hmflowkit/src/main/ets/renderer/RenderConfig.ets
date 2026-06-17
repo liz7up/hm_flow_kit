@@ -51,6 +51,23 @@ export class RenderConfig {
   eventEndStrokeColor: string = '#424242';
   eventEndStrokeWidth: number = 4;
 
+  // ── Pool/Lane 泳道样式 ──
+  poolFillColor: string = '#FAFAFA';
+  poolStrokeColor: string = '#BDBDBD';
+  poolStrokeWidth: number = 2;
+  poolHeaderWidth: number = 30;
+  poolHeaderFillColor: string = '#E0E0E0';
+  poolHeaderTextColor: string = '#424242';
+  poolHeaderFontSize: number = 12;
+
+  laneFillColor: string = '#F5F5F5';
+  laneStrokeColor: string = '#E0E0E0';
+  laneStrokeWidth: number = 1;
+  laneHeaderWidth: number = 20;
+  laneHeaderFillColor: string = '#EEEEEE';
+  laneHeaderTextColor: string = '#616161';
+  laneHeaderFontSize: number = 11;
+
   // ── 连线样式 ──
   edgeStrokeColor: string = '#5E5E5E';
   edgeStrokeWidth: number = 1.5;

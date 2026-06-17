@@ -13,6 +13,16 @@ export class PoolLaneRenderer {
     for (let i: number = 0; i < pools.length; i++) {
       PoolLaneRenderer.renderPool(ctx, pools[i], config, offsetX, offsetY, zoom);
     }
+
+    // HARDCODED TEST: draw pool names at fixed positions to verify rendering
+    ctx.fillStyle = '#FF0000';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (let pi: number = 0; pi < pools.length; pi++) {
+      let py: number = 80 + pi * 30;
+      ctx.fillText(pi + ':' + pools[pi].name + ' lanes=' + pools[pi].lanes.length, 10, py);
+    }
   }
 
   private static renderPool(

@@ -10,6 +10,18 @@ export class PoolLaneRenderer {
     offsetY: number,
     zoom: number
   ): void {
+    // DIAG: draw magenta squares = pool count (top-left corner)
+    for (let pi: number = 0; pi < pools.length; pi++) {
+      ctx.fillStyle = '#FF00FF';
+      ctx.fillRect(5 + pi * 22, 5, 18, 18);
+      // Draw pool name next to square
+      ctx.fillStyle = '#000000';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(pools[pi].name, 5 + pi * 22, 26);
+    }
+
     for (let i: number = 0; i < pools.length; i++) {
       PoolLaneRenderer.renderPool(ctx, pools[i], config, offsetX, offsetY, zoom);
     }

@@ -212,7 +212,7 @@ reset(): void
 ### 渲染器（全部静态方法）
 ```
 NodeRenderer.render(ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig, offsetX: number, offsetY: number, zoom: number): void
-EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number, config: RenderConfig): void
+EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number, config: RenderConfig = new RenderConfig()): void
 GridRenderer.render(ctx: CanvasRenderingContext2D, width: number, height: number, offsetX: number, offsetY: number, zoom: number, gridConfig: GridConfig): void
 ```
 
@@ -308,7 +308,7 @@ BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法，基于 XmlPullPa
 ❌ FlowViewer.fromModel() — 不存在
 ❌ CanvasManager.getCanvas() — 不存在
 ❌ NodeRenderer.render 不带 config/offsetX/offsetY/zoom — 签名错误
-❌ EdgeRenderer.render 不带 config 最后一参数 — 签名错误
+❌ EdgeRenderer.render 不带 getNodePosition/offsetX/offsetY/zoom — 签名错误（config 有默认值，可省略）
 ❌ hitTest(x, y) 两参数 — 实际需 3 参数: (x, y, canvasManager)
 ❌ HitResult.targetType — 实际字段是 .type
 ❌ getNode() 返回 undefined — 实际返回 null

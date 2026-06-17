@@ -49,13 +49,6 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // DIAG: RED cross at pool center
-    let cx: number = x + w / 2;
-    let cy: number = y + h / 2;
-    ctx.fillStyle = '#FF0000';
-    ctx.fillRect(cx - 20, cy - 2, 40, 4);
-    ctx.fillRect(cx - 2, cy - 20, 4, 40);
-
     // Lanes first (background layer)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
@@ -63,6 +56,13 @@ export class PoolLaneRenderer {
 
     // Pool header on top (bg + text, last to stay visible)
     PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);
+
+    // DIAG: RED cross at pool center (drawn LAST to be visible)
+    let cx: number = x + w / 2;
+    let cy: number = y + h / 2;
+    ctx.fillStyle = '#FF0000';
+    ctx.fillRect(cx - 20, cy - 2, 40, 4);
+    ctx.fillRect(cx - 2, cy - 20, 4, 40);
   }
 
   private static renderPoolHeader(

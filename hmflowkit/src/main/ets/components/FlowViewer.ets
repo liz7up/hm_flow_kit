@@ -14,7 +14,7 @@ export struct FlowViewer {
   @Prop canvasHeight: number = 600
   @Prop showGrid: boolean = true
   @Prop gridType: GridType = GridType.DOT
-  @Prop highlightNodeId: string = ''
+  @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
 
   onNodeClick?: (nodeId: string) => void
@@ -109,6 +109,13 @@ export struct FlowViewer {
     return new NodeRect(0, 0, 60, 40)
   }
 
+  // 外部 prop 变化时触发重绘（无需等待 Canvas onReady）
+  onHighlightChange(): void {
+    if (this._canvasReady) {
+      this.renderAll()
+    }
+  }
+
   renderAll(): void {
     let w: number = this._canvasWidth
     let h: number = this._canvasHeight
@@ -183,10 +190,13 @@ export struct FlowViewer {
       NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1)
     }
 
-    // Highlight overlay — 点击高亮
-    if (this._highlightId.length > 0) {
+    // Highlight overlay — 外部 prop 优先于内部点击状态
+    let activeHighlightId: string = this.highlightNodeId.length > 0
+      ? this.highlightNodeId
+      : this._highlightId
+    if (activeHighlightId.length > 0) {
       let hlNode: GraphNode | null
-      hlNode = this.model.getNode(this._highlightId)
+      hlNode = this.model.getNode(activeHighlightId)
       if (hlNode !== null) {
         this.ctx.save()
         this.ctx.fillStyle = 'rgba(24, 144, 255, 0.35)'

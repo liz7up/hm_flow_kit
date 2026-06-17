@@ -111,13 +111,13 @@ struct Index {
         // --- 手动构建的简单流程图 ---
         FlowViewer({ model: this.model, canvasHeight: 200, showGrid: true,
           highlightNodeId: this.highlightId,
-          onNodeClick: (id: string) => { this.highlightId = id } })
+          onNodeClick: (id: string) => { console.info('FlowViewer node clicked: ' + id) } })
           .width('100%')
 
         // --- BPMN 解析渲染的流程图 ---
         FlowViewer({ model: this.parsedModel, canvasHeight: 300, showGrid: true,
           highlightNodeId: this.highlightId,
-          onNodeClick: (id: string) => { this.highlightId = id } })
+          onNodeClick: (id: string) => { console.info('FlowViewer node clicked: ' + id) } })
           .width('100%')
 
         // --- 操作按钮 ---
@@ -135,9 +135,12 @@ struct Index {
           Button('🔍 高亮开始节点')
             .fontSize(12)
             .onClick(() => {
-              this.viewId++
-              this.model = this.model
-              this.parsedModel = this.model
+              this.highlightId = 'StartEvent_1'
+            })
+          Button('✕ 清除高亮')
+            .fontSize(12)
+            .onClick(() => {
+              this.highlightId = ''
             })
           Button('🔄 重新加载')
             .fontSize(12)
@@ -178,7 +181,7 @@ struct Index {
           Column() {
             FlowViewer({ model: this.parsedModel, showGrid: true,
               highlightNodeId: this.highlightId,
-              onNodeClick: (id: string) => { this.highlightId = id } })
+              onNodeClick: (id: string) => { console.info('FlowViewer node clicked: ' + id) } })
               .width('100%').layoutWeight(1)
           }
           .width('100%').height('100%').backgroundColor('#ffffff')

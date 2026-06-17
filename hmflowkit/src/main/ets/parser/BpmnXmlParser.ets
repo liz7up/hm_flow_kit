@@ -57,6 +57,7 @@ class _NodeEntry {
   id: string = '';
   type: NodeType = NodeType.TASK;
   label: string = '';
+  tagName: string = '';
   constructor() {}
 }
 
@@ -84,11 +85,12 @@ class _Collector {
   private _shapes: Record<string, _ShapeInfo> = {};
   private _waypoints: Record<string, Waypoint[]> = {};
 
-  addNode(id: string, type: NodeType, label: string): void {
+  addNode(id: string, type: NodeType, label: string, tagName: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
     e.label = label;
+    e.tagName = tagName;
     this._nodes.push(e);
   }
 
@@ -129,8 +131,12 @@ class _Collector {
         w = shape.w;
         h = shape.h;
       }
+      let props: Record<string, string> = {};
+      if (nd.tagName.length > 0) {
+        props['bpmnElement'] = nd.tagName;
+      }
       model = model.addNode(
-        new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, {}));
+        new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
     }
     for (let i: number = 0; i < this._edges.length; i++) {
       let ed: _EdgeEntry = this._edges[i];
@@ -270,7 +276,7 @@ export class BpmnXmlParser {
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               collector.addNode(nid, mapNodeType(tag),
-                currentAttrs['name'] || '');
+                currentAttrs['name'] || '', tag);
             }
           }
         }

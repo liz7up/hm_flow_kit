@@ -40,58 +40,89 @@ ohpm install hmflowkit
 
 ## 核心 API
 
-### FlowViewer
-
-一行渲染的流程查看器组件。
+### FlowViewer 组件
 
 ```typescript
-@Prop model?: GraphModel  // 要渲染的图模型
+@Component
+struct FlowViewer {
+  @Prop model: GraphModel
+  @Prop xml: string            // BPMN XML 字符串（自动解析到 model）
+  @Prop canvasHeight: number   // 画布高度（默认 600）
+  @Prop showGrid: boolean      // 是否显示背景网格
+  @Prop gridType: GridType     // 网格类型（DOT / LINE / NONE）
+  @Prop highlightNodeId: string // 外部控制高亮节点 ID
+  @Prop readonly: boolean      // 只读模式
+  onNodeClick?: (nodeId: string) => void
+  onCanvasReady?: () => void
+}
 ```
 
 ### BpmnXmlParser
 
-BPMN 2.0 XML 解析器。
+```typescript
+BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法
+```
 
-| 方法 | 说明 |
-|------|------|
-| `parse(xml: string): GraphModel` | 解析 BPMN 2.0 XML 字符串 |
-
-### GraphModel
-
-不可变图数据模型。所有修改方法返回新实例，原实例不变。
+### GraphModel（不可变数据模型）
 
 | 方法 | 说明 |
 |------|------|
 | `getNodes(): GraphNode[]` | 获取所有节点 |
 | `getEdges(): GraphEdge[]` | 获取所有连线 |
+| `getNode(id: string): GraphNode \| null` | 按 ID 查找节点 |
 | `addNode(n: GraphNode): GraphModel` | 添加节点（返回新实例）|
 | `addEdge(e: GraphEdge): GraphModel` | 添加连线（返回新实例）|
 | `removeNode(id: string): GraphModel` | 删除节点及关联连线 |
-| `toJSON(): string` | 序列化为 JSON |
-| `fromJSON(json: string): GraphModel` | 从 JSON 反序列化 |
+| `moveNode(id, x, y): GraphModel` | 移动节点位置 |
+| `toJSON(): GraphModelSnapshot` | 序列化 |
+| `static fromJSON(s: GraphModelSnapshot): GraphModel` | 反序列化 |
+
+### RenderConfig（样式配置）
+
+`new RenderConfig()` 无参构造，所有字段有默认值。详见 [CLAUDE.md](./CLAUDE.md) 完整字段表。
 
 ### CanvasManager
 
-视口管理（缩放、平移、坐标转换）。
-
 | 方法 | 说明 |
 |------|------|
-| `screenToCanvas(sx, sy): {x, y}` | 屏幕坐标 → 画布坐标 |
-| `canvasToScreen(cx, cy): {x, y}` | 画布坐标 → 屏幕坐标 |
+| `screenToCanvas(sx, sy): CanvasPoint` | 屏幕坐标 → 画布坐标 |
+| `canvasToScreen(cx, cy): ScreenPoint` | 画布坐标 → 屏幕坐标 |
 | `applyTransform(ctx)` | 应用当前变换到 Canvas 上下文 |
+| `pan(dx, dy)` | 平移视口 |
+| `zoomAt(cx, cy, delta)` | 以某点为中心缩放 |
+| `fitToView(cw, ch, canvasW, canvasH)` | 自适应适配 |
 
 ## 已完成功能
 
-- [x] 4 种 BPMN 节点渲染（开始/结束事件、用户任务、网关）
-- [x] 连线渲染（折线 + 箭头）
-- [x] BPMN 2.0 XML 完整解析（兼容 bpmn.js 导出格式）
-- [x] 审批流程自动着色（完成态=绿、进行中=蓝、驳回=红）
-- [x] 泳道（Pool/Lane）渲染
-- [x] 网格背景
-- [x] 缩放与平移（鼠标滚轮 + 拖拽）
-- [x] 自适应视口
+### BPMN 2.0 元素覆盖
+
+| 元素类型 | 解析 | 渲染 | 说明 |
+|---------|------|------|------|
+| StartEvent / EndEvent | ✅ | ✅ | 空心圆 / 实心圆 |
+| Task（含 7 种子类型） | ✅ | ✅ | userTask/serviceTask/scriptTask/manualTask/sendTask/receiveTask/businessRuleTask，按子类型分色 |
+| ExclusiveGateway / ParallelGateway / InclusiveGateway | ✅ | ✅ | 菱形渲染 |
+| SequenceFlow | ✅ | ✅ | 折线 + 实心箭头 |
+| BPMNShape (坐标) / BPMNEdge (waypoints) | ✅ | ✅ | 完整 DI 支持 |
+| IntermediateThrowEvent / IntermediateCatchEvent | ✅ | ⚠️ | 按 startEvent 样式渲染 |
+| BoundaryEvent | ✅ | ⚠️ | 按 startEvent 样式渲染 |
+
+### 组件能力
+
+- [x] FlowViewer 一行渲染（`FlowViewer({ model })` / `FlowViewer({ xml })`）
+- [x] 网格背景（点阵/线网格/无）
+- [x] 缩放与平移（PanGesture 拖拽）
+- [x] 自适应视口（auto-fit）
 - [x] 节点点击高亮
-- [x] 31 项自动化验收测试
+- [x] 全屏覆盖层
+- [x] 按 NodeType + 子类型差异化配色
+
+### 尚未支持
+
+- 泳道（Pool / Lane）
+- 中间事件图标（Timer/Message/Error 等）
+- BoundaryEvent 附着渲染
+- MessageFlow / ConditionalFlow
+- 交互编辑 / 拖拽
 
 ## 架构
 

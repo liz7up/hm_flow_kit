@@ -109,24 +109,14 @@
 
 ## 三、功能 Bug 与代码问题
 
-### 3.1 RenderConfig 元数据字段为空（功能性 Bug）
+### 3.1 RenderConfig + NodeRenderer 硬编码清理 ✅ 已修复 (2026-06-17)
 
-**文件：** `hmflowkit/src/main/ets/renderer/RenderConfig.ets`
-
-**问题：** 默认构造器中所有元数据字段为空字符串：
-
-```typescript
-this.nodeBackgroundTask = '';
-this.nodeBackgroundUserTask = '';
-this.nodeBorderTask = '';
-this.nodeCornerRadius = 0;
-```
-
-**影响：** NodeRenderer 绘制节点时：
-- `ctx.fillStyle = config.nodeBackgroundTask` → 设置成空字符串 → **节点背景不可见**
-- `ctx.strokeStyle = config.nodeBorderTask` → 设置成空字符串 → **节点边框不可见**
-
-**修复：** 为所有颜色/样式字段填入合理的默认值（如 `#ffffff`、`#333333`）。
+**修复内容：**
+- RenderConfig 新增 12 个按 NodeType 分色字段 + `taskSubtypeStroke` 子类型边框色映射
+- NodeRenderer 7 处硬编码替换为 config 读取
+- EdgeRenderer 新增 `config: RenderConfig` 参数，5 处硬编码替换
+- BpmnXmlParser 存储原始标签名到 `properties['bpmnElement']`
+- 颜色方案不与高亮蓝色冲突（Task 默认白底+灰边框）
 
 ### 3.2 FlowViewer 的 highlightNodeId 可能被错误清理
 
@@ -358,9 +348,9 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 ### 🔴 P0 — 立即修复（阻碍基本使用）
 
-1. **RenderConfig 默认颜色字段为空** — 节点背景/边框不可见，用户打开任何流程图看到的都是空白
-2. **修正 README 中不实的支持声明** — 移除 CallActivity、SubProcess、BusinessRuleTask
-3. **补齐 `examples/` 目录下的可运行示例** — 至少提供 1 个最简渲染示例 + 1 个 BPMN 查看器示例
+1. ~~**RenderConfig 默认颜色字段为空**~~ ✅ **已修复 (2026-06-17)** — NodeRenderer/EdgeRenderer 全部去硬编码，新增 12+7 个按类型分色字段
+2. ~~**修正 README 中不实的支持声明**~~ ✅ **已修复 (2026-06-17)** — 移除审批自动着色、泳道等虚假声明，新增准确覆盖矩阵，修正 API 文档
+3. ~~**补齐 `examples/` 目录下的可运行示例**~~ ✅ **已修复 (2026-06-17)** — `examples/hello-graph/MainPage.ets` + `examples/bpmn-viewer/MainPage.ets`
 
 ### 🟠 P1 — 高优先级（核心功能缺口）
 

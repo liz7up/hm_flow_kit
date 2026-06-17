@@ -23,36 +23,34 @@ hm-flow-kit/
 │       └── Index.ets                     # 库的演示页面
 ├── hmflowkit/                            # 核心库（Static Library HAR）
 │   ├── src/main/ets/
-│   │   ├── Index.ets                     # 公开 API 导出入口
 │   │   ├── model/
 │   │   │   └── GraphModel.ets            # 图数据模型（唯一数据源）
 │   │   ├── parser/
-│   │   │   └── BpmnXmlParser.ets         # BPMN 2.0 XML 解析器
+│   │   │   └── BpmnXmlParser.ets         # BPMN 2.0 XML 解析器（v2, XmlPullParser）
 │   │   ├── renderer/
 │   │   │   ├── NodeRenderer.ets          # 节点渲染器
 │   │   │   ├── EdgeRenderer.ets          # 连线渲染器
-│   │   │   └── CanvasManager.ets         # 画布管理（缩放、平移）
-│   │   ├── interaction/
-│   │   │   ├── DragController.ets        # 拖拽控制器
-│   │   │   ├── ConnectController.ets     # 连线交互控制器
-│   │   │   └── SelectController.ets      # 选择控制器
+│   │   │   ├── GridRenderer.ets          # 背景网格渲染器
+│   │   │   ├── CanvasManager.ets         # 画布管理（缩放、平移、fitToView）
+│   │   │   ├── HitTestManager.ets        # 命中检测
+│   │   │   └── RenderConfig.ets          # 渲染配置
 │   │   └── components/
-│   │       ├── FlowViewer.ets            # 只读流程查看器
-│   │       └── FlowDesigner.ets          # 可编辑流程设计器
+│   │       └── FlowViewer.ets            # 只读流程查看器（支持 XML 直接输入）
+│   ├── Index.ets                         # 公开 API 导出入口
 │   └── oh-package.json5                 # 库的包配置
 ├── specs/                                # 开发规格文档
 │   ├── 01-graph-model.md
 │   ├── 02-canvas-renderer.md
 │   ├── 03-bpmn-parser.md
-│   ├── 04-interaction.md
-│   ├── 05-dagre-layout.md
-│   └── 06-ui-components.md
+│   ├── 06-flowviewer.md
+│   └── 07-xml-parser-v2.md               # Spec 03 重写（XmlPullParser）
 ├── examples/                             # 可运行的示例
 │   ├── hello-graph/                      # 最简渲染示例
 │   └── bpmn-viewer/                      # BPMN 查看器示例
+├── .bitfun/
+│   └── build-latest.log                  # 最新编译日志（build.sh 产出）
 ├── CLAUDE.md                             # 本文件（BitFun 项目记忆）
 ├── build.sh                              # 编译桥接脚本（DevEco 终端中运行）
-├── build.log                             # 最新编译日志（BitFun 可读）
 └── .mcp.json                             # MCP 服务配置
 ```
 
@@ -82,7 +80,7 @@ hm-flow-kit/
 
 3. **Renderer 单向依赖 Model**。Renderer 接收 GraphModel 的快照进行绘制，不持有 Model 引用。
 
-4. **公开 API 必须通过 Index.ets 导出**。所有 `export` 声明集中在 `hmflowkit/src/main/ets/Index.ets`，不允许内部模块被外部直接 import。
+4. **公开 API 必须通过 Index.ets 导出**。所有 `export` 声明集中在 `hmflowkit/Index.ets`，不允许内部模块被外部直接 import。
 
 5. **接口优先于实现**。每个模块先定义接口（`interface`），再写实现类。便于后续扩展（如插件机制）。
 
@@ -106,10 +104,11 @@ hm-flow-kit/
 - ✅ 视觉 Demo 验证通过 + 14 项单元测试全部通过
 - 共约 1350 行渲染层代码
 
-**Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成**
-- 507 行，12 项测试全部通过
-- 支持命名空间前缀、6 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
-- 降级：无 DI 信息时使用默认坐标
+**Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成** → **v2 重写 (Spec 07) ✅**
+- 295 行，基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
+- 支持命名空间前缀剥离、15+ 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
+- ⚠️ 关键实现细节：tokenValueCallback 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反），所有业务逻辑必须在 END_TAG 中处理
+- ⚠️ ignoreNameSpace: true 不会剥离 getName() 返回的前缀，需手动 lastIndexOf(':')
 
 **Spec 06 — FlowViewer 组件 ✅ 已完成**
 - 186 行，一行接入 `FlowViewer({ model })`
@@ -120,6 +119,7 @@ hm-flow-kit/
 
 **已实现完整功能：**
 - BPMN XML 解析 → 渲染 → 点击高亮 → 拖拽平移 → 自动缩放适配
+- Phase 1 样式系统：按 NodeType 分色 + Task 子类型边框色 + EdgeRenderer 读取 config
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 
@@ -152,9 +152,10 @@ new GraphEdge(id: string, sourceId: string, targetId: string, waypoints: Waypoin
 new Waypoint(x: number, y: number)
 new Viewport(x: number, y: number, zoom: number)
 new NodeRect(x: number, y: number, w: number, h: number)
-new RenderConfig()  // 无参，使用默认值
-new CanvasManager() // 无参
+new RenderConfig()  // 无参，所有颜色/样式字段均有默认值
+new CanvasManager(minZoom?: number, maxZoom?: number, initialZoom?: number) // 默认 0.1 / 5.0 / 1.0
 new HitTestManager() // 无参
+new GridConfig(type?: GridType)  // 默认 DOT
 GraphModel.createEmpty() // 静态工厂，无参
 ```
 
@@ -166,71 +167,159 @@ getNodes(): GraphNode[]
 getEdges(): GraphEdge[]
 getNode(id: string): GraphNode | null   // 注意返回 null 不是 undefined
 getEdge(id: string): GraphEdge | null
+hasNode(id: string): boolean
+hasEdge(id: string): boolean
+getOutgoingEdges(nodeId: string): GraphEdge[]
+getIncomingEdges(nodeId: string): GraphEdge[]
+getConnectedEdges(nodeId: string): GraphEdge[]
+getViewport(): Viewport
 addNode(node: GraphNode): GraphModel    // 不可变，返回新实例
 addEdge(edge: GraphEdge): GraphModel
 addNodes(nodes: GraphNode[]): GraphModel
-removeNode(id: string): GraphModel     // 级联删边
+addEdges(edges: GraphEdge[]): GraphModel
+removeNode(id: string): GraphModel      // 级联删边
+removeEdge(id: string): GraphModel
 moveNode(id: string, x: number, y: number): GraphModel
+updateNode(id: string, replacement: GraphNode): GraphModel
+updateEdge(id: string, replacement: GraphEdge): GraphModel
+setViewport(viewport: Viewport): GraphModel
+clear(): GraphModel
 toJSON(): GraphModelSnapshot
 static fromJSON(snapshot: GraphModelSnapshot): GraphModel
 ```
 
 ### CanvasManager 方法
 ```
-new CanvasManager()                     // 无参构造
+new CanvasManager(minZoom?, maxZoom?, initialZoom?)  // 默认 0.1 / 5.0 / 1.0
 zoom: number                            // getter，只读
 offsetX: number                         // getter，只读
 offsetY: number                         // getter，只读
 applyTransform(ctx: CanvasRenderingContext2D): void
 pan(dx: number, dy: number): void
-zoomAt(cx: number, cy: number, delta: number): void
+zoomAt(cx: number, cy: number, delta: number): void  // delta>0 放大
+zoomTo(cx: number, cy: number, targetZoom: number): void
+zoomIn(canvasWidth: number, canvasHeight: number): void
+zoomOut(canvasWidth: number, canvasHeight: number): void
 screenToCanvas(sx: number, sy: number): CanvasPoint  // 返回 .x .y
 canvasToScreen(cx: number, cy: number): ScreenPoint   // 返回 .x .y
 getViewport(): ViewportState            // 返回 { zoom, offsetX, offsetY }
+setViewport(state: ViewportState): void
+setZoomRange(min: number, max: number): void
+fitToView(contentW, contentH, canvasW, canvasH, padding?): void
 reset(): void
 ```
 
 ### 渲染器（全部静态方法）
 ```
 NodeRenderer.render(ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig, offsetX: number, offsetY: number, zoom: number): void
-EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number): void
-GridRenderer.render(ctx: CanvasRenderingContext2D, width: number, height: number, offsetX: number, offsetY: number, zoom: number): void
+EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number, config: RenderConfig): void
+GridRenderer.render(ctx: CanvasRenderingContext2D, width: number, height: number, offsetX: number, offsetY: number, zoom: number, gridConfig: GridConfig): void
+```
+
+### RenderConfig 字段（Phase 1 补全）
+
+```
+// 通用字段
+nodeWidth: number = 120
+nodeHeight: number = 60
+strokeColor: string = '#333333'
+strokeWidth: number = 2
+fillColor: string = '#FFFFFF'
+activeStrokeColor: string = '#1890FF'
+activeFillColor: string = '#E6F7FF'
+textColor: string = '#333333'
+fontSize: number = 12
+fontFamily: string = 'HarmonyOS Sans, sans-serif'
+cornerRadius: number = 8
+
+// ── 按 NodeType 分色 ──
+taskFillColor: string = '#FFFFFF'
+taskStrokeColor: string = '#616161'
+taskTextColor: string = '#333333'
+taskSubtypeStroke: Record<string,string> = { 'userTask':'#1976D2', 'serviceTask':'#00897B', 'scriptTask':'#7B1FA2', 'manualTask':'#795548', 'sendTask':'#F57C00', 'receiveTask':'#3949AB', 'businessRuleTask':'#C62828' }
+
+gatewayFillColor: string = '#FFFDE7'
+gatewayStrokeColor: string = '#FFB300'
+gatewayTextColor: string = '#333333'
+
+eventStartFillColor: string = '#FFFFFF'
+eventStartStrokeColor: string = '#43A047'
+eventStartStrokeWidth: number = 2
+
+eventEndFillColor: string = '#424242'
+eventEndStrokeColor: string = '#424242'
+eventEndStrokeWidth: number = 4
+
+// ── 连线 ──
+edgeStrokeColor: string = '#5E5E5E'
+edgeStrokeWidth: number = 1.5
+arrowSize: number = 12
+
+// ── 网格 ──
+gridSize: number = 20
+gridColor: string = '#E8E8E8'
 ```
 
 ### HitTestManager 方法
 ```
 rebuild(model: GraphModel, canvasManager: CanvasManager): void
 hitTest(screenX: number, screenY: number, canvasManager: CanvasManager): HitResult
-// HitResult 有: type: HitType (NODE/EDGE/CANVAS), nodeId: string, edgeId: string
+// HitResult 有: type: HitType (NODE/EDGE/CANVAS), nodeId: string, edgeId: string, canvasX: number, canvasY: number
 ```
 
 ### BPMN Parser
 ```
-BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法
+BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法，基于 XmlPullParser parseXml()
 ```
+元素覆盖：startEvent, endEvent, task, userTask, serviceTask, scriptTask, manualTask, sendTask, receiveTask, businessRuleTask, callActivity, subProcess, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, intermediateThrowEvent, intermediateCatchEvent, boundaryEvent, sequenceFlow
+注意：textAnnotation, dataObjectReference, dataStoreReference, group, lane, participant 有意丢弃（非核心视觉元素）
+
+⚠️ **节点 properties**：
+- 解析后每个节点 `properties['bpmnElement']` 存储原始 BPMN 标签名（如 `'userTask'`、`'serviceTask'`）
+- NodeRenderer 据此查 `RenderConfig.taskSubtypeStroke` 取不同的边框颜色
+- 未识别的标签名 fallback 到 `taskStrokeColor`
+
+⚠️ **parseXml() 回调时序陷阱（已验证）**：
+- tokenValueCallback(START_TAG) 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反）
+- 因此 START_TAG 只设状态标记+重置累积器，**禁止**从中读取属性
+- 所有业务逻辑必须在 END_TAG 中处理
+- ignoreNameSpace: true 不会剥离 getName() 返回的命名空间前缀，需手动 `localName()` 处理
+- ArkTS 闭包捕获对象引用（非变量绑定），禁止对 `currentAttrs` 整体重赋值（`= {}`），否则闭包写入旧对象、逻辑读取新对象，导致属性全部丢失
 
 ### FlowViewer 组件
 ```
-@Component struct FlowViewer { @Prop model: GraphModel }
-// 用法: FlowViewer({ model: this.model })
+@Component struct FlowViewer {
+  @Prop model: GraphModel            // 模型数据
+  @Prop xml: string                  // BPMN XML 字符串（自动解析到 model）
+  @Prop canvasHeight: number         // 画布高度（默认 600）
+  @Prop showGrid: boolean            // 是否显示背景网格
+  @Prop gridType: GridType           // 网格类型（DOT/LINE/NONE）
+  @Prop highlightNodeId: string      // 外部控制高亮节点 ID
+  @Prop readonly: boolean            // 只读模式
+  onNodeClick?: (nodeId: string) => void
+  onCanvasReady?: () => void
+}
+// 用法: FlowViewer({ model: this.model, canvasHeight: 400 })
+// 或:   FlowViewer({ xml: this.bpmnXmlStr })
 ```
 
 ### 禁止使用的 API（不存在）
 ```
-❌ FlowViewer.fromXml() / FlowViewer.fromModel() — 不存在
+❌ FlowViewer.fromModel() — 不存在
 ❌ CanvasManager.getCanvas() — 不存在
 ❌ NodeRenderer.render 不带 config/offsetX/offsetY/zoom — 签名错误
-❌ EdgeRenderer.render 不带 getNodePosition/offsetX/offsetY/zoom — 签名错误
+❌ EdgeRenderer.render 不带 config 最后一参数 — 签名错误
 ❌ hitTest(x, y) 两参数 — 实际需 3 参数: (x, y, canvasManager)
 ❌ HitResult.targetType — 实际字段是 .type
 ❌ getNode() 返回 undefined — 实际返回 null
+❌ BpmnXmlParser 使用 parser.parse() + next() 命令式循环 — API 14 中已废弃，应使用 parseXml()
 ```
 
 ## DevOps
 
 ### 编译桥接流程（BitFun ↔ DevEco Studio）
 
-BitFun 运行在沙箱中，无法直接编译鸿蒙项目。通过 `build.sh` + `build.log` 实现编译结果的传递：
+无法直接编译鸿蒙项目。通过 `build.sh` + `.bitfun/build-latest.log` 实现编译结果的传递：
 
 ```
                     ┌──────────────────────────┐
@@ -238,13 +327,14 @@ BitFun 运行在沙箱中，无法直接编译鸿蒙项目。通过 `build.sh` +
                     │                          │
                     │  1. 同步代码               │
                     │  2. sh build.sh           │
-                    │     └→ 生成 build.log     │
+                    │     └→ .bitfun/build-     │
+                    │        latest.log         │
                     └──────────┬───────────────┘
                                │
                     ┌──────────▼───────────────┐
                     │      BitFun 沙箱          │
                     │                          │
-                    │  3. 读取 build.log        │
+                    │  3. 读取 build-latest.log │
                     │  4. 分析错误 → 修复代码    │
                     └──────────────────────────┘
 ```
@@ -254,15 +344,14 @@ BitFun 运行在沙箱中，无法直接编译鸿蒙项目。通过 `build.sh` +
 1. 在 DevEco Studio 中同步项目：`File → Sync Project`
 2. 打开 DevEco 底部 Terminal 面板
 3. 运行 `sh build.sh`
-4. 让 BitFun 读取 `build.log`：
-   - 把 build.log 内容粘贴到对话中，或
-   - 说 "读一下 build.log"（BitFun 会自动读取）
+4. 将 `.bitfun/build-latest.log` 内容粘贴到对话中，或说 "读一下 build log"
 
 **build.sh 做了什么：**
 - 调用 `hvigorw assembleHar` 编译库模块
 - 调用 `hvigorw assembleHap` 编译 Demo 应用
-- 全部输出写入 `build.log`，添加时间戳和 Git 信息
-- 输出最终结果摘要：成功 / 失败 + 错误数量
+- 全部输出写入 `.bitfun/build-latest.log`
+- 额外产出 `.bitfun/har.log`、`.bitfun/hap.log`
+- `sh build.sh --sync` 仅执行 ohpm install
 
 ### 其他操作
 

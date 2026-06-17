@@ -37,7 +37,7 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Render lanes that visually overlap with this pool (skip lanes outside bounds)
+    // Render lanes (full original bounds, lane header will be indented later)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       let lane: Lane = pool.lanes[i];
       if (lane.bounds.y < y + h && lane.bounds.y + lane.bounds.height > y) {
@@ -45,16 +45,16 @@ export class PoolLaneRenderer {
       }
     }
 
-    // Pool header background — rendered BEFORE lanes
-    ctx.fillStyle = config.poolHeaderFillColor;
+    // Pool header background — covers left strip of lanes
     const poolHdrW: number = config.poolHeaderWidth * zoom;
+    ctx.fillStyle = config.poolHeaderFillColor;
     if (pool.isHorizontal) {
       ctx.fillRect(x, y, poolHdrW, h);
     } else {
       ctx.fillRect(x, y, w, poolHdrW);
     }
 
-    // Pool header text — rendered LAST, on top of lanes
+    // Pool header text
     const fontSizeHdr: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
     ctx.fillStyle = config.poolHeaderTextColor;
     ctx.font = fontSizeHdr + 'px ' + config.fontFamily;
@@ -76,22 +76,12 @@ export class PoolLaneRenderer {
     offsetY: number,
     zoom: number
   ): void {
-    let laneX: number = lane.bounds.x * zoom + offsetX;
-    let laneY: number = lane.bounds.y * zoom + offsetY;
-    let laneW: number = lane.bounds.width * zoom;
-    let laneH: number = lane.bounds.height * zoom;
+    const laneX: number = lane.bounds.x * zoom + offsetX;
+    const laneY: number = lane.bounds.y * zoom + offsetY;
+    const laneW: number = lane.bounds.width * zoom;
+    const laneH: number = lane.bounds.height * zoom;
 
-    // Offset lane by pool header width so pool name stays visible
-    const hdrOff: number = config.poolHeaderWidth * zoom;
-    if (parentPool.isHorizontal) {
-      laneX = laneX + hdrOff;
-      laneW = laneW - hdrOff;
-    } else {
-      laneY = laneY + hdrOff;
-      laneH = laneH - hdrOff;
-    }
-
-    // Lane background
+    // Lane background (full original bounds, no offset)
     ctx.fillStyle = config.laneFillColor;
     ctx.fillRect(laneX, laneY, laneW, laneH);
 
@@ -100,8 +90,15 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.laneStrokeWidth * zoom;
     ctx.strokeRect(laneX, laneY, laneW, laneH);
 
-    // Lane header
-    PoolLaneRenderer.renderLaneHeader(ctx, lane, laneX, laneY, laneW, laneH, parentPool.isHorizontal, config, zoom);
+    // Lane header — offset by pool header width so it appears to the right of pool name
+    const hdrOff: number = config.poolHeaderWidth * zoom;
+    let hdrX: number = laneX + hdrOff;
+    let hdrW: number = laneW - hdrOff;
+    if (!parentPool.isHorizontal) {
+      hdrX = laneX;
+      hdrW = laneW;
+    }
+    PoolLaneRenderer.renderLaneHeader(ctx, lane, hdrX, laneY, hdrW, laneH, parentPool.isHorizontal, config, zoom);
 
     // Child lanes recursively
     for (let i: number = 0; i < lane.childLanes.length; i++) {

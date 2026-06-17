@@ -13,16 +13,6 @@ export class PoolLaneRenderer {
     for (let i: number = 0; i < pools.length; i++) {
       PoolLaneRenderer.renderPool(ctx, pools[i], config, offsetX, offsetY, zoom);
     }
-
-    // HARDCODED TEST: draw pool names at fixed positions to verify rendering
-    ctx.fillStyle = '#FF0000';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    for (let pi: number = 0; pi < pools.length; pi++) {
-      let py: number = 80 + pi * 30;
-      ctx.fillText(pi + ':' + pools[pi].name + ' lanes=' + pools[pi].lanes.length, 10, py);
-    }
   }
 
   private static renderPool(
@@ -47,9 +37,12 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Render lanes inside pool (background layer)
+    // Render lanes that visually overlap with this pool (skip lanes outside bounds)
     for (let i: number = 0; i < pool.lanes.length; i++) {
-      PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
+      let lane: Lane = pool.lanes[i];
+      if (lane.bounds.y < y + h && lane.bounds.y + lane.bounds.height > y) {
+        PoolLaneRenderer.renderLane(ctx, lane, pool, config, offsetX, offsetY, zoom);
+      }
     }
 
     // Pool header — rendered AFTER lanes so it stays on top

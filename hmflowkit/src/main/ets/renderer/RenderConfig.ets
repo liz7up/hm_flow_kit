@@ -64,6 +64,7 @@ export class RenderConfig {
   laneStrokeColor: string = '#E0E0E0';
   laneStrokeWidth: number = 1;
   laneHeaderWidth: number = 20;
+  laneHeaderIndent: number = 6;
   laneHeaderFillColor: string = '#EEEEEE';
   laneHeaderTextColor: string = '#616161';
   laneHeaderFontSize: number = 11;

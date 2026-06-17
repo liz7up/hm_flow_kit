@@ -18,6 +18,7 @@
 import { GraphModel, GraphNode, GraphEdge, Pool, Lane } from '../model/GraphModel'
 import { NodeRect } from './EdgeRenderer'
 import { CanvasManager } from './CanvasManager'
+import { RenderConfig } from './RenderConfig'
 
 /**
  * 命中检测结果
@@ -206,7 +207,7 @@ export class HitTestManager {
    * 根据当前 Model 重建索引
    * 每次 model 数据变化后需要调用
    */
-  rebuild(model: GraphModel, canvasManager: CanvasManager): void {
+  rebuild(model: GraphModel, canvasManager: CanvasManager, config: RenderConfig = new RenderConfig()): void {
     const nodes: GraphNode[] = model.getNodes()
     const edges: GraphEdge[] = model.getEdges()
     const zoom: number = canvasManager.zoom
@@ -296,13 +297,13 @@ export class HitTestManager {
     let pools: Pool[] = model.getPools()
     for (let pi: number = 0; pi < pools.length; pi++) {
       let pool: Pool = pools[pi]
-      this.addPoolHeader(pool)
-      this.addLaneHeaders(pool.lanes, pool.isHorizontal)
+      this.addPoolHeader(pool, config)
+      this.addLaneHeaders(pool.lanes, pool.isHorizontal, config)
     }
   }
 
-  private addPoolHeader(pool: Pool): void {
-    let headerW: number = 30 // poolHeaderWidth (synchronised with RenderConfig)
+  private addPoolHeader(pool: Pool, config: RenderConfig): void {
+    let headerW: number = config.poolHeaderWidth
     let hb: PoolLaneHitBox
     if (pool.isHorizontal) {
       hb = new PoolLaneHitBox(pool.id, '',
@@ -316,23 +317,23 @@ export class HitTestManager {
     this.poolHeaders.push(hb)
   }
 
-  private addLaneHeaders(lanes: Lane[], isHorizontal: boolean): void {
+  private addLaneHeaders(lanes: Lane[], isHorizontal: boolean, config: RenderConfig): void {
     for (let i: number = 0; i < lanes.length; i++) {
       let lane: Lane = lanes[i]
-      let headerW: number = 20 // laneHeaderWidth (synchronised with RenderConfig)
+      let headerW: number = config.laneHeaderWidth
+      let indent: number = config.laneHeaderIndent
       let hb: PoolLaneHitBox
       if (isHorizontal) {
         hb = new PoolLaneHitBox('', lane.id,
-          lane.bounds.x, lane.bounds.y,
-          lane.bounds.x + headerW, lane.bounds.y + lane.bounds.height)
+          lane.bounds.x + indent, lane.bounds.y,
+          lane.bounds.x + indent + headerW, lane.bounds.y + lane.bounds.height)
       } else {
         hb = new PoolLaneHitBox('', lane.id,
           lane.bounds.x, lane.bounds.y,
           lane.bounds.x + lane.bounds.width, lane.bounds.y + headerW)
       }
       this.laneHeaders.push(hb)
-      // 递归子泳道
-      this.addLaneHeaders(lane.childLanes, isHorizontal)
+      this.addLaneHeaders(lane.childLanes, isHorizontal, config)
     }
   }
 

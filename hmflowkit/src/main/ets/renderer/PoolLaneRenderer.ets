@@ -54,8 +54,8 @@ export class PoolLaneRenderer {
       ctx.fillRect(x, y, w, poolHdrW);
     }
 
-    // Lane headers — drawn on top of pool header bg, indented 6px inside
-    const indent: number = 6 * zoom;
+    // Lane headers — drawn on top of pool header bg, indented inside
+    const indent: number = config.laneHeaderIndent * zoom;
     for (let i: number = 0; i < pool.lanes.length; i++) {
       let lane: Lane = pool.lanes[i];
       if (lane.bounds.y < y + h && lane.bounds.y + lane.bounds.height > y) {
@@ -155,7 +155,7 @@ export class PoolLaneRenderer {
     offsetY: number
   ): void {
     PoolLaneRenderer.renderLaneHeader(ctx, lane, x, y, w, h, isHorizontal, config, zoom);
-    const indent: number = 6 * zoom;
+    const indent: number = config.laneHeaderIndent * zoom;
     for (let i: number = 0; i < lane.childLanes.length; i++) {
       let child: Lane = lane.childLanes[i];
       let cx: number = child.bounds.x * zoom + offsetX + indent;

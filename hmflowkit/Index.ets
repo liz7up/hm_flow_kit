@@ -25,7 +25,7 @@ export { HitTestManager, HitResult, HitType } from './src/main/ets/renderer/HitT
 export { RenderConfig, NodeShape } from './src/main/ets/renderer/RenderConfig'
 
 // ── Parser 层 ──
-export { BpmnXmlParser } from './src/main/ets/parser/BpmnXmlParser'
+export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'
 
 // ── UI 组件层 ──
 export { FlowViewer } from './src/main/ets/components/FlowViewer'

@@ -37,10 +37,18 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
+    // DIAG: blue bar BEFORE lanes
+    ctx.fillStyle = '#0000FF';
+    ctx.fillRect(x + 35, y + 5, 30, 6);
+
     // Lanes first (background layer)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       PoolLaneRenderer.renderLane(ctx, pool.lanes[i], pool, config, offsetX, offsetY, zoom);
     }
+
+    // DIAGNOSTIC: green bar AFTER lanes (confirms code reaches here)
+    ctx.fillStyle = '#00FF00';
+    ctx.fillRect(x + 35, y + 15, 40, 8);
 
     // Pool header on top (bg + text, last to stay visible)
     PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);

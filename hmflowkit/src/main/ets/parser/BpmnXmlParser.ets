@@ -19,17 +19,28 @@ export class ParseResult {
   isPartial: boolean = false
 }
 
+// ===== 内部辅助类 =====
+
+class _NodeSize {
+  w: number = 0;
+  h: number = 0;
+  constructor(w: number, h: number) {
+    this.w = w;
+    this.h = h;
+  }
+}
+
 // ===== 工具函数 =====
 
-function defaultNodeSize(type: NodeType): { w: number, h: number } {
+function defaultNodeSize(type: NodeType): _NodeSize {
   switch (type) {
     case NodeType.GATEWAY:
-      return { w: 50, h: 50 };
+      return new _NodeSize(50, 50);
     case NodeType.START_EVENT:
     case NodeType.END_EVENT:
-      return { w: 36, h: 36 };
+      return new _NodeSize(36, 36);
     default:
-      return { w: 120, h: 60 };
+      return new _NodeSize(120, 60);
   }
 }
 
@@ -144,7 +155,7 @@ class _Collector {
       let shape: _ShapeInfo | undefined = this._shapes[nd.id];
       let x: number = 0;
       let y: number = 0;
-      let sz: { w: number, h: number } = defaultNodeSize(nd.type);
+      let sz: _NodeSize = defaultNodeSize(nd.type);
       let w: number = sz.w;
       let h: number = sz.h;
       if (shape !== undefined) {

@@ -59,24 +59,23 @@ export class PoolLaneRenderer {
     const headerW: number = config.poolHeaderWidth * zoom;
     const fontSize: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
 
-    // Background
-    ctx.fillStyle = config.poolHeaderFillColor;
+    // Background — use bright orange for diagnosis
+    ctx.fillStyle = '#FF8C00';
     if (pool.isHorizontal) {
       ctx.fillRect(x, y, headerW, h);
     } else {
       ctx.fillRect(x, y, w, headerW);
     }
 
-    // Text
-    ctx.fillStyle = config.poolHeaderTextColor;
-    ctx.font = fontSize + 'px ' + config.fontFamily;
+    // Text — use bright red, larger font for diagnosis
+    ctx.fillStyle = '#FF0000';
+    ctx.font = 'bold 16px ' + config.fontFamily;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
     if (pool.isHorizontal) {
-      // Draw pool name vertically, centered in header, bottom-to-top
-      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + headerW / 2, y + h / 2, fontSize);
+      ctx.fillText(pool.name, x + headerW, y + h / 2);
     } else {
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
       ctx.fillText(pool.name, x + w / 2, y + headerW / 2);
     }
   }

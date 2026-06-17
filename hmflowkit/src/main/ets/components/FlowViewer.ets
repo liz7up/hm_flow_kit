@@ -215,6 +215,9 @@ export struct FlowViewer {
       PoolLaneRenderer.render(this.ctx, pools, this.renderConfig, 0, 0, 1)
     }
 
+    // 重新应用 Canvas 变换（防止泳道渲染的 save/restore 导致变换矩阵丢失）
+    this.canvasManager.applyTransform(this.ctx)
+
     // Edges
     let edges: GraphEdge[]
     edges = this.model.getEdges()
@@ -231,7 +234,8 @@ export struct FlowViewer {
       NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1)
     }
 
-    // Highlight overlay — 外部 prop 优先于内部点击状态
+    // Highlight overlay
+    this.canvasManager.applyTransform(this.ctx)
     let activeHighlightId: string = this.highlightNodeId.length > 0
       ? this.highlightNodeId
       : this._highlightId
@@ -239,10 +243,8 @@ export struct FlowViewer {
       let hlNode: GraphNode | null
       hlNode = this.model.getNode(activeHighlightId)
       if (hlNode !== null) {
-        this.ctx.save()
         this.ctx.fillStyle = 'rgba(24, 144, 255, 0.35)'
         this.ctx.fillRect(hlNode.x - 4, hlNode.y - 4, hlNode.width + 8, hlNode.height + 8)
-        this.ctx.restore()
       }
     }
   }

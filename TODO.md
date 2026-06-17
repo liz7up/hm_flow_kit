@@ -118,32 +118,28 @@
 - BpmnXmlParser 存储原始标签名到 `properties['bpmnElement']`
 - 颜色方案不与高亮蓝色冲突（Task 默认白底+灰边框）
 
-### 3.2 FlowViewer 的 highlightNodeId 可能被错误清理
+### 3.2 FlowViewer 的 highlightNodeId 可能被错误清理 ✅ 已修复 (2026-06-17)
 
-**文件：** `hmflowkit/src/main/ets/components/FlowViewer.ets`
+**修复内容：**
+- `highlightNodeId` 添加 `@Watch('onHighlightChange')`，prop 变化时自动调用 `renderAll()`
+- `renderAll()` 合并外部 prop 与内部 `_highlightId`，外部优先
+- 已合并到 master (`dc55a72`, `4074651`)
 
-**问题：** 点击高亮逻辑中，每次重绘前都执行 `this.highlightNodeId = ''`，但如果此前通过外部手段设置了 `highlightNodeId`，有可能被清掉，造成状态不一致。
+### 3.3 BpmnXmlParser 无错误恢复能力 ✅ 已修复 (2026-06-17)
 
-**建议：** 明确区分"用户点击高亮"和"外部 API 高亮"，或使用 `@State highlightNodeId: string` 作为内部状态，新增 `@Prop externalHighlightId` 分离外部控制。
+**修复内容：**
+- 新增 `ParseResult { model, warnings, isPartial }` 公开类型
+- 新增 `parseBestEffort()` 宽松解析模式，遇错返回部分结果 + 警告
+- `parse()` 保持向后兼容，委托到 `_doParse()`
+- 6 项新测试（默认尺寸 + best-effort）
+- 已合并到 master (`8bcb965`, `df2ea2a`, `08cf82e`)
 
-### 3.3 BpmnXmlParser 无错误恢复能力
+### 3.4 hardcoded 节点尺寸 ✅ 已修复 (2026-06-17)
 
-**当前行为：** 遇到任何 XML 结构错误直接抛异常，整个解析失败。
-
-**建议：**
-- 增加宽松解析模式（best-effort）：未知元素跳过并记录警告，继续解析剩余内容
-- 增加诊断信息收集：记录每个跳过的元素及其行号，供上层展示
-
-### 3.4 hardcoded 节点尺寸
-
-**位置：** BpmnXmlParser 第 ~180 行
-
-```typescript
-const width = 120;  // 硬编码
-const height = 60;  // 硬编码
-```
-
-**问题：** 当 BPMN XML 的 BPMNShape 未提供宽高时使用 hardcoded 默认值。不同节点类型（Gateway 菱形 vs Task 矩形）应有不同的默认尺寸。
+**修复内容：**
+- `defaultNodeSize(NodeType)` 按类型返回默认尺寸：Task 120x60, Gateway 50x50, Event 36x36
+- `_Collector.build()` 从硬编码改为调用 `defaultNodeSize()`
+- 已合并到 master（同上 commit）
 
 ---
 

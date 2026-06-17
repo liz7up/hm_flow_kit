@@ -261,6 +261,17 @@ export default function graphModelTest(): void {
       expect(p !== null ? p.lanes.length : -1).assertEqual(1);
     });
 
+    it('updatePool_should_return_this_for_missing_id', 0, () => {
+      let updated: Pool = new Pool('NoSuch', 'X', true, new PoolBounds(0, 0, 100, 100), []);
+      let m2: GraphModel = model.updatePool('NoSuch', updated);
+      expect(m2 === model).assertEqual(true);
+    });
+
+    it('updatePoolBounds_should_return_this_for_missing_id', 0, () => {
+      let m2: GraphModel = model.updatePoolBounds('NoSuch', new PoolBounds(0, 0, 100, 100));
+      expect(m2 === model).assertEqual(true);
+    });
+
     // ── Lane CRUD ──
 
     it('addLane_should_add_to_pool', 0, () => {
@@ -320,6 +331,17 @@ export default function graphModelTest(): void {
       let p: Pool | null = m2.getPool('P1');
       expect(p !== null ? p.lanes[0].name : '').assertEqual('NewName');
       expect(p !== null ? p.lanes[0].flowNodeRefs.length : -1).assertEqual(1);
+    });
+
+    it('addLane_with_parentLaneId_should_nest_directly', 0, () => {
+      let parent: Lane = makeLane('L1', 'Parent');
+      model = model.addPool(makePool('P1', 'Sales'))
+        .addLane('P1', parent);
+      let child: Lane = makeLane('L1a', 'Child');
+      let m2: GraphModel = model.addLane('P1', child, 'L1');
+      let p: Pool | null = m2.getPool('P1');
+      expect(p !== null ? p.lanes[0].childLanes.length : -1).assertEqual(1);
+      expect(p !== null ? p.lanes[0].childLanes[0].name : '').assertEqual('Child');
     });
 
     // ── Node-Lane 关联 ──

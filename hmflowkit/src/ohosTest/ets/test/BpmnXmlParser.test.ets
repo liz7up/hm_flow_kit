@@ -1,6 +1,6 @@
 import { describe, beforeEach, it, expect } from '@ohos/hypium';
 import { BpmnXmlParser, ParseResult } from '../../../main/ets/parser/BpmnXmlParser';
-import { GraphModel, GraphNode, NodeType } from '../../../main/ets/model/GraphModel';
+import { GraphModel, GraphNode, NodeType, Pool, Lane } from '../../../main/ets/model/GraphModel';
 
 function countByType(model: GraphModel, type: NodeType): number {
   let count: number = 0;
@@ -294,6 +294,211 @@ export default function bpmnXmlParserTest(): void {
       } catch (e) {
         expect(true).assertEqual(true);
       }
+    });
+
+    // ── Pool/Lane 解析 ──
+
+    it('parse_collaboration_participant_creates_pool', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      expect(model.getPoolCount()).assertEqual(1);
+      let p: Pool | null = model.getPool('Pool1');
+      expect(p !== null ? p.name : '').assertEqual('Sales');
+      expect(p !== null ? p.isHorizontal : false).assertEqual(true);
+    });
+
+    it('parse_laneSet_creates_lanes', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Manager">' +
+                '<flowNodeRef>task1</flowNodeRef>' +
+              '</lane>' +
+              '<lane id="Lane2" name="Staff">' +
+                '<flowNodeRef>task2</flowNodeRef>' +
+              '</lane>' +
+            '</laneSet>' +
+            '<userTask id="task1"/>' +
+            '<userTask id="task2"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool1" isHorizontal="true">' +
+              '<Bounds x="0" y="0" width="600" height="400"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Lane1" isHorizontal="true">' +
+              '<Bounds x="0" y="0" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Lane2" isHorizontal="true">' +
+              '<Bounds x="0" y="200" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let pool: Pool | null = model.getPool('Pool1');
+      expect(pool !== null ? pool.lanes.length : -1).assertEqual(2);
+      expect(pool !== null ? pool.lanes[0].id : '').assertEqual('Lane1');
+      expect(pool !== null ? pool.lanes[1].id : '').assertEqual('Lane2');
+    });
+
+    it('parse_flowNodeRef_associates_nodes_with_lanes', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Manager">' +
+                '<flowNodeRef>task1</flowNodeRef>' +
+                '<flowNodeRef>task2</flowNodeRef>' +
+              '</lane>' +
+            '</laneSet>' +
+            '<userTask id="task1"/>' +
+            '<userTask id="task2"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let lane: Lane | null = model.getLaneByNode('task1');
+      expect(lane !== null ? lane.id : '').assertEqual('Lane1');
+      let lane2: Lane | null = model.getLaneByNode('task2');
+      expect(lane2 !== null ? lane2.id : '').assertEqual('Lane1');
+    });
+
+    it('parse_nested_lanes', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Parent">' +
+                '<flowNodeRef>t1</flowNodeRef>' +
+                '<childLaneSet>' +
+                  '<lane id="Child1" name="Child">' +
+                    '<flowNodeRef>t2</flowNodeRef>' +
+                  '</lane>' +
+                '</childLaneSet>' +
+              '</lane>' +
+            '</laneSet>' +
+            '<userTask id="t1"/>' +
+            '<userTask id="t2"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let pool: Pool | null = model.getPool('Pool1');
+      expect(pool !== null ? pool.lanes.length : -1).assertEqual(1);
+      expect(pool !== null ? pool.lanes[0].childLanes.length : -1).assertEqual(1);
+      expect(pool !== null ? pool.lanes[0].childLanes[0].id : '').assertEqual('Child1');
+      // 深层节点关联
+      let childLane: Lane | null = model.getLaneByNode('t2');
+      expect(childLane !== null ? childLane.id : '').assertEqual('Child1');
+    });
+
+    it('parse_pool_shape_with_isHorizontal_false', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Vertical" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool1" isHorizontal="false">' +
+              '<Bounds x="50" y="50" width="400" height="600"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let p: Pool | null = model.getPool('Pool1');
+      expect(p !== null ? p.isHorizontal : true).assertEqual(false);
+      expect(p !== null ? p.bounds.x : -1).assertEqual(50);
+      expect(p !== null ? p.bounds.height : -1).assertEqual(600);
+    });
+
+    it('parse_multiple_pools', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+            '<participant id="Pool2" name="Finance" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      expect(model.getPoolCount()).assertEqual(2);
+      expect(model.hasPool('Pool1')).assertEqual(true);
+      expect(model.hasPool('Pool2')).assertEqual(true);
+    });
+
+    it('parse_pool_shape_sets_bounds', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool1" isHorizontal="true">' +
+              '<Bounds x="100" y="200" width="800" height="500"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let p: Pool | null = model.getPool('Pool1');
+      expect(p !== null ? p.bounds.x : -1).assertEqual(100);
+      expect(p !== null ? p.bounds.y : -1).assertEqual(200);
+      expect(p !== null ? p.bounds.width : -1).assertEqual(800);
+      expect(p !== null ? p.bounds.height : -1).assertEqual(500);
+    });
+
+    it('parse_lane_shape_sets_bounds', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="Sales" processRef="p1"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<laneSet>' +
+              '<lane id="Lane1" name="Manager"/>' +
+            '</laneSet>' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="Pool1" isHorizontal="true">' +
+              '<Bounds x="0" y="0" width="600" height="400"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="Lane1" isHorizontal="true">' +
+              '<Bounds x="0" y="0" width="600" height="200"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let pool: Pool | null = model.getPool('Pool1');
+      expect(pool !== null ? pool.lanes.length : -1).assertEqual(1);
+      expect(pool !== null ? pool.lanes[0].bounds.y : -1).assertEqual(0);
+      expect(pool !== null ? pool.lanes[0].bounds.height : -1).assertEqual(200);
     });
   });
 }

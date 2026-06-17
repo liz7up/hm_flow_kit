@@ -9,7 +9,7 @@
  */
 
 import { xml, util } from '@kit.ArkTS';
-import { GraphModel, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle } from '../model/GraphModel';
+import { GraphModel, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle, Pool, Lane, PoolBounds } from '../model/GraphModel';
 
 // ===== 公开类型 =====
 
@@ -108,6 +108,27 @@ class _ShapeInfo {
   constructor() {}
 }
 
+class _PoolShapeInfo {
+  x: number = 0;
+  y: number = 0;
+  w: number = 0;
+  h: number = 0;
+  isHorizontal: boolean = true;
+  constructor() {}
+}
+
+class _ParticipantDef {
+  name: string = '';
+  processRef: string = '';
+  constructor() {}
+}
+
+class _LaneDefData {
+  name: string = '';
+  parentId: string = '';
+  constructor() {}
+}
+
 // ===== 解析收集器 =====
 
 class _Collector {
@@ -115,6 +136,16 @@ class _Collector {
   private _edges: _EdgeEntry[] = [];
   private _shapes: Record<string, _ShapeInfo> = {};
   private _waypoints: Record<string, Waypoint[]> = {};
+
+  // Pool/Lane 收集
+  private _participants: Record<string, _ParticipantDef> = {};
+  private _laneDefs: Record<string, _LaneDefData> = {};
+  private _laneFlowRefs: Record<string, string[]> = {};
+  private _poolShapes: Record<string, _PoolShapeInfo> = {};
+  private _laneShapes: Record<string, _ShapeInfo> = {};
+  private _participantIds: Record<string, boolean> = {};
+  private _laneIds: Record<string, boolean> = {};
+
   warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string): void {
@@ -148,8 +179,65 @@ class _Collector {
     this._waypoints[edgeId] = wps;
   }
 
+  // ── Pool/Lane 收集方法 ──
+
+  addParticipant(id: string, name: string, processRef: string): void {
+    let d: _ParticipantDef = new _ParticipantDef();
+    d.name = name;
+    d.processRef = processRef;
+    this._participants[id] = d;
+    this._participantIds[id] = true;
+  }
+
+  addLaneDef(id: string, name: string, parentId: string): void {
+    let d: _LaneDefData = new _LaneDefData();
+    d.name = name;
+    d.parentId = parentId;
+    this._laneDefs[id] = d;
+    this._laneIds[id] = true;
+    if (this._laneFlowRefs[id] === undefined) {
+      this._laneFlowRefs[id] = [];
+    }
+  }
+
+  addFlowNodeRef(laneId: string, nodeId: string): void {
+    if (this._laneFlowRefs[laneId] === undefined) {
+      this._laneFlowRefs[laneId] = [];
+    }
+    this._laneFlowRefs[laneId].push(nodeId);
+  }
+
+  setPoolShape(id: string, x: number, y: number, w: number, h: number, isHorizontal: boolean): void {
+    let s: _PoolShapeInfo = new _PoolShapeInfo();
+    s.x = x;
+    s.y = y;
+    s.w = w;
+    s.h = h;
+    s.isHorizontal = isHorizontal;
+    this._poolShapes[id] = s;
+  }
+
+  setLaneShape(id: string, x: number, y: number, w: number, h: number): void {
+    let s: _ShapeInfo = new _ShapeInfo();
+    s.x = x;
+    s.y = y;
+    s.w = w;
+    s.h = h;
+    this._laneShapes[id] = s;
+  }
+
+  isParticipant(id: string): boolean {
+    return this._participantIds[id] === true;
+  }
+
+  isLane(id: string): boolean {
+    return this._laneIds[id] === true;
+  }
+
   build(): GraphModel {
     let model: GraphModel = GraphModel.createEmpty();
+
+    // 1. 构建节点
     for (let i: number = 0; i < this._nodes.length; i++) {
       let nd: _NodeEntry = this._nodes[i];
       let shape: _ShapeInfo | undefined = this._shapes[nd.id];
@@ -166,12 +254,13 @@ class _Collector {
       }
       let props: Record<string, string> = {};
       if (nd.tagName.length > 0) {
-        // key 'bpmnElement' 由 NodeRenderer 读取用于子类型配色，保持同步
         props['bpmnElement'] = nd.tagName;
       }
       model = model.addNode(
         new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
     }
+
+    // 2. 构建边
     for (let i: number = 0; i < this._edges.length; i++) {
       let ed: _EdgeEntry = this._edges[i];
       let wps: Waypoint[] | undefined = this._waypoints[ed.id];
@@ -187,7 +276,80 @@ class _Collector {
       model = model.addEdge(
         new GraphEdge(ed.id, ed.src, ed.tgt, wps, EdgeStyle.POLYLINE, ed.label, {}));
     }
+
+    // 3. 构建 Pools
+    let poolIds: string[] = Object.keys(this._participants);
+    for (let i: number = 0; i < poolIds.length; i++) {
+      let pid: string = poolIds[i];
+      let part: _ParticipantDef = this._participants[pid];
+      let pShape: _PoolShapeInfo | undefined = this._poolShapes[pid];
+      let x: number = 0;
+      let y: number = 0;
+      let w: number = 400;
+      let h: number = 200;
+      let isH: boolean = true;
+      if (pShape !== undefined) {
+        x = pShape.x;
+        y = pShape.y;
+        w = pShape.w;
+        h = pShape.h;
+        isH = pShape.isHorizontal;
+      }
+
+      // 构建该 Pool 的 Lane 树（只取顶层 Lane：parentId 为空的）
+      let topLanes: Lane[] = this.buildLaneTree('');
+
+      // 为 Lane 应用 shape 坐标
+      topLanes = this.applyLaneShapes(topLanes);
+
+      model = model.addPool(new Pool(
+        pid, part.name, isH,
+        new PoolBounds(x, y, w, h),
+        topLanes
+      ));
+    }
+
     return model;
+  }
+
+  // ── Lane 树构建 ──
+
+  private buildLaneTree(parentId: string): Lane[] {
+    let result: Lane[] = [];
+    let allLaneIds: string[] = Object.keys(this._laneDefs);
+    for (let i: number = 0; i < allLaneIds.length; i++) {
+      let lid: string = allLaneIds[i];
+      let def: _LaneDefData = this._laneDefs[lid];
+      if (def.parentId !== parentId) {
+        continue;
+      }
+      let childLanes: Lane[] = this.buildLaneTree(lid);
+      let refs: string[] = this._laneFlowRefs[lid] !== undefined
+        ? this._laneFlowRefs[lid]
+        : [];
+      result.push(new Lane(
+        lid, def.name,
+        new PoolBounds(0, 0, 0, 0),
+        childLanes,
+        refs
+      ));
+    }
+    return result;
+  }
+
+  private applyLaneShapes(lanes: Lane[]): Lane[] {
+    let result: Lane[] = [];
+    for (let i: number = 0; i < lanes.length; i++) {
+      let lane: Lane = lanes[i];
+      let shape: _ShapeInfo | undefined = this._laneShapes[lane.id];
+      let b: PoolBounds = lane.bounds;
+      if (shape !== undefined) {
+        b = new PoolBounds(shape.x, shape.y, shape.w, shape.h);
+      }
+      let children: Lane[] = this.applyLaneShapes(lane.childLanes);
+      result.push(new Lane(lane.id, lane.name, b, children, lane.flowNodeRefs));
+    }
+    return result;
   }
 }
 
@@ -231,6 +393,16 @@ export class BpmnXmlParser {
     let inEdge: boolean = false;
     let inLabel: boolean = false;
 
+    // Pool/Lane 状态
+    let inCollaboration: boolean = false;
+    let inLaneSet: boolean = false;
+    let inChildLaneSet: boolean = false;
+    let inLane: boolean = false;
+    let inFlowNodeRef: boolean = false;
+    let flowNodeRefText: string = '';
+    let currentLaneId: string = '';
+    let laneStack: string[] = [];
+
     let shapeX: number = 0;
     let shapeY: number = 0;
     let shapeW: number = 0;
@@ -264,6 +436,34 @@ export class BpmnXmlParser {
         } else if (tag === 'BPMNLabel') {
           inLabel = true;
         }
+        // Pool/Lane — START_TAG 仅设状态标记
+        else if (tag === 'collaboration') {
+          inCollaboration = true;
+        } else if (tag === 'laneSet') {
+          inLaneSet = true;
+        } else if (tag === 'childLaneSet' && inLane) {
+          inChildLaneSet = true;
+          // 此时 currentAttrs 已有父 lane 属性（attrCb 在 tokenCb START_TAG 之后触发）
+          let pid: string = currentAttrs['id'] || '';
+          if (pid.length > 0) {
+            laneStack.push(pid);
+          }
+        } else if (tag === 'lane' && inLaneSet) {
+          inLane = true;
+        } else if (tag === 'flowNodeRef' && inLane) {
+          inFlowNodeRef = true;
+          flowNodeRefText = '';
+          // 当前 currentAttrs['id'] 是包含此 flowNodeRef 的 lane ID
+          currentLaneId = currentAttrs['id'] || '';
+        }
+        return true;
+      }
+
+      if (eventType === xml.EventType.TEXT) {
+        if (inFlowNodeRef) {
+          let t: string = info.getText() || '';
+          flowNodeRefText = flowNodeRefText + t;
+        }
         return true;
       }
 
@@ -283,7 +483,14 @@ export class BpmnXmlParser {
           inShape = false;
           let elId: string = currentAttrs['bpmnElement'] || '';
           if (elId.length > 0) {
-            collector.setShape(elId, shapeX, shapeY, shapeW, shapeH);
+            let isH: boolean = currentAttrs['isHorizontal'] !== 'false';
+            if (collector.isParticipant(elId)) {
+              collector.setPoolShape(elId, shapeX, shapeY, shapeW, shapeH, isH);
+            } else if (collector.isLane(elId)) {
+              collector.setLaneShape(elId, shapeX, shapeY, shapeW, shapeH);
+            } else {
+              collector.setShape(elId, shapeX, shapeY, shapeW, shapeH);
+            }
           }
         }
         else if (tag === 'BPMNEdge') {
@@ -296,11 +503,48 @@ export class BpmnXmlParser {
         else if (tag === 'BPMNLabel') {
           inLabel = false;
         }
+        // Pool/Lane end tags — 业务逻辑全部在 END_TAG
+        else if (tag === 'collaboration') {
+          inCollaboration = false;
+        } else if (tag === 'laneSet') {
+          inLaneSet = false;
+        } else if (tag === 'childLaneSet') {
+          inChildLaneSet = false;
+          if (laneStack.length > 0) {
+            laneStack.pop();
+          }
+        } else if (tag === 'lane' && inLane) {
+          inLane = false;
+          let lid: string = currentAttrs['id'] || '';
+          if (lid.length > 0) {
+            let parentId: string = laneStack.length > 0
+              ? laneStack[laneStack.length - 1]
+              : '';
+            collector.addLaneDef(lid, currentAttrs['name'] || '', parentId);
+          }
+        } else if (tag === 'flowNodeRef' && inLane) {
+          inFlowNodeRef = false;
+          let nodeId: string = flowNodeRefText.trim();
+          if (nodeId.length > 0 && currentLaneId.length > 0) {
+            collector.addFlowNodeRef(currentLaneId, nodeId);
+          }
+        }
 
         if (tag === 'process') {
           inProcess = false;
         } else if (tag === 'BPMNDiagram') {
           inDiagram = false;
+        }
+
+        if (inCollaboration && !inDiagram) {
+          if (tag === 'participant') {
+            let pid: string = currentAttrs['id'] || '';
+            let pname: string = currentAttrs['name'] || '';
+            let pref: string = currentAttrs['processRef'] || '';
+            if (pid.length > 0) {
+              collector.addParticipant(pid, pname, pref);
+            }
+          }
         }
 
         if (inProcess && !inDiagram) {

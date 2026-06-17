@@ -11,7 +11,27 @@
 import { xml, util } from '@kit.ArkTS';
 import { GraphModel, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle } from '../model/GraphModel';
 
+// ===== 公开类型 =====
+
+export class ParseResult {
+  model: GraphModel = GraphModel.createEmpty()
+  warnings: string[] = []
+  isPartial: boolean = false
+}
+
 // ===== 工具函数 =====
+
+function defaultNodeSize(type: NodeType): { w: number, h: number } {
+  switch (type) {
+    case NodeType.GATEWAY:
+      return { w: 50, h: 50 };
+    case NodeType.START_EVENT:
+    case NodeType.END_EVENT:
+      return { w: 36, h: 36 };
+    default:
+      return { w: 120, h: 60 };
+  }
+}
 
 function mapNodeType(tagName: string): NodeType {
   switch (tagName) {
@@ -84,6 +104,7 @@ class _Collector {
   private _edges: _EdgeEntry[] = [];
   private _shapes: Record<string, _ShapeInfo> = {};
   private _waypoints: Record<string, Waypoint[]> = {};
+  warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string): void {
     let e: _NodeEntry = new _NodeEntry();
@@ -123,8 +144,9 @@ class _Collector {
       let shape: _ShapeInfo | undefined = this._shapes[nd.id];
       let x: number = 0;
       let y: number = 0;
-      let w: number = 120;
-      let h: number = 50;
+      let sz: { w: number, h: number } = defaultNodeSize(nd.type);
+      let w: number = sz.w;
+      let h: number = sz.h;
       if (shape !== undefined) {
         x = shape.x;
         y = shape.y;
@@ -161,7 +183,25 @@ class _Collector {
 // ===== BPMN 解析器 =====
 
 export class BpmnXmlParser {
+  // 严格模式：遇错即抛（保持向后兼容）
   static parse(xmlStr: string): GraphModel {
+    let result: ParseResult = BpmnXmlParser._doParse(xmlStr);
+    if (result.isPartial) {
+      let msg: string = result.warnings.length > 0
+        ? result.warnings[result.warnings.length - 1]
+        : 'Unknown parse error';
+      throw new Error('BPMN parse failed: ' + msg);
+    }
+    return result.model;
+  }
+
+  // 宽松模式：遇错返回部分结果 + 警告，不抛异常
+  static parseBestEffort(xmlStr: string): ParseResult {
+    return BpmnXmlParser._doParse(xmlStr);
+  }
+
+  private static _doParse(xmlStr: string): ParseResult {
+    let result: ParseResult = new ParseResult();
     let cleaned: string = xmlStr;
     if (cleaned.length > 0 && cleaned.charCodeAt(0) === 0xFEFF) {
       cleaned = cleaned.substring(1);
@@ -200,8 +240,6 @@ export class BpmnXmlParser {
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
-        // 只设状态标记。attribute callback 会在本 token 之后触发，
-        // 自动将新元素的属性写入 currentAttrs（覆盖前一元素的残留值）
         if (tag === 'process') {
           inProcess = true;
         } else if (tag === 'BPMNDiagram') {
@@ -219,23 +257,17 @@ export class BpmnXmlParser {
       }
 
       if (eventType === xml.EventType.END_TAG) {
-        // attribute callback 在 token START_TAG 和 END_TAG 之间已完成填充
-        // 在此从 currentAttrs 消费属性
-
-        // ── DI：Bounds（跳过 BPMNLabel 内的） ──
         if (tag === 'Bounds' && inShape && !inLabel) {
           shapeX = Number(currentAttrs['x']) || 0;
           shapeY = Number(currentAttrs['y']) || 0;
           shapeW = Number(currentAttrs['width']) || 0;
           shapeH = Number(currentAttrs['height']) || 0;
         }
-        // ── DI：waypoint ──
         else if (tag === 'waypoint' && inEdge) {
           waypointBuf.push(new Waypoint(
             Number(currentAttrs['x']) || 0,
             Number(currentAttrs['y']) || 0));
         }
-        // ── DI：BPMNShape 最终化 ──
         else if (tag === 'BPMNShape') {
           inShape = false;
           let elId: string = currentAttrs['bpmnElement'] || '';
@@ -243,7 +275,6 @@ export class BpmnXmlParser {
             collector.setShape(elId, shapeX, shapeY, shapeW, shapeH);
           }
         }
-        // ── DI：BPMNEdge 最终化 ──
         else if (tag === 'BPMNEdge') {
           inEdge = false;
           let elId: string = currentAttrs['bpmnElement'] || '';
@@ -251,19 +282,16 @@ export class BpmnXmlParser {
             collector.setWaypoints(elId, waypointBuf);
           }
         }
-        // ── BPMNLabel 结束 ──
         else if (tag === 'BPMNLabel') {
           inLabel = false;
         }
 
-        // ── 作用域结束 ──
         if (tag === 'process') {
           inProcess = false;
         } else if (tag === 'BPMNDiagram') {
           inDiagram = false;
         }
 
-        // ── Process 元素 ──
         if (inProcess && !inDiagram) {
           if (tag === 'sequenceFlow') {
             let fid: string = currentAttrs['id'] || '';
@@ -287,17 +315,26 @@ export class BpmnXmlParser {
       return true;
     };
 
-    // 执行解析
-    let parser: xml.XmlPullParser =
-      new xml.XmlPullParser(bytes.buffer as object as ArrayBuffer, 'UTF-8');
-    let options: xml.ParseOptions = {
-      supportDoctype: false,
-      ignoreNameSpace: true,
-      attributeValueCallbackFunction: attrCb,
-      tokenValueCallbackFunction: tokenCb
-    };
-    parser.parseXml(options);
+    try {
+      let parser: xml.XmlPullParser =
+        new xml.XmlPullParser(bytes.buffer as object as ArrayBuffer, 'UTF-8');
+      let options: xml.ParseOptions = {
+        supportDoctype: false,
+        ignoreNameSpace: true,
+        attributeValueCallbackFunction: attrCb,
+        tokenValueCallbackFunction: tokenCb
+      };
+      parser.parseXml(options);
+    } catch (e) {
+      result.isPartial = true;
+      result.warnings.push('XML parse error: ' + e);
+    }
 
-    return collector.build();
+    // 转发 Collector 中的警告
+    for (let i: number = 0; i < collector.warnings.length; i++) {
+      result.warnings.push(collector.warnings[i]);
+    }
+    result.model = collector.build();
+    return result;
   }
 }

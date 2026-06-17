@@ -45,41 +45,25 @@ export class PoolLaneRenderer {
       }
     }
 
-    // Pool header — rendered AFTER lanes so it stays on top
-    PoolLaneRenderer.renderPoolHeader(ctx, pool, x, y, w, h, config, zoom);
-  }
-
-  private static renderPoolHeader(
-    ctx: CanvasRenderingContext2D,
-    pool: Pool,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    config: RenderConfig,
-    zoom: number
-  ): void {
-    const headerW: number = config.poolHeaderWidth * zoom;
-    const fontSize: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
-
-    // Header background
+    // Pool header background — rendered BEFORE lanes
     ctx.fillStyle = config.poolHeaderFillColor;
+    const poolHdrW: number = config.poolHeaderWidth * zoom;
     if (pool.isHorizontal) {
-      ctx.fillRect(x, y, headerW, h);
+      ctx.fillRect(x, y, poolHdrW, h);
     } else {
-      ctx.fillRect(x, y, w, headerW);
+      ctx.fillRect(x, y, w, poolHdrW);
     }
 
-    // Header text
+    // Pool header text — rendered LAST, on top of lanes
+    const fontSizeHdr: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
     ctx.fillStyle = config.poolHeaderTextColor;
-    ctx.font = fontSize + 'px ' + config.fontFamily;
-
+    ctx.font = fontSizeHdr + 'px ' + config.fontFamily;
     if (pool.isHorizontal) {
-      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + headerW / 2, y + h / 2, fontSize);
+      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + poolHdrW / 2, y + h / 2, fontSizeHdr);
     } else {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(pool.name, x + w / 2, y + headerW / 2);
+      ctx.fillText(pool.name, x + w / 2, y + poolHdrW / 2);
     }
   }
 
@@ -92,10 +76,20 @@ export class PoolLaneRenderer {
     offsetY: number,
     zoom: number
   ): void {
-    const laneX: number = lane.bounds.x * zoom + offsetX;
-    const laneY: number = lane.bounds.y * zoom + offsetY;
-    const laneW: number = lane.bounds.width * zoom;
-    const laneH: number = lane.bounds.height * zoom;
+    let laneX: number = lane.bounds.x * zoom + offsetX;
+    let laneY: number = lane.bounds.y * zoom + offsetY;
+    let laneW: number = lane.bounds.width * zoom;
+    let laneH: number = lane.bounds.height * zoom;
+
+    // Offset lane by pool header width so pool name stays visible
+    const hdrOff: number = config.poolHeaderWidth * zoom;
+    if (parentPool.isHorizontal) {
+      laneX = laneX + hdrOff;
+      laneW = laneW - hdrOff;
+    } else {
+      laneY = laneY + hdrOff;
+      laneH = laneH - hdrOff;
+    }
 
     // Lane background
     ctx.fillStyle = config.laneFillColor;

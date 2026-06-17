@@ -1,5 +1,5 @@
 import { describe, beforeEach, it, expect } from '@ohos/hypium';
-import { BpmnXmlParser } from '../../../main/ets/parser/BpmnXmlParser';
+import { BpmnXmlParser, ParseResult } from '../../../main/ets/parser/BpmnXmlParser';
 import { GraphModel, GraphNode, NodeType } from '../../../main/ets/model/GraphModel';
 
 function countByType(model: GraphModel, type: NodeType): number {
@@ -181,7 +181,33 @@ export default function bpmnXmlParserTest(): void {
       model = BpmnXmlParser.parse(xml);
       let n: GraphNode | null = model.getNode('t1');
       expect(n !== null ? n.width : -1).assertEqual(120);
+      expect(n !== null ? n.height : -1).assertEqual(60);
+    });
+
+    it('parse_gateway_without_shape_uses_default_size', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<exclusiveGateway id="g1"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = model.getNode('g1');
+      expect(n !== null ? n.width : -1).assertEqual(50);
       expect(n !== null ? n.height : -1).assertEqual(50);
+    });
+
+    it('parse_event_without_shape_uses_default_size', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = model.getNode('s1');
+      expect(n !== null ? n.width : -1).assertEqual(36);
+      expect(n !== null ? n.height : -1).assertEqual(36);
     });
 
     it('parse_edge_without_waypoints_generates_default', 0, () => {
@@ -227,6 +253,47 @@ export default function bpmnXmlParserTest(): void {
       expect(t1 !== null ? t1.properties['bpmnElement'] : '').assertEqual('userTask');
       expect(t2 !== null ? t2.properties['bpmnElement'] : '').assertEqual('serviceTask');
       expect(g1 !== null ? g1.properties['bpmnElement'] : '').assertEqual('exclusiveGateway');
+    });
+
+    // ── parseBestEffort 测试 ──
+
+    it('parseBestEffort_valid_xml_returns_complete', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<endEvent id="e1"/>' +
+          '</process>' +
+        '</definitions>';
+      let result: ParseResult = BpmnXmlParser.parseBestEffort(xml);
+      expect(result.isPartial).assertEqual(false);
+      expect(result.warnings.length).assertEqual(0);
+      expect(result.model.getNodeCount()).assertEqual(2);
+    });
+
+    it('parseBestEffort_malformed_xml_returns_partial', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>';
+      // 缺少 </process></definitions> 闭合标签
+      let result: ParseResult = BpmnXmlParser.parseBestEffort(xml);
+      expect(result.isPartial).assertEqual(true);
+      expect(result.warnings.length).assertGreater(0);
+    });
+
+    it('parse_still_throws_on_malformed_xml', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>';
+      // 缺少闭合标签，parse() 仍应抛异常
+      try {
+        BpmnXmlParser.parse(xml);
+        expect(false).assertEqual(true);  // 不应执行到这里
+      } catch (e) {
+        expect(true).assertEqual(true);
+      }
     });
   });
 }

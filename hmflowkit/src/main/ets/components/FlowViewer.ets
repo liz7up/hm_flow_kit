@@ -84,7 +84,7 @@ export struct FlowViewer {
 
   handleClick(event: ClickEvent): void {
     if (!this._canvasReady) return
-    this.hitTestManager.rebuild(this.model, this.canvasManager)
+    this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
     let result: HitResult = this.hitTestManager.hitTest(event.x, event.y, this.canvasManager)
     if (result.type === HitType.NODE) {
       this._highlightId = result.nodeId

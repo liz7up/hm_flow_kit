@@ -22,7 +22,7 @@ export class NodeRenderer {
 
     switch (shape) {
       case NodeShape.ROUNDED_RECT: {
-        const r: number = 8 * zoom;
+        const r: number = config.cornerRadius * zoom;
         const left: number = x;
         const top: number = y;
         const right: number = x + w;
@@ -62,16 +62,51 @@ export class NodeRenderer {
       }
     }
 
-    ctx.fillStyle = '#ffffff';
+    // 按节点类型选取颜色
+    let fill: string;
+    let stroke: string;
+    let textColor: string;
+    let lineW: number;
+    if (node.type === NodeType.TASK) {
+      fill = config.taskFillColor;
+      textColor = config.taskTextColor;
+      lineW = config.strokeWidth;
+      // 查子类型边框色
+      let subtype: string | undefined = node.properties['bpmnElement'];
+      stroke = config.taskStrokeColor;
+      if (subtype !== undefined) {
+        let c: string | undefined = config.taskSubtypeStroke[subtype];
+        if (c !== undefined) {
+          stroke = c;
+        }
+      }
+    } else if (node.type === NodeType.GATEWAY) {
+      fill = config.gatewayFillColor;
+      stroke = config.gatewayStrokeColor;
+      textColor = config.gatewayTextColor;
+      lineW = config.strokeWidth;
+    } else if (node.type === NodeType.START_EVENT) {
+      fill = config.eventStartFillColor;
+      stroke = config.eventStartStrokeColor;
+      textColor = config.textColor;
+      lineW = config.eventStartStrokeWidth;
+    } else {
+      fill = config.eventEndFillColor;
+      stroke = config.eventEndStrokeColor;
+      textColor = config.textColor;
+      lineW = config.eventEndStrokeWidth;
+    }
+
+    ctx.fillStyle = fill;
     ctx.fill();
-    ctx.strokeStyle = '#333333';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lineW * zoom;
     ctx.stroke();
 
     // 绘制居中文字
     const text: string = node.label;
-    ctx.fillStyle = '#333333';
-    ctx.font = Math.max(12, Math.round(14 * zoom)) + 'px sans-serif';
+    ctx.fillStyle = textColor;
+    ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, x + w / 2, y + h / 2);

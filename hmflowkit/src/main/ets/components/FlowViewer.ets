@@ -173,7 +173,7 @@ export struct FlowViewer {
     for (let i: number = 0; i < edges.length; i++) {
       EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
         return this.getNodePosition(id)
-      }, 0, 0, 1)
+      }, 0, 0, 1, this.renderConfig)
     }
 
     // Nodes

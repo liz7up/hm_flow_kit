@@ -7,6 +7,7 @@
  */
 
 import { GraphEdge } from '../model/GraphModel';
+import { RenderConfig } from './RenderConfig';
 
 export class NodeRect {
   x: number;
@@ -50,7 +51,8 @@ export class EdgeRenderer {
     getNodePosition: (id: string) => NodeRect,
     offsetX: number,
     offsetY: number,
-    zoom: number
+    zoom: number,
+    config: RenderConfig
   ): void {
     ctx.save();
     ctx.translate(offsetX, offsetY);
@@ -99,10 +101,8 @@ export class EdgeRenderer {
 
     // Draw the polyline
     {
-      const strokeColor: string = '#5e5e5e';
-      const lineWidth: number = 2;
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = config.edgeStrokeColor;
+      ctx.lineWidth = config.edgeStrokeWidth;
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (let i = 1; i < points.length; i++) {
@@ -123,10 +123,10 @@ export class EdgeRenderer {
 
       if (segLen > 0.1) {
         const angle: number = Math.atan2(segDy, segDx);
-        const arrowLen: number = 12;
+        const arrowLen: number = config.arrowSize;
         const arrowAngle: number = Math.PI / 6;
 
-        ctx.fillStyle = '#5e5e5e';
+        ctx.fillStyle = config.edgeStrokeColor;
         ctx.beginPath();
         ctx.moveTo(last[0], last[1]);
         ctx.lineTo(

@@ -315,8 +315,8 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 | Association | ❌ | ❌ | ❌ | |
 | DataAssociation | ❌ | ❌ | ❌ | |
 | **Swimlanes** |||||
-| Pool | ❌ | ❌ | ❌ | |
-| Lane | ❌ | ❌ | ❌ | |
+| Pool | ✅ | ✅ | ❌ | 含双朝向标题栏 |
+| Lane | ✅ | ✅ | ❌ | 含嵌套 childLaneSet |
 | **Data** |||||
 | DataObject | ❌ | ❌ | ❌ | |
 | DataStore | ❌ | ❌ | ❌ | |
@@ -350,7 +350,7 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 ### 🟠 P1 — 高优先级（核心功能缺口）
 
-4. **实现泳道（Pool / Lane）** — BPMN 解析 + 数据结构 + 渲染
+4. ~~**实现泳道（Pool / Lane）**~~ ✅ **已完成 (2026-06-17)** — BPMN 解析 + 数据结构 + 渲染，详见 P1-1 泳道
 5. **实现 BoundaryEvent 解析与渲染** — 包括 attachToRef 逻辑
 6. **实现 Spec 04 交互编辑层** — DragController、ConnectController、SelectController
 7. **实现 FlowDesigner 组件** — 用户可拖拽节点、连线编辑

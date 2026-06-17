@@ -33,11 +33,19 @@ hm-flow-kit/
 │   │   │   ├── GridRenderer.ets          # 背景网格渲染器
 │   │   │   ├── CanvasManager.ets         # 画布管理（缩放、平移、fitToView）
 │   │   │   ├── HitTestManager.ets        # 命中检测
+	│   │   │   ├── PoolLaneRenderer.ets      # 泳池/泳道渲染器
 │   │   │   └── RenderConfig.ets          # 渲染配置
+│   │   ├── ohosTest/ets/test/            # 单元测试（Hypium 框架）
+│   │   │   ├── GraphModel.test.ets        #   44 项
+│   │   │   ├── BpmnXmlParser.test.ets     #   28 项
+│   │   │   ├── CanvasManager.test.ets     #   17 项
+│   │   │   ├── HitTestManager.test.ets    #   13 项
+│   │   │   └── RenderConfig.test.ets      #    3 项
 │   │   └── components/
 │   │       └── FlowViewer.ets            # 只读流程查看器（支持 XML 直接输入）
 │   ├── Index.ets                         # 公开 API 导出入口
 │   └── oh-package.json5                 # 库的包配置
+├── test_all.sh                           # 单元测试编译验证脚本
 ├── specs/                                # 开发规格文档
 │   ├── 01-graph-model.md
 │   ├── 02-canvas-renderer.md
@@ -96,7 +104,7 @@ hm-flow-kit/
 ## 当前开发阶段
 
 **Spec 01 — GraphModel ✅ 已完成**
-- 268 行，7 项测试全部通过
+- 891 行，44 项测试全部通过 — 含 Pool/Lane 数据结构
 - 不可变数据模式、序列化、级联删除
 
 **Spec 02 — Canvas 渲染层 ✅ 已完成**
@@ -105,20 +113,38 @@ hm-flow-kit/
 - 共约 1350 行渲染层代码
 
 **Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成** → **v2 重写 (Spec 07) ✅**
-- 295 行，基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
+- 592 行，28 项测试全部通过 — 含 collaboration/laneSet 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
 - 支持命名空间前缀剥离、15+ 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
 - ⚠️ 关键实现细节：tokenValueCallback 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反），所有业务逻辑必须在 END_TAG 中处理
 - ⚠️ ignoreNameSpace: true 不会剥离 getName() 返回的前缀，需手动 lastIndexOf(':')
 
 **Spec 06 — FlowViewer 组件 ✅ 已完成**
+
+**Pool/Lane — 泳池/泳道 ✅ 已完成**
+- 891 行 GraphModel 含 Pool/Lane/PoolBounds 数据类 + 15 个新方法
+- 592 行 BpmnXmlParser 含 collaboration/laneSet/participant/flowNodeRef 解析
+- 194 行 PoolLaneRenderer 含双朝向标题栏 + 逐字垂直文字 + Lane 边界过滤
+- RenderConfig 新增 12 个泳道配色字段（含 laneHeaderIndent 统一缩进）
+- HitTestManager 含 POOL/LANE 命中类型，接受 RenderConfig 统一配置
+- FlowViewer fitToView 考虑泳池边界，标题栏 Z-order 正确
 - 186 行，一行接入 `FlowViewer({ model })`
 - 自动适配内容缩放（auto-fit）、点击高亮、点击空白取消高亮、PanGesture 拖拽
 - 全屏覆盖层支持
 
-**当前总验收：31/31 全部通过**
+**当前总验收：105/105 自动化单元测试编译通过**
+
+### 自动化测试
+
+| 项目 | 说明 |
+|------|------|
+| 框架 | @ohos/hypium (describe/it/expect) |
+| 位置 | `hmflowkit/src/ohosTest/ets/test/` |
+| 覆盖 | GraphModel(44) BpmnXmlParser(28) CanvasManager(17) HitTestManager(13) RenderConfig(3) |
+| 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
+| 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
 **已实现完整功能：**
-- BPMN XML 解析 → 渲染 → 点击高亮 → 拖拽平移 → 自动缩放适配
+- BPMN XML 解析（含泳道）→ 渲染（含 Pool/Lane）→ 点击高亮 → 拖拽平移 → 自动缩放适配
 - Phase 1 样式系统：按 NodeType 分色 + Task 子类型边框色 + EdgeRenderer 读取 config
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
@@ -153,6 +179,9 @@ new Waypoint(x: number, y: number)
 new Viewport(x: number, y: number, zoom: number)
 new NodeRect(x: number, y: number, w: number, h: number)
 new RenderConfig()  // 无参，所有颜色/样式字段均有默认值
+new PoolBounds(x: number, y: number, width: number, height: number)
+new Lane(id: string, name: string, bounds: PoolBounds, childLanes: Lane[], flowNodeRefs: string[])
+new Pool(id: string, name: string, isHorizontal: boolean, bounds: PoolBounds, lanes: Lane[])
 new CanvasManager(minZoom?: number, maxZoom?: number, initialZoom?: number) // 默认 0.1 / 5.0 / 1.0
 new HitTestManager() // 无参
 new GridConfig(type?: GridType)  // 默认 DOT
@@ -186,6 +215,18 @@ setViewport(viewport: Viewport): GraphModel
 clear(): GraphModel
 toJSON(): GraphModelSnapshot
 static fromJSON(snapshot: GraphModelSnapshot): GraphModel
+getPoolCount(): number
+getPools(): Pool[]
+getPool(id: string): Pool | null
+hasPool(id: string): boolean
+getLaneByNode(nodeId: string): Lane | null        // 递归查找节点所属 Lane
+addPool(pool: Pool): GraphModel
+removePool(id: string): GraphModel
+updatePool(id: string, replacement: Pool): GraphModel
+updatePoolBounds(id: string, bounds: PoolBounds): GraphModel
+addLane(poolId: string, lane: Lane, parentLaneId?: string): GraphModel
+removeLane(poolId: string, laneId: string): GraphModel   // 级联删子 Lane
+updateLane(poolId: string, replacement: Lane): GraphModel
 ```
 
 ### CanvasManager 方法
@@ -214,6 +255,7 @@ reset(): void
 NodeRenderer.render(ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig, offsetX: number, offsetY: number, zoom: number): void
 EdgeRenderer.render(ctx: CanvasRenderingContext2D, edge: GraphEdge, getNodePosition: (id: string) => NodeRect, offsetX: number, offsetY: number, zoom: number, config: RenderConfig = new RenderConfig()): void
 GridRenderer.render(ctx: CanvasRenderingContext2D, width: number, height: number, offsetX: number, offsetY: number, zoom: number, gridConfig: GridConfig): void
+PoolLaneRenderer.render(ctx: CanvasRenderingContext2D, pools: Pool[], config: RenderConfig, offsetX: number, offsetY: number, zoom: number): void
 ```
 
 ### RenderConfig 字段（Phase 1 补全）
@@ -250,6 +292,23 @@ eventEndFillColor: string = '#424242'
 eventEndStrokeColor: string = '#424242'
 eventEndStrokeWidth: number = 4
 
+// ── Pool/Lane 泳道 ──
+poolFillColor: string = '#FAFAFA'
+poolStrokeColor: string = '#BDBDBD'
+poolStrokeWidth: number = 2
+poolHeaderWidth: number = 30
+poolHeaderFillColor: string = '#E0E0E0'
+poolHeaderTextColor: string = '#424242'
+poolHeaderFontSize: number = 12
+laneFillColor: string = '#F5F5F5'
+laneStrokeColor: string = '#E0E0E0'
+laneStrokeWidth: number = 1
+laneHeaderWidth: number = 20
+laneHeaderIndent: number = 6
+laneHeaderFillColor: string = '#EEEEEE'
+laneHeaderTextColor: string = '#616161'
+laneHeaderFontSize: number = 11
+
 // ── 连线 ──
 edgeStrokeColor: string = '#5E5E5E'
 edgeStrokeWidth: number = 1.5
@@ -262,9 +321,9 @@ gridColor: string = '#E8E8E8'
 
 ### HitTestManager 方法
 ```
-rebuild(model: GraphModel, canvasManager: CanvasManager): void
+rebuild(model: GraphModel, canvasManager: CanvasManager, config?: RenderConfig): void
 hitTest(screenX: number, screenY: number, canvasManager: CanvasManager): HitResult
-// HitResult 有: type: HitType (NODE/EDGE/CANVAS), nodeId: string, edgeId: string, canvasX: number, canvasY: number
+// HitResult 有: type: HitType (NODE/EDGE/CANVAS/POOL/LANE), nodeId: string, edgeId: string, poolId: string, laneId: string, canvasX: number, canvasY: number
 ```
 
 ### BPMN Parser
@@ -272,7 +331,9 @@ hitTest(screenX: number, screenY: number, canvasManager: CanvasManager): HitResu
 BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法，基于 XmlPullParser parseXml()
 ```
 元素覆盖：startEvent, endEvent, task, userTask, serviceTask, scriptTask, manualTask, sendTask, receiveTask, businessRuleTask, callActivity, subProcess, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, intermediateThrowEvent, intermediateCatchEvent, boundaryEvent, sequenceFlow
-注意：textAnnotation, dataObjectReference, dataStoreReference, group, lane, participant 有意丢弃（非核心视觉元素）
+注意：textAnnotation, dataObjectReference, dataStoreReference, group 有意丢弃（非核心视觉元素）
+- participant/lane 现已解析：`<collaboration>` → Pool，`<laneSet>`/`<lane>` → Lane（含嵌套 childLaneSet），`<flowNodeRef>` → node-to-lane 关联
+- ⚠️ 多 Pool 共享同一 Process 时，每个 Pool 复制全部 Lane；渲染时通过边界检查过滤不重叠的 Lane
 
 ⚠️ **节点 properties**：
 - 解析后每个节点 `properties['bpmnElement']` 存储原始 BPMN 标签名（如 `'userTask'`、`'serviceTask'`）

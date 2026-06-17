@@ -158,10 +158,10 @@ struct Index {
                 console.error('BPMN XML parse error:', e)
               }
             })
-          Button('🔍 高亮开始节点')
+          Button('🔍 高亮发起节点')
             .fontSize(12)
             .onClick(() => {
-              this.highlightId = 'StartEvent_1'
+              this.highlightId = 'Start_1'
             })
           Button('✕ 清除高亮')
             .fontSize(12)

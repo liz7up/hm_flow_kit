@@ -37,15 +37,15 @@ export class PoolLaneRenderer {
     ctx.lineWidth = config.poolStrokeWidth * zoom;
     ctx.strokeRect(x, y, w, h);
 
-    // Render lanes (full original bounds, lane header will be indented later)
+    // Render lane backgrounds+borders (no headers yet)
     for (let i: number = 0; i < pool.lanes.length; i++) {
       let lane: Lane = pool.lanes[i];
       if (lane.bounds.y < y + h && lane.bounds.y + lane.bounds.height > y) {
-        PoolLaneRenderer.renderLane(ctx, lane, pool, config, offsetX, offsetY, zoom);
+        PoolLaneRenderer.renderLaneBg(ctx, lane, config, offsetX, offsetY, zoom);
       }
     }
 
-    // Pool header background — covers left strip of lanes
+    // Pool header background
     const poolHdrW: number = config.poolHeaderWidth * zoom;
     ctx.fillStyle = config.poolHeaderFillColor;
     if (pool.isHorizontal) {
@@ -54,7 +54,20 @@ export class PoolLaneRenderer {
       ctx.fillRect(x, y, w, poolHdrW);
     }
 
-    // Pool header text
+    // Lane headers — drawn on top of pool header bg, indented 6px inside
+    const indent: number = 6 * zoom;
+    for (let i: number = 0; i < pool.lanes.length; i++) {
+      let lane: Lane = pool.lanes[i];
+      if (lane.bounds.y < y + h && lane.bounds.y + lane.bounds.height > y) {
+        let lx: number = lane.bounds.x * zoom + offsetX + indent;
+        let ly: number = lane.bounds.y * zoom + offsetY;
+        let lw: number = lane.bounds.width * zoom - indent;
+        let lh: number = lane.bounds.height * zoom;
+        PoolLaneRenderer.renderLaneHeaderTree(ctx, lane, lx, ly, lw, lh, pool.isHorizontal, config, zoom, offsetX, offsetY);
+      }
+    }
+
+    // Pool header text — on top of everything
     const fontSizeHdr: number = Math.max(11, Math.round(config.poolHeaderFontSize * zoom));
     ctx.fillStyle = config.poolHeaderTextColor;
     ctx.font = fontSizeHdr + 'px ' + config.fontFamily;
@@ -67,10 +80,10 @@ export class PoolLaneRenderer {
     }
   }
 
-  private static renderLane(
+  // Render lane background + border only (no header). Recursive for child lanes.
+  private static renderLaneBg(
     ctx: CanvasRenderingContext2D,
     lane: Lane,
-    parentPool: Pool,
     config: RenderConfig,
     offsetX: number,
     offsetY: number,
@@ -81,28 +94,14 @@ export class PoolLaneRenderer {
     const laneW: number = lane.bounds.width * zoom;
     const laneH: number = lane.bounds.height * zoom;
 
-    // Lane background (full original bounds, no offset)
     ctx.fillStyle = config.laneFillColor;
     ctx.fillRect(laneX, laneY, laneW, laneH);
-
-    // Lane border
     ctx.strokeStyle = config.laneStrokeColor;
     ctx.lineWidth = config.laneStrokeWidth * zoom;
     ctx.strokeRect(laneX, laneY, laneW, laneH);
 
-    // Lane header — offset by pool header width so it appears to the right of pool name
-    const hdrOff: number = config.poolHeaderWidth * zoom;
-    let hdrX: number = laneX + hdrOff;
-    let hdrW: number = laneW - hdrOff;
-    if (!parentPool.isHorizontal) {
-      hdrX = laneX;
-      hdrW = laneW;
-    }
-    PoolLaneRenderer.renderLaneHeader(ctx, lane, hdrX, laneY, hdrW, laneH, parentPool.isHorizontal, config, zoom);
-
-    // Child lanes recursively
     for (let i: number = 0; i < lane.childLanes.length; i++) {
-      PoolLaneRenderer.renderLane(ctx, lane.childLanes[i], parentPool, config, offsetX, offsetY, zoom);
+      PoolLaneRenderer.renderLaneBg(ctx, lane.childLanes[i], config, offsetX, offsetY, zoom);
     }
   }
 
@@ -138,6 +137,32 @@ export class PoolLaneRenderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(lane.name, x + w / 2, y + headerW / 2);
+    }
+  }
+
+  // Render lane header tree recursively (for nested child lanes)
+  private static renderLaneHeaderTree(
+    ctx: CanvasRenderingContext2D,
+    lane: Lane,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    isHorizontal: boolean,
+    config: RenderConfig,
+    zoom: number,
+    offsetX: number,
+    offsetY: number
+  ): void {
+    PoolLaneRenderer.renderLaneHeader(ctx, lane, x, y, w, h, isHorizontal, config, zoom);
+    const indent: number = 6 * zoom;
+    for (let i: number = 0; i < lane.childLanes.length; i++) {
+      let child: Lane = lane.childLanes[i];
+      let cx: number = child.bounds.x * zoom + offsetX + indent;
+      let cy: number = child.bounds.y * zoom + offsetY;
+      let cw: number = child.bounds.width * zoom - indent;
+      let ch: number = child.bounds.height * zoom;
+      PoolLaneRenderer.renderLaneHeaderTree(ctx, child, cx, cy, cw, ch, isHorizontal, config, zoom, offsetX, offsetY);
     }
   }
 

@@ -72,7 +72,13 @@ export class PoolLaneRenderer {
     ctx.fillStyle = config.poolHeaderTextColor;
     ctx.font = fontSizeHdr + 'px ' + config.fontFamily;
     if (pool.isHorizontal) {
-      PoolLaneRenderer.fillVerticalText(ctx, pool.name, x + poolHdrW / 2, y + h / 2, fontSizeHdr);
+      ctx.save();
+      ctx.translate(x + poolHdrW / 2, y + h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pool.name, 0, 0);
+      ctx.restore();
     } else {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -132,7 +138,13 @@ export class PoolLaneRenderer {
     ctx.font = fontSize + 'px ' + config.fontFamily;
 
     if (isHorizontal) {
-      PoolLaneRenderer.fillVerticalText(ctx, lane.name, x + headerW / 2, y + h / 2, fontSize);
+      ctx.save();
+      ctx.translate(x + headerW / 2, y + h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lane.name, 0, 0);
+      ctx.restore();
     } else {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -163,32 +175,6 @@ export class PoolLaneRenderer {
       let cw: number = child.bounds.width * zoom - indent;
       let ch: number = child.bounds.height * zoom;
       PoolLaneRenderer.renderLaneHeaderTree(ctx, child, cx, cy, cw, ch, isHorizontal, config, zoom, offsetX, offsetY);
-    }
-  }
-
-  // Draw text vertically, one character per line, centered
-  private static fillVerticalText(
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    centerX: number,
-    centerY: number,
-    fontSize: number
-  ): void {
-    const len: number = text.length;
-    if (len === 0) {
-      return;
-    }
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const lineH: number = fontSize * 1.2;
-    const totalH: number = (len - 1) * lineH;
-    let curY: number = centerY - totalH / 2;
-
-    for (let i: number = 0; i < len; i++) {
-      ctx.fillText(text.charAt(i), centerX, curY);
-      curY = curY + lineH;
     }
   }
 }

@@ -74,6 +74,11 @@ export class RenderConfig {
   edgeStrokeWidth: number = 1.5;
   arrowSize: number = 12;
 
+  // ── MessageFlow 样式 ──
+  messageFlowStrokeColor: string = '#5E5E5E';
+  messageFlowStrokeWidth: number = 1.2;
+  messageFlowDashPattern: number[] = [6, 4];
+
   // ── 标记/图标样式 ──
   gatewayMarkerColor: string = '#333333';
   eventIconColor: string = '#333333';

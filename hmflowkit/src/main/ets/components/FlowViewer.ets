@@ -33,6 +33,8 @@ export struct FlowViewer {
   private _lastPanY: number = 0
   private _needFit: boolean = true
   private _highlightId: string = ''
+  private _pinchStartZoom: number = 1
+  private _lastRenderTime: number = 0
 
   aboutToAppear(): void {
     if (this.xml.length > 0) {
@@ -44,43 +46,96 @@ export struct FlowViewer {
   }
 
   build() {
-    Canvas(this.ctx)
-      .width('100%')
-      .height(this.canvasHeight)
-      .onReady(() => {
-        this._canvasReady = true
-        this.renderAll()
-        if (this.onCanvasReady) {
-          this.onCanvasReady()
-        }
-      })
-      .onAreaChange((_oldValue: Area, newValue: Area) => {
-        let w: number = newValue.width as number
-        let h: number = newValue.height as number
-        if (w > 0 && h > 0) {
-          this._canvasWidth = w
-          this._canvasHeight = h
+    Stack() {
+      Canvas(this.ctx)
+        .width('100%')
+        .height(this.canvasHeight)
+        .onReady(() => {
+          this._canvasReady = true
           this.renderAll()
-        }
-      })
-      .onClick((event: ClickEvent) => {
-        this.handleClick(event)
-      })
-      .gesture(
-        PanGesture({ distance: 5 })
-          .onActionStart((event: GestureEvent) => {
-            this._lastPanX = event.offsetX
-            this._lastPanY = event.offsetY
-          })
-          .onActionUpdate((event: GestureEvent) => {
-            let dx: number = event.offsetX - this._lastPanX
-            let dy: number = event.offsetY - this._lastPanY
-            this._lastPanX = event.offsetX
-            this._lastPanY = event.offsetY
-            this.canvasManager.pan(dx, dy)
+          if (this.onCanvasReady) {
+            this.onCanvasReady()
+          }
+        })
+        .onAreaChange((_oldValue: Area, newValue: Area) => {
+          let w: number = newValue.width as number
+          let h: number = newValue.height as number
+          if (w > 0 && h > 0) {
+            this._canvasWidth = w
+            this._canvasHeight = h
             this.renderAll()
-          })
-      )
+          }
+        })
+        .onClick((event: ClickEvent) => {
+          this.handleClick(event)
+        })
+        .gesture(
+          GestureGroup(GestureMode.Parallel,
+            PanGesture({ distance: 5 })
+              .onActionStart((event: GestureEvent) => {
+                this._lastPanX = event.offsetX
+                this._lastPanY = event.offsetY
+              })
+              .onActionUpdate((event: GestureEvent) => {
+                let dx: number = event.offsetX - this._lastPanX
+                let dy: number = event.offsetY - this._lastPanY
+                this._lastPanX = event.offsetX
+                this._lastPanY = event.offsetY
+                this.canvasManager.pan(dx, dy)
+                this.renderFrame()
+              }),
+            PinchGesture({ fingers: 2, distance: 5 })
+              .onActionStart((event: GestureEvent) => {
+                this._pinchStartZoom = this.canvasManager.zoom
+              })
+              .onActionUpdate((event: GestureEvent) => {
+                let newZoom: number = this._pinchStartZoom * event.scale
+                let cx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 400
+                let cy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 300
+                this.canvasManager.zoomTo(cx, cy, newZoom)
+                this.renderFrame()
+              })
+          )
+        )
+
+      // 缩放控制按钮（触屏 & PC 通用）
+      Column() {
+        Button({ type: ButtonType.Circle }) {
+          Text('+')
+            .fontSize(22)
+            .fontColor('#333')
+            .textAlign(TextAlign.Center)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.White)
+        .border({ width: 1, color: '#D0D0D0' })
+        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+        .onClick(() => {
+          this.canvasManager.zoomIn(this._canvasWidth, this._canvasHeight)
+          this.renderAll()
+        })
+        Button({ type: ButtonType.Circle }) {
+          Text('-')
+            .fontSize(22)
+            .fontColor('#333')
+            .textAlign(TextAlign.Center)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.White)
+        .border({ width: 1, color: '#D0D0D0' })
+        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+        .margin({ top: 6 })
+        .onClick(() => {
+          this.canvasManager.zoomOut(this._canvasWidth, this._canvasHeight)
+          this.renderAll()
+        })
+      }
+      .position({ right: 14, bottom: 14 })
+    }
+    .width('100%')
+    .height(this.canvasHeight)
   }
 
   handleClick(event: ClickEvent): void {
@@ -99,6 +154,16 @@ export struct FlowViewer {
         this.renderAll()
       }
     }
+  }
+
+  // 节流渲染：限制手势回调重绘频率 ≤ 60fps
+  private renderFrame(): void {
+    let now: number = Date.now()
+    if (now - this._lastRenderTime < 16) {
+      return
+    }
+    this._lastRenderTime = now
+    this.renderAll()
   }
 
   getNodePosition(nodeId: string): NodeRect {

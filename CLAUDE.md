@@ -113,25 +113,27 @@ hm-flow-kit/
 - 共约 1350 行渲染层代码
 
 **Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成** → **v2 重写 (Spec 07) ✅**
-- 592 行，34 项测试全部通过 — 含 collaboration/laneSet/eventDefinition 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
+- 592 行，37 项测试全部通过 — 含 collaboration/laneSet/eventDefinition/messageFlow 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
 - 支持命名空间前缀剥离、15+ 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
 - ⚠️ 关键实现细节：tokenValueCallback 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反），所有业务逻辑必须在 END_TAG 中处理
 - ⚠️ ignoreNameSpace: true 不会剥离 getName() 返回的前缀，需手动 lastIndexOf(':')
+- ⚠️ attributeValueCallback 遇到 `&` 会丢弃属性值 —— 用 `decodeXmlCharacterRefs()` 预处理 XML 字符串
 
 **Spec 06 — FlowViewer 组件 ✅ 已完成**
 
 **Pool/Lane — 泳池/泳道 ✅ 已完成**
 - 891 行 GraphModel 含 Pool/Lane/PoolBounds 数据类 + 15 个新方法
 - 592 行 BpmnXmlParser 含 collaboration/laneSet/participant/flowNodeRef 解析
-- 194 行 PoolLaneRenderer 含双朝向标题栏 + 逐字垂直文字 + Lane 边界过滤
+- 194 行 PoolLaneRenderer 含双朝向标题栏 + canvas rotate(-PI/2) 横排文字 + Lane 边界过滤
 - RenderConfig 新增 12 个泳道配色字段（含 laneHeaderIndent 统一缩进）
 - HitTestManager 含 POOL/LANE 命中类型，接受 RenderConfig 统一配置
 - FlowViewer fitToView 考虑泳池边界，标题栏 Z-order 正确
 - 186 行，一行接入 `FlowViewer({ model })`
-- 自动适配内容缩放（auto-fit）、点击高亮、点击空白取消高亮、PanGesture 拖拽
+- 自动适配内容缩放（auto-fit）、点击高亮、点击空白取消高亮
+- PanGesture 拖拽平移 + PinchGesture 双指缩放 + 浮动 +/- 缩放按钮（Stack 覆盖层）
 - 全屏覆盖层支持
 
-**当前总验收：113/113 自动化单元测试编译通过**
+**当前总验收：120/120 自动化单元测试编译通过**
 
 ### 自动化测试
 
@@ -139,13 +141,14 @@ hm-flow-kit/
 |------|------|
 | 框架 | @ohos/hypium (describe/it/expect) |
 | 位置 | `hmflowkit/src/ohosTest/ets/test/` |
-| 覆盖 | GraphModel(44) BpmnXmlParser(34) CanvasManager(17) HitTestManager(13) RenderConfig(5) |
+| 覆盖 | GraphModel(44) BpmnXmlParser(37) CanvasManager(17) HitTestManager(13) RenderConfig(5) |
 | 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
 | 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
 **已实现完整功能：**
-- BPMN XML 解析（含泳道）→ 渲染（含 Pool/Lane）→ 点击高亮 → 拖拽平移 → 自动缩放适配
+- BPMN XML 解析（含泳道）→ 渲染（含 Pool/Lane）→ 点击高亮 → 拖拽平移 + 双指缩放 → 自动缩放适配
 - Phase 1 样式系统：按 NodeType 分色 + Task 子类型边框色 + EdgeRenderer 读取 config
+- ✅ TODO-3.5 渲染修复：Event 文字移出圆圈显示在下方；Pool/Lane 标题改用 canvas rotate 横排；MessageFlow 虚线+空心箭头+路径中点 label 绘制；XML 字符引用预处理 + label 净化
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

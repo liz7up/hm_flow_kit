@@ -1,6 +1,28 @@
 import { GraphNode, NodeType } from '../model/GraphModel';
 import { RenderConfig, NodeShape } from './RenderConfig';
 
+// 净化 label 中的非 ASCII 字符，替换为 ASCII 对应字符，确保 canvas 可渲染
+function sanitizeLabel(text: string): string {
+  if (text.length === 0) {
+    return text;
+  }
+  let result: string = '';
+  for (let i: number = 0; i < text.length; i++) {
+    let code: number = text.charCodeAt(i);
+    if (code === 0x201C || code === 0x201D || code === 0x201E || code === 0x201F) {
+      result += '"';       // smart double quotes → "
+    } else if (code === 0x2018 || code === 0x2019 || code === 0x201A || code === 0x201B) {
+      result += "'";       // smart single quotes → '
+    } else if (code === 0x2013 || code === 0x2014) {
+      result += '-';       // en/em dash → -
+    } else if (code >= 32 && code <= 126) {
+      result += text.charAt(i);  // ASCII printable → keep
+    }
+    // else: skip (strip unrenderable chars)
+  }
+  return result;
+}
+
 export class NodeRenderer {
   public static render(
     ctx: CanvasRenderingContext2D,
@@ -135,18 +157,29 @@ export class NodeRenderer {
       }
     }
 
-    // 绘制居中文字（跳过有标记的网关和事件，避免重叠）
-    let hasMarker: boolean = (node.type === NodeType.GATEWAY &&
-      node.properties['bpmnElement'] !== undefined && node.properties['bpmnElement'].length > 0) ||
-      ((node.type === NodeType.START_EVENT || node.type === NodeType.END_EVENT) &&
-       node.properties['eventDefinition'] !== undefined && node.properties['eventDefinition'].length > 0);
-    if (!hasMarker) {
-      const text: string = node.label;
-      ctx.fillStyle = textColor;
-      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, x + w / 2, y + h / 2);
+    // 事件文字始终绘制在圆圈下方（对标 bpmn.io）
+    if (node.type === NodeType.START_EVENT || node.type === NodeType.END_EVENT) {
+      const text: string = sanitizeLabel(node.label);
+      if (text.length > 0) {
+        ctx.fillStyle = textColor;
+        ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        let r: number = Math.min(w, h) / 2;
+        ctx.fillText(text, x + w / 2, y + h / 2 + r + 4 * zoom);
+      }
+    } else {
+      // 网关有内部标记时跳过居中文字，避免重叠
+      let hasMarker: boolean = (node.type === NodeType.GATEWAY &&
+        node.properties['bpmnElement'] !== undefined && node.properties['bpmnElement'].length > 0);
+      if (!hasMarker) {
+        const text: string = sanitizeLabel(node.label);
+        ctx.fillStyle = textColor;
+        ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w / 2, y + h / 2);
+      }
     }
 
     ctx.restore();

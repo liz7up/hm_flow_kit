@@ -1,0 +1,10 @@
+/node_modules
+/oh_modules
+/build
+/.hvigor
+/.preview
+/.cxx
+/.test
+/src/ohosTest
+.gitignore
+*.log

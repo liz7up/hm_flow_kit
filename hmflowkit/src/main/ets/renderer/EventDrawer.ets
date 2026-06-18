@@ -102,59 +102,101 @@ export class EventDrawer {
   // ── 事件定义图标 ──
 
   private static drawEventIcon(
-    ctx: CanvasRenderingContext2D,
-    eventDef: string,
-    cx: number,
-    cy: number,
-    iconR: number
+    ctx: CanvasRenderingContext2D, evDef: string,
+    cx: number, cy: number, s: number
   ): void {
-    ctx.beginPath();
-    if (eventDef === 'timerEventDefinition') {
-      ctx.arc(cx, cy, iconR, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx - iconR * 0.45, cy - iconR * 0.3);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + iconR * 0.55, cy - iconR * 0.2);
-      ctx.stroke();
-    } else if (eventDef === 'messageEventDefinition') {
-      let hw: number = iconR * 1.1;
-      let hh: number = iconR * 0.7;
-      ctx.moveTo(cx - hw, cy - hh);
-      ctx.lineTo(cx + hw, cy - hh);
-      ctx.lineTo(cx + hw, cy + hh);
-      ctx.lineTo(cx - hw, cy + hh);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - hw, cy - hh);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(cx + hw, cy - hh);
-      ctx.stroke();
-    } else if (eventDef === 'errorEventDefinition') {
-      let hs: number = iconR;
-      ctx.moveTo(cx + hs * 0.15, cy - hs);
-      ctx.lineTo(cx - hs * 0.4, cy - hs * 0.1);
-      ctx.lineTo(cx - hs * 0.15, cy);
-      ctx.lineTo(cx - hs * 0.15, cy + hs);
-      ctx.lineTo(cx + hs * 0.4, cy + hs * 0.1);
-      ctx.lineTo(cx + hs * 0.15, cy);
-      ctx.closePath();
-      ctx.fill();
-    } else if (eventDef === 'signalEventDefinition') {
-      let ts: number = iconR * 1.1;
-      ctx.moveTo(cx, cy - ts);
-      ctx.lineTo(cx + ts * 0.85, cy + ts * 0.5);
-      ctx.lineTo(cx - ts * 0.85, cy + ts * 0.5);
-      ctx.closePath();
-      ctx.fill();
-    } else if (eventDef === 'terminateEventDefinition') {
-      ctx.arc(cx, cy, iconR * 0.65, 0, Math.PI * 2);
-      ctx.fill();
+    switch (evDef) {
+      case 'timerEventDefinition': {
+        // Clock face
+        ctx.beginPath(); ctx.arc(cx, cy, s * 0.8, 0, Math.PI * 2); ctx.stroke();
+        // Hands
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - s * 0.5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + s * 0.3, cy); ctx.stroke();
+        break;
+      }
+      case 'messageEventDefinition': {
+        // Envelope
+        ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
+        ctx.lineTo(cx + s, cy - s * 0.5);
+        ctx.lineTo(cx + s, cy + s * 0.5);
+        ctx.lineTo(cx - s, cy + s * 0.5);
+        ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
+        ctx.lineTo(cx, cy); ctx.lineTo(cx + s, cy - s * 0.5); ctx.stroke();
+        break;
+      }
+      case 'errorEventDefinition': {
+        // Lightning bolt
+        ctx.beginPath(); ctx.moveTo(cx + s * 0.2, cy - s * 0.7);
+        ctx.lineTo(cx - s * 0.4, cy - s * 0.1);
+        ctx.lineTo(cx + s * 0.1, cy - s * 0.1);
+        ctx.lineTo(cx - s * 0.2, cy + s * 0.7);
+        ctx.lineTo(cx + s * 0.3, cy + s * 0.1);
+        ctx.lineTo(cx - s * 0.1, cy + s * 0.1);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        break;
+      }
+      case 'signalEventDefinition': {
+        // Triangle
+        ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.7);
+        ctx.lineTo(cx - s * 0.7, cy + s * 0.7);
+        ctx.lineTo(cx + s * 0.7, cy + s * 0.7);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        break;
+      }
+      case 'terminateEventDefinition': {
+        // Filled black circle
+        ctx.beginPath(); ctx.arc(cx, cy, s * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'cancelEventDefinition': {
+        // X in circle — similar to exclusive gateway but smaller
+        ctx.beginPath(); ctx.arc(cx, cy, s * 0.7, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - s * 0.4, cy - s * 0.4);
+        ctx.lineTo(cx + s * 0.4, cy + s * 0.4);
+        ctx.moveTo(cx + s * 0.4, cy - s * 0.4);
+        ctx.lineTo(cx - s * 0.4, cy + s * 0.4); ctx.stroke();
+        break;
+      }
+      case 'compensateEventDefinition': {
+        // Rewind / double left arrows
+        ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.5);
+        ctx.lineTo(cx - s * 0.5, cy); ctx.lineTo(cx, cy + s * 0.5);
+        ctx.moveTo(cx + s * 0.3, cy - s * 0.5);
+        ctx.lineTo(cx - s * 0.2, cy); ctx.lineTo(cx + s * 0.3, cy + s * 0.5);
+        ctx.stroke();
+        break;
+      }
+      case 'escalationEventDefinition': {
+        // Up arrow
+        ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.7);
+        ctx.lineTo(cx - s * 0.5, cy); ctx.lineTo(cx - s * 0.15, cy);
+        ctx.lineTo(cx - s * 0.15, cy + s * 0.5);
+        ctx.lineTo(cx + s * 0.15, cy + s * 0.5);
+        ctx.lineTo(cx + s * 0.15, cy);
+        ctx.lineTo(cx + s * 0.5, cy);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        break;
+      }
+      case 'conditionalEventDefinition': {
+        // Rectangle with ruled lines (like a document/page)
+        ctx.beginPath(); ctx.rect(cx - s * 0.6, cy - s * 0.7, s * 1.2, s * 1.4);
+        ctx.stroke();
+        for (let i: number = 0; i < 3; i++) {
+          let ly: number = cy - s * 0.3 + i * s * 0.25;
+          ctx.beginPath(); ctx.moveTo(cx - s * 0.4, ly);
+          ctx.lineTo(cx + s * 0.4, ly); ctx.stroke();
+        }
+        break;
+      }
+      case 'linkEventDefinition': {
+        // Two connected circles (like a chain link)
+        ctx.beginPath(); ctx.arc(cx - s * 0.3, cy, s * 0.35, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + s * 0.3, cy, s * 0.35, 0, Math.PI * 2); ctx.stroke();
+        break;
+      }
+      default: break;
     }
-    // TODO: add cancel, compensate, escalation, conditional, link icons in Task 6
   }
 }

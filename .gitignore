@@ -17,6 +17,11 @@ local.properties
 .idea
 *.iml
 
+# Claude Code
+.claude/
+.mcp.json
+docs/
+
 # OS
 .DS_Store
 Thumbs.db

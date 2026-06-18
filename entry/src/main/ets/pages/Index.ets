@@ -1,5 +1,6 @@
 import { GraphModel, GraphNode, NodeType, NodeRect, Waypoint, GraphEdge, EdgeStyle, BpmnXmlParser, FlowViewer, Pool } from 'hmflowkit'
 import { LARGE_BPMN_XML, CPLX1_BPMN_XML } from './SampleData'
+import { router } from '@kit.ArkUI'
 
 // ── Pool/Lane 泳道 Demo ──
 const POOL_LANE_XML: string = `<?xml version="1.0" encoding="UTF-8"?>
@@ -190,6 +191,9 @@ struct Index {
               this.parsedModel = BpmnXmlParser.parse(CPLX1_BPMN_XML)
               this.viewId++
             })
+          Button('🍕 Pizza Demo')
+            .fontSize(11)
+            .onClick(() => { router.pushUrl({ url: 'pages/BpmnViewerPage' }) })
         }
         .justifyContent(FlexAlign.SpaceEvenly)
         .width('100%')

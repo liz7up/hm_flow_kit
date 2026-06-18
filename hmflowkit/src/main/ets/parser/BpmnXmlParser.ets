@@ -35,10 +35,24 @@ class _NodeSize {
 function defaultNodeSize(type: NodeType): _NodeSize {
   switch (type) {
     case NodeType.GATEWAY:
+    case NodeType.EVENT_BASED_GATEWAY:
+    case NodeType.COMPLEX_GATEWAY:
       return new _NodeSize(50, 50);
     case NodeType.START_EVENT:
     case NodeType.END_EVENT:
+    case NodeType.BOUNDARY_EVENT:
+    case NodeType.INTERMEDIATE_EVENT:
       return new _NodeSize(36, 36);
+    case NodeType.SUB_PROCESS:
+      return new _NodeSize(200, 120);
+    case NodeType.DATA_OBJECT:
+      return new _NodeSize(36, 50);
+    case NodeType.DATA_STORE:
+      return new _NodeSize(50, 50);
+    case NodeType.TEXT_ANNOTATION:
+      return new _NodeSize(100, 30);
+    case NodeType.CALL_ACTIVITY:
+      return new _NodeSize(120, 60);
     default:
       return new _NodeSize(120, 60);
   }
@@ -46,13 +60,35 @@ function defaultNodeSize(type: NodeType): _NodeSize {
 
 function mapNodeType(tagName: string): NodeType {
   switch (tagName) {
-    case 'startEvent': case 'intermediateThrowEvent':
-    case 'intermediateCatchEvent': case 'boundaryEvent':
+    case 'startEvent':
       return NodeType.START_EVENT;
     case 'endEvent':
       return NodeType.END_EVENT;
+    case 'boundaryEvent':
+      return NodeType.BOUNDARY_EVENT;
+    case 'intermediateThrowEvent':
+    case 'intermediateCatchEvent':
+      return NodeType.INTERMEDIATE_EVENT;
+    case 'callActivity':
+      return NodeType.CALL_ACTIVITY;
+    case 'subProcess':
+      return NodeType.SUB_PROCESS;
+    case 'transaction':
+      return NodeType.SUB_PROCESS;
+    case 'eventBasedGateway':
+      return NodeType.EVENT_BASED_GATEWAY;
+    case 'complexGateway':
+      return NodeType.COMPLEX_GATEWAY;
+    case 'dataObject':
+    case 'dataObjectReference':
+      return NodeType.DATA_OBJECT;
+    case 'dataStore':
+    case 'dataStoreReference':
+      return NodeType.DATA_STORE;
+    case 'textAnnotation':
+      return NodeType.TEXT_ANNOTATION;
     case 'exclusiveGateway': case 'parallelGateway':
-    case 'inclusiveGateway': case 'eventBasedGateway':
+    case 'inclusiveGateway':
       return NodeType.GATEWAY;
     default:
       return NodeType.TASK;
@@ -65,12 +101,16 @@ function isProcessElement(tagName: string): boolean {
     case 'userTask': case 'serviceTask': case 'manualTask':
     case 'sendTask': case 'receiveTask': case 'scriptTask':
     case 'businessRuleTask': case 'task':
-    case 'callActivity': case 'subProcess':
+    case 'callActivity': case 'subProcess': case 'transaction':
     case 'intermediateThrowEvent': case 'intermediateCatchEvent':
     case 'boundaryEvent':
     case 'exclusiveGateway': case 'parallelGateway':
     case 'inclusiveGateway': case 'eventBasedGateway':
-    case 'sequenceFlow':
+    case 'complexGateway':
+    case 'sequenceFlow': case 'association':
+    case 'dataInputAssociation': case 'dataOutputAssociation':
+    case 'dataObjectReference': case 'dataStoreReference':
+    case 'textAnnotation':
       return true;
     default:
       return false;

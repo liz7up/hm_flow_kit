@@ -121,7 +121,8 @@ export default function bpmnXmlParserTest(): void {
         '</definitions>';
       model = BpmnXmlParser.parse(xml);
       expect(model.getNodeCount()).assertEqual(4);
-      expect(countByType(model, NodeType.GATEWAY)).assertEqual(4);
+      expect(countByType(model, NodeType.GATEWAY)).assertEqual(3);
+      expect(countByType(model, NodeType.EVENT_BASED_GATEWAY)).assertEqual(1);
     });
 
     it('parse_event_types', 0, () => {
@@ -136,8 +137,10 @@ export default function bpmnXmlParserTest(): void {
           '</process>' +
         '</definitions>';
       model = BpmnXmlParser.parse(xml);
-      expect(countByType(model, NodeType.START_EVENT)).assertEqual(4);
+      expect(countByType(model, NodeType.START_EVENT)).assertEqual(1);
       expect(countByType(model, NodeType.END_EVENT)).assertEqual(1);
+      expect(countByType(model, NodeType.INTERMEDIATE_EVENT)).assertEqual(2);
+      expect(countByType(model, NodeType.BOUNDARY_EVENT)).assertEqual(1);
     });
 
     it('parse_namespace_prefixed_elements', 0, () => {
@@ -802,7 +805,7 @@ export default function bpmnXmlParserTest(): void {
       // label 不应为空
       expect(n !== null && n.label.length > 0).assertEqual(true);
       // node type 应正确映射
-      expect(n !== null ? n.type : NodeType.TASK).assertEqual(NodeType.START_EVENT);
+      expect(n !== null ? n.type : NodeType.TASK).assertEqual(NodeType.INTERMEDIATE_EVENT);
     });
   });
 }

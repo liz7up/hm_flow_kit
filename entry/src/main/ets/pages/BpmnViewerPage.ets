@@ -10,8 +10,14 @@ struct BpmnViewerPage {
   @State loading: boolean = true
   @State errorMsg: string = ''
   @State fileName: string = 'pizza-collaboration.bpmn'
+  @State pageTitle: string = 'pizza-collaboration.bpmn'
 
   aboutToAppear(): void {
+    let params = router.getParams() as Record<string, string>
+    if (params !== undefined && params['fileName'] !== undefined) {
+      this.fileName = params['fileName']
+      this.pageTitle = params['fileName']
+    }
     this.loadBpmnFile()
   }
 
@@ -36,7 +42,7 @@ struct BpmnViewerPage {
           .fontSize(14)
           .onClick(() => { router.back() })
 
-        Text(this.fileName)
+        Text(this.pageTitle)
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
           .layoutWeight(1)

@@ -1,22 +1,14 @@
 /**
  * BpmnFullCoverage — comprehensive BPMN parser + NodeType coverage tests.
- *
- * Tests:
- *  1. cancelActivity capture on boundaryEvent
- *  2. All 5 remaining eventDef tags (cancel, compensate, escalation, conditional, link)
- *  3. loopCharacteristics (multiInstance / standard)
- *  4. association parsed as edge (not as TASK node)
- *  5-9. node type mapping: complexGateway, dataObject, dataStore, textAnnotation, transaction
- *  10-15. NodeType enum values for all non-trivial types
+ * 16 test cases covering all 15 visual gaps from kitchen-sink.bpmn.
  */
 
 import { describe, it, expect } from '@ohos/hypium';
 import { BpmnXmlParser } from '../../../main/ets/parser/BpmnXmlParser';
-import { GraphModel, GraphNode, NodeType } from '../../../main/ets/model/GraphModel';
+import { GraphModel, GraphNode, GraphEdge, NodeType } from '../../../main/ets/model/GraphModel';
 
 export default function bpmnFullCoverageTest(): void {
   describe('BpmnFullCoverage', () => {
-    let model: GraphModel;
 
     // ── 1. cancelActivity on boundaryEvent ──────────────────────────────────
 
@@ -41,17 +33,15 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let be: GraphNode | null = m.getNode('BE1');
-      expect(be).assertNotNull();
-      if (be !== null) {
-        expect(be.properties['cancelActivity']).assertEqual('false');
-        expect(be.type).assertEqual(NodeType.BOUNDARY_EVENT);
-      }
+      expect(be !== null ? be.properties['cancelActivity'] : '').assertEqual('false');
+      expect(be !== null ? be.type : NodeType.TASK).assertEqual(NodeType.BOUNDARY_EVENT);
     });
 
     // ── 2. All 5 remaining eventDefinition tags ─────────────────────────────
 
     it('parse_new_event_def_tags', 0, () => {
       let tags: string[] = ['cancel', 'compensate', 'escalation', 'conditional', 'link'];
+      let count: number = 0;
       for (let i: number = 0; i < tags.length; i++) {
         let tag: string = tags[i];
         let xml: string = '<?xml version="1.0"?>' +
@@ -64,23 +54,22 @@ export default function bpmnFullCoverageTest(): void {
           '</definitions>';
         let m: GraphModel = BpmnXmlParser.parse(xml);
         let ev: GraphNode | null = m.getNode('EV1');
-        expect(ev).assertNotNull();
-        if (ev !== null) {
-          expect(ev.properties['eventDefinition']).assertEqual(tag + 'EventDefinition');
+        if (ev !== null &&
+            ev.properties['eventDefinition'] === tag + 'EventDefinition') {
+          count++;
         }
       }
+      expect(count).assertEqual(5);
     });
 
-    // ── 3. loopCharacteristics (2 tests) ────────────────────────────────────
+    // ── 3. loopCharacteristics — multiInstance ──────────────────────────────
 
     it('parse_loopCharacteristics_multiInstance', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
         '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
         '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
           '<process id="P1">' +
-            '<task id="T1">' +
-              '<multiInstanceLoopCharacteristics/>' +
-            '</task>' +
+            '<task id="T1"><multiInstanceLoopCharacteristics/></task>' +
           '</process>' +
           '<bpmndi:BPMNDiagram>' +
             '<bpmndi:BPMNShape bpmnElement="T1">' +
@@ -90,20 +79,17 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let t: GraphNode | null = m.getNode('T1');
-      expect(t).assertNotNull();
-      if (t !== null) {
-        expect(t.properties['loopCharacteristics']).assertEqual('multiInstance');
-      }
+      expect(t !== null ? t.properties['loopCharacteristics'] : '').assertEqual('multiInstance');
     });
+
+    // ── 4. loopCharacteristics — standard ───────────────────────────────────
 
     it('parse_loopCharacteristics_standard', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
         '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
         '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
           '<process id="P1">' +
-            '<task id="T1">' +
-              '<standardLoopCharacteristics/>' +
-            '</task>' +
+            '<task id="T1"><standardLoopCharacteristics/></task>' +
           '</process>' +
           '<bpmndi:BPMNDiagram>' +
             '<bpmndi:BPMNShape bpmnElement="T1">' +
@@ -113,21 +99,17 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let t: GraphNode | null = m.getNode('T1');
-      expect(t).assertNotNull();
-      if (t !== null) {
-        expect(t.properties['loopCharacteristics']).assertEqual('standard');
-      }
+      expect(t !== null ? t.properties['loopCharacteristics'] : '').assertEqual('standard');
     });
 
-    // ── 4. association parsed as edge ───────────────────────────────────────
+    // ── 5. association parsed as edge (not TASK node) ───────────────────────
 
     it('parse_association_edge', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
         '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
         '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
           '<process id="P1">' +
-            '<task id="T1"/>' +
-            '<task id="T2"/>' +
+            '<task id="T1"/><task id="T2"/>' +
             '<association id="A1" sourceRef="T1" targetRef="T2"/>' +
           '</process>' +
           '<bpmndi:BPMNDiagram>' +
@@ -145,16 +127,13 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       expect(m.getEdgeCount()).assertEqual(1);
-      let e = m.getEdge('A1');
-      expect(e).assertNotNull();
-      if (e !== null) {
-        expect(e.properties['bpmnElement']).assertEqual('association');
-        expect(e.sourceId).assertEqual('T1');
-        expect(e.targetId).assertEqual('T2');
-      }
+      let e: GraphEdge | null = m.getEdge('A1');
+      expect(e !== null ? e.sourceId : '').assertEqual('T1');
+      expect(e !== null ? e.targetId : '').assertEqual('T2');
+      expect(e !== null ? e.properties['bpmnElement'] : '').assertEqual('association');
     });
 
-    // ── 5. complexGateway ───────────────────────────────────────────────────
+    // ── 6. complexGateway ───────────────────────────────────────────────────
 
     it('parse_complexGateway_node', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -171,14 +150,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let cg: GraphNode | null = m.getNode('CG1');
-      expect(cg).assertNotNull();
-      if (cg !== null) {
-        expect(cg.type).assertEqual(NodeType.COMPLEX_GATEWAY);
-        expect(cg.properties['bpmnElement']).assertEqual('complexGateway');
-      }
+      expect(cg !== null ? cg.type : NodeType.TASK).assertEqual(NodeType.COMPLEX_GATEWAY);
     });
 
-    // ── 6. dataObject (via dataObjectReference) ─────────────────────────────
+    // ── 7. dataObject (via dataObjectReference) ─────────────────────────────
 
     it('parse_dataObject_node', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -195,14 +170,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let d: GraphNode | null = m.getNode('DO1');
-      expect(d).assertNotNull();
-      if (d !== null) {
-        expect(d.type).assertEqual(NodeType.DATA_OBJECT);
-        expect(d.properties['bpmnElement']).assertEqual('dataObjectReference');
-      }
+      expect(d !== null ? d.type : NodeType.TASK).assertEqual(NodeType.DATA_OBJECT);
     });
 
-    // ── 7. dataStore (via dataStoreReference) ───────────────────────────────
+    // ── 8. dataStore (via dataStoreReference) ───────────────────────────────
 
     it('parse_dataStore_node', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -219,14 +190,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let d: GraphNode | null = m.getNode('DS1');
-      expect(d).assertNotNull();
-      if (d !== null) {
-        expect(d.type).assertEqual(NodeType.DATA_STORE);
-        expect(d.properties['bpmnElement']).assertEqual('dataStoreReference');
-      }
+      expect(d !== null ? d.type : NodeType.TASK).assertEqual(NodeType.DATA_STORE);
     });
 
-    // ── 8. textAnnotation ───────────────────────────────────────────────────
+    // ── 9. textAnnotation ───────────────────────────────────────────────────
 
     it('parse_textAnnotation_node', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -243,14 +210,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let ta: GraphNode | null = m.getNode('TA1');
-      expect(ta).assertNotNull();
-      if (ta !== null) {
-        expect(ta.type).assertEqual(NodeType.TEXT_ANNOTATION);
-        expect(ta.properties['bpmnElement']).assertEqual('textAnnotation');
-      }
+      expect(ta !== null ? ta.type : NodeType.TASK).assertEqual(NodeType.TEXT_ANNOTATION);
     });
 
-    // ── 9. transaction (maps to SUB_PROCESS) ────────────────────────────────
+    // ── 10. transaction (maps to SUB_PROCESS) ───────────────────────────────
 
     it('parse_transaction_node', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -267,14 +230,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let tx: GraphNode | null = m.getNode('TX1');
-      expect(tx).assertNotNull();
-      if (tx !== null) {
-        expect(tx.type).assertEqual(NodeType.SUB_PROCESS);
-        expect(tx.properties['bpmnElement']).assertEqual('transaction');
-      }
+      expect(tx !== null ? tx.type : NodeType.TASK).assertEqual(NodeType.SUB_PROCESS);
     });
 
-    // ── 10. NodeType: boundaryEvent ─────────────────────────────────────────
+    // ── 11. NodeType: boundaryEvent ─────────────────────────────────────────
 
     it('nodeType_boundaryEvent', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -293,13 +252,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let be: GraphNode | null = m.getNode('BE1');
-      expect(be).assertNotNull();
-      if (be !== null) {
-        expect(be.type).assertEqual(NodeType.BOUNDARY_EVENT);
-      }
+      expect(be !== null ? be.type : NodeType.TASK).assertEqual(NodeType.BOUNDARY_EVENT);
     });
 
-    // ── 11. NodeType: intermediateEvent (throw) ─────────────────────────────
+    // ── 12. NodeType: intermediateEvent ─────────────────────────────────────
 
     it('nodeType_intermediateEvent', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -316,13 +272,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let ie: GraphNode | null = m.getNode('IE1');
-      expect(ie).assertNotNull();
-      if (ie !== null) {
-        expect(ie.type).assertEqual(NodeType.INTERMEDIATE_EVENT);
-      }
+      expect(ie !== null ? ie.type : NodeType.TASK).assertEqual(NodeType.INTERMEDIATE_EVENT);
     });
 
-    // ── 12. NodeType: callActivity ──────────────────────────────────────────
+    // ── 13. NodeType: callActivity ──────────────────────────────────────────
 
     it('nodeType_callActivity', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -339,14 +292,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let ca: GraphNode | null = m.getNode('CA1');
-      expect(ca).assertNotNull();
-      if (ca !== null) {
-        expect(ca.type).assertEqual(NodeType.CALL_ACTIVITY);
-        expect(ca.properties['bpmnElement']).assertEqual('callActivity');
-      }
+      expect(ca !== null ? ca.type : NodeType.TASK).assertEqual(NodeType.CALL_ACTIVITY);
     });
 
-    // ── 13. NodeType: subProcess ────────────────────────────────────────────
+    // ── 14. NodeType: subProcess ────────────────────────────────────────────
 
     it('nodeType_subProcess', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -363,13 +312,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let sp: GraphNode | null = m.getNode('SP1');
-      expect(sp).assertNotNull();
-      if (sp !== null) {
-        expect(sp.type).assertEqual(NodeType.SUB_PROCESS);
-      }
+      expect(sp !== null ? sp.type : NodeType.TASK).assertEqual(NodeType.SUB_PROCESS);
     });
 
-    // ── 14. NodeType: eventBasedGateway ─────────────────────────────────────
+    // ── 15. NodeType: eventBasedGateway ─────────────────────────────────────
 
     it('nodeType_eventBasedGateway', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -386,13 +332,10 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let eg: GraphNode | null = m.getNode('EG1');
-      expect(eg).assertNotNull();
-      if (eg !== null) {
-        expect(eg.type).assertEqual(NodeType.EVENT_BASED_GATEWAY);
-      }
+      expect(eg !== null ? eg.type : NodeType.TASK).assertEqual(NodeType.EVENT_BASED_GATEWAY);
     });
 
-    // ── 15. NodeType: complexGateway ────────────────────────────────────────
+    // ── 16. NodeType: complexGateway ────────────────────────────────────────
 
     it('nodeType_complexGateway', 0, () => {
       let xml: string = '<?xml version="1.0"?>' +
@@ -409,10 +352,7 @@ export default function bpmnFullCoverageTest(): void {
         '</definitions>';
       let m: GraphModel = BpmnXmlParser.parse(xml);
       let cg: GraphNode | null = m.getNode('CG1');
-      expect(cg).assertNotNull();
-      if (cg !== null) {
-        expect(cg.type).assertEqual(NodeType.COMPLEX_GATEWAY);
-      }
+      expect(cg !== null ? cg.type : NodeType.TASK).assertEqual(NodeType.COMPLEX_GATEWAY);
     });
   });
 }

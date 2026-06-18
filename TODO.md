@@ -1,20 +1,42 @@
 # hm-flow-kit — 项目覆盖场景与不足待办清单
 
-> 创建日期：2025-07-17
+> 最后更新：2026-06-18
 > 基于：对项目代码、spec 文档、README 声明和已实现功能的全面巡视
 
 ---
 
 ## 一、当前实现状态总览
 
-### ✅ 已完成（4 个 Spec，120 项测试全部通过）
+### ✅ 已完成
 
-| Spec | 模块 | 规模 | 状态 |
+| Spec / Phase | 模块 | 规模 | 状态 |
 |------|------|------|------|
-| Spec 01 | GraphModel（图数据模型） | 268 行，7 项测试 | ✅ 完成 |
-| Spec 02 | Canvas 渲染层（NodeRenderer / EdgeRenderer / GridRenderer / CanvasManager / HitTestManager） | ~1350 行，14 项测试 | ✅ 完成 |
-| Spec 03 | BpmnXmlParser（BPMN 2.0 XML 解析器） | 507 行，12 项测试 | ✅ 完成 |
-| Spec 06 | FlowViewer 组件 | 186 行 | ✅ 完成 |
+| Spec 01 | GraphModel（图数据模型） | 890 行，44 项测试 | ✅ 完成 |
+| Spec 02 | Canvas 渲染层 | ~3500 行总计 | ✅ 完成 |
+|   | — NodeRenderer | 296 行 | ✅ |
+|   | — EdgeRenderer | 226 行 | ✅ |
+|   | — PoolLaneRenderer | 180 行 | ✅ |
+|   | — CanvasManager | 350 行 | ✅ |
+|   | — HitTestManager | 492 行 | ✅ |
+|   | — RenderConfig | 91 行 | ✅ |
+|   | — GridRenderer | 参考 CLAUDE.md | ✅ |
+| Spec 03/v2 | BpmnXmlParser（BPMN 2.0 XML 解析器） | 662 行，39 项测试 | ✅ 完成 |
+| Spec 06 | FlowViewer 组件 | 315 行 | ✅ 完成 |
+| P1-1 | Pool/Lane 泳池泳道 | 数据模型 + 解析 + 渲染 + HitTest | ✅ 完成 |
+| Phase 1 | 按类型分色样式系统 | RenderConfig 12+7 字段，NodeRenderer/EdgeRenderer 去硬编码 | ✅ 完成 |
+| Phase 2 | 自动化单元测试 | 118 项测试，test_all.sh 编译验证 | ✅ 完成 |
+| Phase 2 | Parser 错误恢复 + 类型默认尺寸 | parseBestEffort() / defaultNodeSize() | ✅ 完成 |
+| TODO-3.5 | 渲染修复 | 见下方 3.5 详情 | ✅ 完成 |
+|   | Gateway 内部标记（X / + / ○ / 五边形） | NodeRenderer 绘制 | ✅ |
+|   | EventDefinition 图标（5 种） | 时钟/信封/闪电/三角/实心圆 | ✅ |
+|   | Event 文字移出圆圈 | label 渲染在圆圈下方 | ✅ |
+|   | Pool/Lane 标题横排 | canvas rotate(-PI/2) 连续横排 | ✅ |
+|   | MessageFlow 解析 + 渲染 | 虚线 + 空心箭头 + 路径中点 label | ✅ |
+|   | XML 字符引用预处理 | decodeXmlCharacterRefs() + label 净化 | ✅ |
+|   | Pinch 双指缩放 + 浮动 +/- 按钮 | GestureGroup + Stack 覆盖层 | ✅ |
+|   | FlowViewer fitToView 考虑泳池边界 | 自动适配内容缩放 | ✅ |
+
+**当前总验收：118 项自动化单元测试编译通过**
 
 ### ⏳ 已推迟
 
@@ -28,82 +50,68 @@
 
 ## 二、声明 vs 实际的 Gap
 
-### 2.1 README 不实声明
+### 2.1 README 声明
 
-**问题：README.md 第 23 行**
+**当前 README 声明已更新**，移除了审批自动着色、泳道等之前不实的声明。以下元素通过 fallback 映射支持：
 
-> "✅ Supported: StartEvent, EndEvent, Task, UserTask, ServiceTask, ScriptTask, ManualTask, BusinessRuleTask, SendTask, ReceiveTask, **CallActivity**, **SubProcess**, ExclusiveGateway, ParallelGateway, InclusiveGateway, SequenceFlow"
-
-**事实：**
-
-- `CallActivity` → BpmnXmlParser 中 **未注册**。代码第 53-58 行只有 6 种 typeMapping：`userTask/scriptTask/serviceTask/sendTask/receiveTask/manualTask` + 默认 fallback `task`。没有 `callActivity`。
-- `SubProcess` → BpmnXmlParser 中 **未注册**。当前解析器只处理顶层的 `process/task/startEvent/endEvent/*Gateway/sequenceFlow`，没有任何子流程（nested subProcess）解析逻辑。
-- `BusinessRuleTask` → README 声称支持，但 typeMapping 中没有。fallback 到普通 `task` 可渲染但丢失了类型差异。
+- `businessRuleTask` → 映射到 `NodeType.TASK`，可正常渲染，但无子类型边框色（`taskSubtypeStroke` 中未注册）
+- `callActivity` → 映射到 `NodeType.TASK`，使用通用 Task 渲染
+- `subProcess` → 映射到 `NodeType.TASK`，使用通用 Task 渲染（无嵌套子流程展开）
+- `eventBasedGateway` → 映射到 `NodeType.GATEWAY`，使用通用菱形渲染（无内部五边形标记映射）
 
 ### 2.2 BPMN 2.0 覆盖缺口
 
-**A. 泳道 / Lane / Pool（覆盖场景：跨部门流程、组织架构图）**
+**A. 泳道 / Lane / Pool** ✅ 已完成
+
+**B. BoundaryEvent attachToRef 逻辑**
 
 - 严重性：高
-- 当前状态：完全未实现
-- GraphModel 没有 Lane/Pool 数据结构
-- BpmnXmlParser 不解析 `laneSet`、`lane`、`participant`、`collaboration` 标签
-- 渲染层无泳道绘制逻辑
-- 用户痛点：这是企业 BPMN 图最常用的特性之一，无泳道意味着无法表示"谁做什么"
+- 当前状态：解析器支持 `boundaryEvent` 标签映射到 NodeType，但无 `attachedToRef` 属性解析
+- 渲染层无边界事件附着逻辑（应绘制在宿主 Activity 边缘）
+- 用户痛点：超时自动取消、错误回退等常见流程模式无法正确表达
 
-**B. BoundaryEvent（覆盖场景：超时、错误、补偿、信号等边界事件）**
+**C. IntermediateThrowEvent / IntermediateCatchEvent**
 
-- 严重性：高
-- 当前状态：完全未实现
-- typeMapping 中无 `boundaryEvent`
-- 无 attachToRef 解析逻辑
-- 渲染层无边界事件绘制（通常附着在 Activity 边缘）
-- 用户痛点：超时自动取消、错误回退等常见流程模式无法表达
+- 严重性：中
+- 当前状态：解析器已支持标签映射，EventDefinition 图标（timer/message/error/signal/terminate）已渲染
+- 剩余缺口：ConditionalEventDefinition / EscalationEventDefinition / CompensationEventDefinition / LinkEventDefinition 图标未实现
 
-**C. IntermediateThrowEvent / IntermediateCatchEvent（覆盖场景：消息、定时器、信号中间事件）**
+**D. 连线类型**
 
-- 严重性：中高
-- 当前状态：完全未实现
-- 用户痛点：无法表示"等待消息""发送通知"等中间事件节点
-
-**D. 连线类型单一**
-
-- 当前：仅支持 `SequenceFlow`（实线箭头）
+- ✅ `SequenceFlow`（实线箭头）
+- ✅ `MessageFlow`（虚线 + 空心箭头）
 - 缺失：
-  - `MessageFlow`（消息流，虚线 + 空心箭头）— 常见于泳道间通信
   - `Association`（关联，虚线）— 用于注释/数据关联
   - `ConditionalFlow` / `DefaultFlow` — 条件流 / 默认流（视觉标记差异）
   - `DataAssociation` / `DataInputAssociation` / `DataOutputAssociation`
 
-**E. BPMNDiagram / Collaboration / Choreography**
+**E. BPMNDiagram / Choreography**
 
-- 当前只解析单一 `process` 元素
-- 不解析顶层的 `BPMNDiagram` 包装
-- 不解析 `Collaboration`（多参与者）
-- 不解析 `Choreography`
+- ✅ `Collaboration`（多参与者）已支持
+- 缺失：
+  - 顶层 `BPMNDiagram` 包装解析
+  - `Choreography` 完全不支持
+  - `Conversation` 完全不支持
 
-**F. DataObject / DataStore / DataInput / DataOutput（覆盖场景：数据驱动流程图）**
+**F. DataObject / DataStore / DataInput / DataOutput**
 
 - 严重性：中
-- 当前状态：完全未实现
+- 当前状态：有意丢弃（非核心视觉元素）
 - 用户痛点：数据流向可视化是 BPMN 的重要子集
 
-**G. TextAnnotation / Group（覆盖场景：流程注释、分组标记）**
+**G. TextAnnotation / Group**
 
 - 严重性：低
-- 当前状态：完全未实现
+- 当前状态：有意丢弃
 
-**H. 事件定义（EventDefinition）**
+**H. 事件定义（EventDefinition）** ✅ 基本完成
 
-- 当前：所有 Event 渲染为通用空心/实心圆
-- 缺失：
-  - TimerEventDefinition（时钟图标）
-  - MessageEventDefinition（信封图标）
-  - ErrorEventDefinition（闪电图标）
-  - SignalEventDefinition（三角图标）
-  - EscalationEventDefinition（上箭头图标）
-  - ConditionalEventDefinition
-  - CompensationEventDefinition
+- ✅ TimerEventDefinition（时钟图标）
+- ✅ MessageEventDefinition（信封图标）
+- ✅ ErrorEventDefinition（闪电图标）
+- ✅ SignalEventDefinition（三角图标）
+- ✅ TerminateEventDefinition（实心圆图标）
+- 缺失：ConditionalEventDefinition / EscalationEventDefinition / CompensationEventDefinition / LinkEventDefinition / CancelEventDefinition
 
 ---
 
@@ -111,62 +119,24 @@
 
 ### 3.1 RenderConfig + NodeRenderer 硬编码清理 ✅ 已修复 (2026-06-17)
 
-**修复内容：**
-- RenderConfig 新增 12 个按 NodeType 分色字段 + `taskSubtypeStroke` 子类型边框色映射
-- NodeRenderer 7 处硬编码替换为 config 读取
-- EdgeRenderer 新增 `config: RenderConfig` 参数，5 处硬编码替换
-- BpmnXmlParser 存储原始标签名到 `properties['bpmnElement']`
-- 颜色方案不与高亮蓝色冲突（Task 默认白底+灰边框）
-
 ### 3.2 FlowViewer 的 highlightNodeId 可能被错误清理 ✅ 已修复 (2026-06-17)
-
-**修复内容：**
-- `highlightNodeId` 添加 `@Watch('onHighlightChange')`，prop 变化时自动调用 `renderAll()`
-- `renderAll()` 合并外部 prop 与内部 `_highlightId`，外部优先
-- 已合并到 master (`dc55a72`, `4074651`)
 
 ### 3.3 BpmnXmlParser 无错误恢复能力 ✅ 已修复 (2026-06-17)
 
-**修复内容：**
-- 新增 `ParseResult { model, warnings, isPartial }` 公开类型
-- 新增 `parseBestEffort()` 宽松解析模式，遇错返回部分结果 + 警告
-- `parse()` 保持向后兼容，委托到 `_doParse()`
-- 6 项新测试（默认尺寸 + best-effort）
-- 已合并到 master (`8bcb965`, `df2ea2a`, `08cf82e`)
-
 ### 3.4 hardcoded 节点尺寸 ✅ 已修复 (2026-06-17)
 
-**修复内容：**
-- `defaultNodeSize(NodeType)` 按类型返回默认尺寸：Task 120x60, Gateway 50x50, Event 36x36
-- `_Collector.build()` 从硬编码改为调用 `defaultNodeSize()`
-- 已合并到 master（同上 commit）
+### 3.5 与 bpmn.io 对比发现的渲染问题 ✅ 已修复 (2026-06-18)
 
-### 3.5 与 bpmn.io 对比发现的渲染问题 (2026-06-18)
+全部子项已修复：
+1. Gateway 内部标记 + EventDefinition 图标
+2. Event 文字移出圆圈显示在下方
+3. Pool/Lane 标题横排（canvas rotate）
+4. MessageFlow 虚线 + 空心箭头 + label
+5. XML 字符引用预处理 + label 净化
+6. Pinch 双指缩放 + 浮动 +/- 按钮
 
-**问题 1：Event/Task/Gateway 类型视觉区分不够丰富** ✅ 已修复 (`4f3a8d7`)
-- Gateway 内部标记（X / + / ○ / 五边形套圆）+ EventDefinition 图标（时钟/信封/闪电等）已实现
+### 3.6 PC 滚轮缩放
 
-**问题 2：Event 文字位置错误**
-- 现状：Event 的 name/label 显示在圆圈内部
-- 期望：应与 bpmn.io 一致，文字显示在圆圈下方
-- ✅ 已修复 — 事件文字始终渲染在圆圈下方（含 eventDefinition 图标的事件也显示 label）
-
-**问题 3：Pool/Lane 标题栏文字方向错误**
-- 现状：文字垂直于泳道方向（竖排），字间距大，字号偏小
-- 期望：文字应与泳道平行（横排），便于阅读
-- ✅ 已修复 — fillVerticalText 替换为 canvas rotate(-PI/2)，文字连续横排渲染
-
-**问题 4：跨 Pool/Lane 的 MessageFlow 连线未渲染**
-- 现状：BPMN XML 中跨越不同 Pool/Lane 的 messageFlow 连线完全不显示
-- 期望：应显示为虚线与空心箭头，表示跨泳池/泳道的消息传递
-- 影响：pizza-collaboration.bpmn 等含多参与者协作的流程图中，Pool 之间的消息流全部丢失
-- ✅ 已修复 — 解析器支持 collaboration/messageFlow 解析；EdgeRenderer 支持虚线 + 空心箭头渲染；RenderConfig 新增 messageFlowDashPattern
-
-### 3.6 缩放功能（触屏 Pinch + PC 滚轮）
-
-**已完成部分：** Pinch 双指缩放 + 浮动 +/- 按钮
-
-**待实现（滚轮缩放）：**
 - 现状：PC 端无滚轮缩放、无键盘快捷键缩放
 - 期望：`Ctrl+滚轮` 或纯滚轮缩放画布（对标 bpmn.io、LogicFlow）
 - 阻塞：HarmonyOS PC 端 ArkUI 的 `onMouse`/`onWheel` 事件 API 不稳定，建议等平台 API 成熟后再补
@@ -192,7 +162,7 @@
 
 ### 4.3 测试基础设施薄弱
 
-- 当前测试：纯手写单元测试（31 项）
+- 当前测试：118 项纯手写单元测试
 - 缺失：
   - 视觉回归测试（截图对比，确保渲染结果稳定）
   - 集成测试（BPMN XML → 解析 → 渲染 → HitTest 端到端）
@@ -242,7 +212,7 @@ throw new BpmnParseError(
 );
 ```
 
-### 5.3 无 example 代码更新 ✅ 已修复 (2026-06-17)
+### 5.3 Example 代码 ✅ 已修复 (2026-06-17)
 
 - `examples/hello-graph/MainPage.ets` — 代码构建 GraphModel + FlowViewer 渲染
 - `examples/bpmn-viewer/MainPage.ets` — BPMN XML 解析 + 渲染
@@ -259,12 +229,10 @@ throw new BpmnParseError(
 
 ### 6.1 NodeRenderer 可扩展性不足
 
-**当前：** `NodeRenderer.render()` 中用一个大的 `switch (node.type)` 处理所有节点类型的绘制逻辑。每增加一种节点类型就需要修改这个 switch。
+**当前：** `NodeRenderer.render()` 中通过 `node.type` 分发到不同绘制逻辑。每增加一种节点类型就需要修改 switch / if-else 分支。
 
 **建议：** 策略模式 / 注册表模式：
-
 ```typescript
-// 建议架构
 interface INodeDrawer { draw(ctx, node, config): void }
 const nodeDrawers = new Map<NodeType, INodeDrawer>()
 nodeDrawers.set('task', new TaskDrawer())
@@ -286,14 +254,12 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 ### 6.4 无主题系统
 
-- 所有颜色/样式硬编码在 RenderConfig 中
-- 用户无法一键切换深色模式或品牌色
+- 所有颜色/样式集中在 RenderConfig 中，但用户无法一键切换深色模式或品牌色
 - 对标 bpmn.js 的 theming 能力有差距
 
 ### 6.5 文件规模
 
-- NodeRenderer.ets 随节点类型线性增长，未来会成为单片巨石
-- 建议拆分为 `renderers/TaskRenderer.ets`、`renderers/GatewayRenderer.ets`、`renderers/EventRenderer.ets` 等
+- NodeRenderer.ets（296 行）随节点类型线性增长，建议按类型拆分为 `renderers/TaskRenderer.ets`、`renderers/GatewayRenderer.ets`、`renderers/EventRenderer.ets` 等
 
 ---
 
@@ -309,64 +275,57 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 | ManualTask | ✅ | ✅ | ❌ | |
 | SendTask | ✅ | ✅ | ❌ | |
 | ReceiveTask | ✅ | ✅ | ❌ | |
-| BusinessRuleTask | ⚠️ | ✅(fallback) | ❌ | 无类型映射，fallback 为普通 Task |
-| CallActivity | ❌ | ❌ | ❌ | README 声称支持 |
-| SubProcess | ❌ | ❌ | ❌ | README 声称支持 |
+| BusinessRuleTask | ✅ | ✅(Task) | ❌ | 映射为通用 Task，无专属子类型色 |
+| CallActivity | ✅ | ✅(Task) | ❌ | 映射为通用 Task |
+| SubProcess | ✅ | ✅(Task) | ❌ | 映射为通用 Task，无嵌套展开 |
 | AdHocSubProcess | ❌ | ❌ | ❌ | |
 | Transaction | ❌ | ❌ | ❌ | |
-| CallableElement | ❌ | ❌ | ❌ | |
 | **Events** |||||
-| StartEvent (None) | ✅ | ✅ | ❌ | 仅空心圆 |
-| EndEvent (None) | ✅ | ✅ | ❌ | 仅实心圆 |
-| StartEvent (Timer) | ❌ | ❌ | ❌ | |
-| StartEvent (Message) | ❌ | ❌ | ❌ | |
-| StartEvent (Signal) | ❌ | ❌ | ❌ | |
-| StartEvent (Error) | ❌ | ❌ | ❌ | |
-| StartEvent (Conditional) | ❌ | ❌ | ❌ | |
-| EndEvent (Error) | ❌ | ❌ | ❌ | |
-| EndEvent (Message) | ❌ | ❌ | ❌ | |
-| EndEvent (Signal) | ❌ | ❌ | ❌ | |
-| EndEvent (Terminate) | ❌ | ❌ | ❌ | |
+| StartEvent (None) | ✅ | ✅ | ❌ | 空心圆 |
+| EndEvent (None) | ✅ | ✅ | ❌ | 实心圆 |
+| StartEvent (Timer) | ✅ | ✅ | ❌ | 含时钟图标 |
+| StartEvent (Message) | ✅ | ✅ | ❌ | 含信封图标 |
+| StartEvent (Signal) | ✅ | ✅ | ❌ | 含三角图标 |
+| StartEvent (Error) | ✅ | ✅ | ❌ | 含闪电图标 |
+| EndEvent (Error) | ✅ | ✅ | ❌ | 含闪电图标 |
+| EndEvent (Message) | ✅ | ✅ | ❌ | 含信封图标 |
+| EndEvent (Signal) | ✅ | ✅ | ❌ | 含三角图标 |
+| EndEvent (Terminate) | ✅ | ✅ | ❌ | 含实心圆图标 |
 | EndEvent (Escalation) | ❌ | ❌ | ❌ | |
 | EndEvent (Compensation) | ❌ | ❌ | ❌ | |
-| IntermediateThrowEvent | ❌ | ❌ | ❌ | |
-| IntermediateCatchEvent | ❌ | ❌ | ❌ | |
-| BoundaryEvent | ❌ | ❌ | ❌ | 高优先级缺失 |
+| IntermediateThrowEvent | ✅ | ✅ | ❌ | 含 EventDefinition 图标 |
+| IntermediateCatchEvent | ✅ | ✅ | ❌ | 含 EventDefinition 图标 |
+| BoundaryEvent | ⚠️ | ⚠️ | ❌ | 解析标签但不处理 attachedToRef |
 | **Gateways** |||||
-| ExclusiveGateway | ✅ | ✅ | ❌ | 菱形 + X |
-| ParallelGateway | ✅ | ✅ | ❌ | 菱形 + + |
-| InclusiveGateway | ✅ | ✅ | ❌ | 菱形 + O |
+| ExclusiveGateway | ✅ | ✅ | ❌ | 菱形 + X 标记 |
+| ParallelGateway | ✅ | ✅ | ❌ | 菱形 + + 标记 |
+| InclusiveGateway | ✅ | ✅ | ❌ | 菱形 + ○ 标记 |
+| EventBasedGateway | ✅ | ✅(菱形) | ❌ | 映射为通用 Gateway |
 | ComplexGateway | ❌ | ❌ | ❌ | |
-| EventBasedGateway | ❌ | ❌ | ❌ | |
 | **Flows** |||||
-| SequenceFlow | ✅ | ✅ | ❌ | 仅直线，无 Waypoint 曲线 |
+| SequenceFlow | ✅ | ✅ | ❌ | 直线 + 实心箭头，Waypoint 支持 |
 | ConditionalFlow | ❌ | ❌ | ❌ | |
 | DefaultFlow | ❌ | ❌ | ❌ | |
-| MessageFlow | ❌ | ❌ | ❌ | |
+| MessageFlow | ✅ | ✅ | ❌ | 虚线 + 空心箭头 |
 | Association | ❌ | ❌ | ❌ | |
 | DataAssociation | ❌ | ❌ | ❌ | |
 | **Swimlanes** |||||
-| Pool | ❌ | ❌ | ❌ | |
-| Lane | ❌ | ❌ | ❌ | |
+| Pool | ✅ | ✅ | ❌ | 含标题栏 |
+| Lane | ✅ | ✅ | ❌ | 含嵌套 Lane + 标题栏 |
 | **Data** |||||
-| DataObject | ❌ | ❌ | ❌ | |
-| DataStore | ❌ | ❌ | ❌ | |
-| DataInput | ❌ | ❌ | ❌ | |
-| DataOutput | ❌ | ❌ | ❌ | |
+| DataObject | ❌ | ❌ | ❌ | 有意丢弃 |
+| DataStore | ❌ | ❌ | ❌ | 有意丢弃 |
+| DataInput | ❌ | ❌ | ❌ | 有意丢弃 |
+| DataOutput | ❌ | ❌ | ❌ | 有意丢弃 |
 | **Artifacts** |||||
-| TextAnnotation | ❌ | ❌ | ❌ | |
-| Group | ❌ | ❌ | ❌ | |
+| TextAnnotation | ❌ | ❌ | ❌ | 有意丢弃 |
+| Group | ❌ | ❌ | ❌ | 有意丢弃 |
 | **其他** |||||
-| Collaboration | ❌ | ❌ | ❌ | |
+| Collaboration | ✅ | ✅ | ❌ | 多 Pool + 共享 Process |
 | Choreography | ❌ | ❌ | ❌ | |
 | Conversation | ❌ | ❌ | ❌ | |
-| Message | ❌ | ❌ | ❌ | |
-| Signal | ❌ | ❌ | ❌ | |
-| Error | ❌ | ❌ | ❌ | |
-| Escalation | ❌ | ❌ | ❌ | |
-| Compensation | ❌ | ❌ | ❌ | |
-| BPMNDiagram | ❌ | ❌ | ❌ | 顶层容器 |
-| Category / CategoryValue | ❌ | ❌ | ❌ | |
+| BPMNDiagram | ⚠️ | — | ❌ | 解析但未作为顶层容器 |
+| EventDefinition | ✅ | ✅ | ❌ | 5/9 种图标（timer/message/error/signal/terminate）|
 | ExtensionElements | ❌ | ❌ | ❌ | |
 
 ---
@@ -375,38 +334,35 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 ### 🔴 P0 — 立即修复（阻碍基本使用）
 
-1. ~~**RenderConfig 默认颜色字段为空**~~ ✅ **已修复 (2026-06-17)** — NodeRenderer/EdgeRenderer 全部去硬编码，新增 12+7 个按类型分色字段
-2. ~~**修正 README 中不实的支持声明**~~ ✅ **已修复 (2026-06-17)** — 移除审批自动着色、泳道等虚假声明，新增准确覆盖矩阵，修正 API 文档
-3. ~~**补齐 `examples/` 目录下的可运行示例**~~ ✅ **已修复 (2026-06-17)** — `examples/hello-graph/MainPage.ets` + `examples/bpmn-viewer/MainPage.ets`
-
-### 🟠 P1 — 高优先级（核心功能缺口）
-
-4. **实现泳道（Pool / Lane）** — BPMN 解析 + 数据结构 + 渲染
-5. **实现 BoundaryEvent 解析与渲染** — 包括 attachToRef 逻辑
-6. **实现 Spec 04 交互编辑层** — DragController、ConnectController、SelectController
-7. **实现 FlowDesigner 组件** — 用户可拖拽节点、连线编辑
+1. **BoundaryEvent attachToRef** — 解析 `attachedToRef` 属性 + 渲染附着在宿主 Activity 边缘
+2. **Spec 04 交互编辑层** — DragController、ConnectController、SelectController
+3. **FlowDesigner 组件** — 用户可拖拽节点、连线编辑（依赖 Spec 04）
 
 ### 🟡 P2 — 中优先级（完善 BPMN 覆盖）
 
-8. 中间事件（IntermediateThrowEvent / IntermediateCatchEvent）+ 事件定义图标
-9. MessageFlow + ConditionalFlow + DefaultFlow
-10. DataObject / DataStore
-11. 连线 Waypoint 曲线渲染（非直线）
+4. 中间事件缺失的 EventDefinition 图标（Conditional / Escalation / Compensation / Link / Cancel / Multiple / ParallelMultiple）
+5. ConditionalFlow + DefaultFlow 视觉标记
+6. DataObject / DataStore（如确认非"有意丢弃"）
+7. 连线 Waypoint 曲线渲染（非直线）
+8. EventBasedGateway 专属五边形套圆标记
 
 ### 🟢 P3 — 低优先级（体验优化）
 
-12. 主题系统（浅色/深色模式切换）
-13. 视口裁剪优化（viewport culling）
-14. 自定义节点类型注册机制（插件系统）
-15. 开发者调试面板（DevTools）
-16. CI/CD 自动化流水线
+9. 主题系统（浅色/深色模式切换）
+10. 视口裁剪优化（viewport culling）
+11. 自定义节点类型注册机制（插件系统）
+12. 开发者调试面板（DevTools）
+13. CI/CD 自动化流水线
+14. NodeRenderer 策略模式拆分
 
 ### 🔵 P4 — 远期规划
 
-17. Dagre 自动布局（Spec 05）
-18. 性能基准测试套件
-19. API 文档自动生成
-20. ohpm 正式发布
+15. Dagre 自动布局（Spec 05）
+16. CallActivity / SubProcess 专属渲染（展开/折叠）
+17. 性能基准测试套件
+18. API 文档自动生成
+19. ohpm 正式发布
+20. PC 滚轮缩放（等待鸿蒙 API 稳定）
 
 ---
 
@@ -414,9 +370,11 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 | 能力 | bpmn.js | LogicFlow | AntV X6 | hm-flow-kit (当前) |
 |------|---------|-----------|---------|-------------------|
-| BPMN 2.0 XML 解析 | ✅ 完整 | ✅ 插件 | ❌ | ⚠️ 基础覆盖 |
+| BPMN 2.0 XML 解析 | ✅ 完整 | ✅ 插件 | ❌ | ✅ 基础覆盖 + 泳道 |
 | 可视化编辑器 | ✅ 完整 | ✅ 完整 | ✅ 完整 | ❌ |
-| 泳道支持 | ✅ | ⚠️ 有限 | ⚠️ 有限 | ❌ |
+| 泳道支持 | ✅ | ⚠️ 有限 | ⚠️ 有限 | ✅ |
+| EventDefinition 图标 | ✅ 完整 | ⚠️ 部分 | ⚠️ 部分 | ✅ 5/9 种 |
+| MessageFlow | ✅ | ⚠️ | ⚠️ | ✅ 虚线+空心箭头 |
 | 自定义节点 | ✅ | ✅ | ✅ | ❌ |
 | 主题系统 | ✅ | ✅ | ✅ | ❌ |
 | 插件机制 | ✅ | ✅ | ✅ | ❌ |
@@ -429,7 +387,7 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 | 零依赖 | ❌ | ❌ | ❌ | ✅ |
 | ohpm 安装 | ❌ | ❌ | ❌ | ⚠️ 规划中 |
 
-**结论：** 当前唯一差异化优势是**鸿蒙原生** + **零依赖**。在 BPMN 功能完整性上与其他成熟方案相比差距很大，但这两个差异化点如果抓住，在鸿蒙生态中是有明确利基市场的。
+**结论：** 当前唯一差异化优势是**鸿蒙原生** + **零依赖**。泳道、MessageFlow、EventDefinition 图标已补上关键短板。P0 优先攻克 BoundaryEvent + 交互编辑层。
 
 ---
 

@@ -27,6 +27,12 @@ export { CanvasManager, ViewportState, CanvasPoint, ScreenPoint } from './src/ma
 export { HitTestManager, HitResult, HitType } from './src/main/ets/renderer/HitTestManager'
 export { RenderConfig, NodeShape } from './src/main/ets/renderer/RenderConfig'
 export { PoolLaneRenderer } from './src/main/ets/renderer/PoolLaneRenderer'
+export { TaskDrawer } from './src/main/ets/renderer/TaskDrawer'
+export { GatewayDrawer } from './src/main/ets/renderer/GatewayDrawer'
+export { EventDrawer } from './src/main/ets/renderer/EventDrawer'
+export { SubProcessDrawer } from './src/main/ets/renderer/SubProcessDrawer'
+export { DataDrawer } from './src/main/ets/renderer/DataDrawer'
+export { AnnotationDrawer } from './src/main/ets/renderer/AnnotationDrawer'
 
 // ── Parser 层 ──
 export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'

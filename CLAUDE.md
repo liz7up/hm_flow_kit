@@ -113,7 +113,7 @@ hm-flow-kit/
 - 共约 1350 行渲染层代码
 
 **Spec 03 — BPMN 2.0 XML 解析器 ✅ 已完成** → **v2 重写 (Spec 07) ✅**
-- 592 行，28 项测试全部通过 — 含 collaboration/laneSet 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
+- 592 行，34 项测试全部通过 — 含 collaboration/laneSet/eventDefinition 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
 - 支持命名空间前缀剥离、15+ 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
 - ⚠️ 关键实现细节：tokenValueCallback 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反），所有业务逻辑必须在 END_TAG 中处理
 - ⚠️ ignoreNameSpace: true 不会剥离 getName() 返回的前缀，需手动 lastIndexOf(':')
@@ -131,7 +131,7 @@ hm-flow-kit/
 - 自动适配内容缩放（auto-fit）、点击高亮、点击空白取消高亮、PanGesture 拖拽
 - 全屏覆盖层支持
 
-**当前总验收：105/105 自动化单元测试编译通过**
+**当前总验收：113/113 自动化单元测试编译通过**
 
 ### 自动化测试
 
@@ -139,7 +139,7 @@ hm-flow-kit/
 |------|------|
 | 框架 | @ohos/hypium (describe/it/expect) |
 | 位置 | `hmflowkit/src/ohosTest/ets/test/` |
-| 覆盖 | GraphModel(44) BpmnXmlParser(28) CanvasManager(17) HitTestManager(13) RenderConfig(3) |
+| 覆盖 | GraphModel(44) BpmnXmlParser(34) CanvasManager(17) HitTestManager(13) RenderConfig(5) |
 | 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
 | 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
@@ -313,6 +313,10 @@ laneHeaderFontSize: number = 11
 edgeStrokeColor: string = '#5E5E5E'
 edgeStrokeWidth: number = 1.5
 arrowSize: number = 12
+
+// ── 标记/图标 ──
+gatewayMarkerColor: string = '#333333'
+eventIconColor: string = '#333333'
 
 // ── 网格 ──
 gridSize: number = 20

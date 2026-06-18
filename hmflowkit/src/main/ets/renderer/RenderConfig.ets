@@ -74,6 +74,10 @@ export class RenderConfig {
   edgeStrokeWidth: number = 1.5;
   arrowSize: number = 12;
 
+  // ── 标记/图标样式 ──
+  gatewayMarkerColor: string = '#333333';
+  eventIconColor: string = '#333333';
+
   // ── 网格样式 ──
   gridSize: number = 20;
   gridColor: string = '#E8E8E8';

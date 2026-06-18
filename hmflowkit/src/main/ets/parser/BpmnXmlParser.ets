@@ -89,6 +89,7 @@ class _NodeEntry {
   type: NodeType = NodeType.TASK;
   label: string = '';
   tagName: string = '';
+  eventDefTag: string = '';
   constructor() {}
 }
 
@@ -148,12 +149,13 @@ class _Collector {
 
   warnings: string[] = [];
 
-  addNode(id: string, type: NodeType, label: string, tagName: string): void {
+  addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
     e.label = label;
     e.tagName = tagName;
+    e.eventDefTag = eventDefTag !== undefined ? eventDefTag : '';
     this._nodes.push(e);
   }
 
@@ -255,6 +257,9 @@ class _Collector {
       let props: Record<string, string> = {};
       if (nd.tagName.length > 0) {
         props['bpmnElement'] = nd.tagName;
+      }
+      if (nd.eventDefTag.length > 0) {
+        props['eventDefinition'] = nd.eventDefTag;
       }
       model = model.addNode(
         new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
@@ -401,6 +406,7 @@ export class BpmnXmlParser {
     let inFlowNodeRef: boolean = false;
     let flowNodeRefText: string = '';
     let currentLaneId: string = '';
+    let currentEventDefTag: string = '';
     let laneStack: string[] = [];
 
     let shapeX: number = 0;
@@ -435,6 +441,12 @@ export class BpmnXmlParser {
           waypointBuf = [];
         } else if (tag === 'BPMNLabel') {
           inLabel = true;
+        }
+        // EventDefinition 子元素（只捕获标签名）
+        else if (tag === 'timerEventDefinition' || tag === 'messageEventDefinition' ||
+                 tag === 'errorEventDefinition' || tag === 'signalEventDefinition' ||
+                 tag === 'terminateEventDefinition') {
+          currentEventDefTag = tag;
         }
         // Pool/Lane — START_TAG 仅设状态标记
         else if (tag === 'collaboration') {
@@ -560,8 +572,10 @@ export class BpmnXmlParser {
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               collector.addNode(nid, mapNodeType(tag),
-                currentAttrs['name'] || '', tag);
+                currentAttrs['name'] || '', tag,
+                currentEventDefTag.length > 0 ? currentEventDefTag : undefined);
             }
+            currentEventDefTag = '';
           }
         }
         return true;

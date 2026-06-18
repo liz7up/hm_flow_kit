@@ -17,7 +17,16 @@ export enum NodeType {
   START_EVENT = 'startEvent',
   END_EVENT = 'endEvent',
   TASK = 'task',
-  GATEWAY = 'gateway'
+  GATEWAY = 'gateway',
+  BOUNDARY_EVENT = 'boundaryEvent',
+  INTERMEDIATE_EVENT = 'intermediateEvent',
+  CALL_ACTIVITY = 'callActivity',
+  SUB_PROCESS = 'subProcess',
+  EVENT_BASED_GATEWAY = 'eventBasedGateway',
+  COMPLEX_GATEWAY = 'complexGateway',
+  DATA_OBJECT = 'dataObject',
+  DATA_STORE = 'dataStore',
+  TEXT_ANNOTATION = 'textAnnotation'
 }
 
 export enum EdgeStyle {

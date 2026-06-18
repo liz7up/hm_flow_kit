@@ -71,7 +71,6 @@ export class NodeRenderer {
       fill = config.taskFillColor;
       textColor = config.taskTextColor;
       lineW = config.strokeWidth;
-      // 查子类型边框色（key 'bpmnElement' 由 BpmnXmlParser 写入，保持同步）
       let subtype: string | undefined = node.properties['bpmnElement'];
       stroke = config.taskStrokeColor;
       if (subtype !== undefined) {
@@ -108,15 +107,146 @@ export class NodeRenderer {
     ctx.lineWidth = lineW * zoom;
     ctx.stroke();
 
-    // 绘制居中文字
-    const text: string = node.label;
-    ctx.fillStyle = textColor;
-    ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + w / 2, y + h / 2);
+    // 绘制网关内部标记
+    if (node.type === NodeType.GATEWAY) {
+      let gwTag: string | undefined = node.properties['bpmnElement'];
+      if (gwTag !== undefined && gwTag.length > 0) {
+        let cx: number = x + w / 2;
+        let cy: number = y + h / 2;
+        let s: number = Math.min(w, h) * 0.35 * zoom;
+        ctx.fillStyle = config.gatewayMarkerColor;
+        ctx.strokeStyle = config.gatewayMarkerColor;
+        ctx.lineWidth = Math.max(1.5, 2 * zoom);
+        NodeRenderer.drawGatewayMarker(ctx, gwTag, cx, cy, s);
+      }
+    }
+
+    // 绘制事件定义图标
+    if (node.type === NodeType.START_EVENT || node.type === NodeType.END_EVENT) {
+      let evDef: string | undefined = node.properties['eventDefinition'];
+      if (evDef !== undefined && evDef.length > 0) {
+        let cx: number = x + w / 2;
+        let cy: number = y + h / 2;
+        let r: number = Math.min(w, h) / 2;
+        ctx.fillStyle = config.eventIconColor;
+        ctx.strokeStyle = config.eventIconColor;
+        ctx.lineWidth = Math.max(1.5, 2 * zoom);
+        NodeRenderer.drawEventIcon(ctx, evDef, cx, cy, r * 0.55);
+      }
+    }
+
+    // 绘制居中文字（跳过有标记的网关和事件，避免重叠）
+    let hasMarker: boolean = (node.type === NodeType.GATEWAY &&
+      node.properties['bpmnElement'] !== undefined && node.properties['bpmnElement'].length > 0) ||
+      ((node.type === NodeType.START_EVENT || node.type === NodeType.END_EVENT) &&
+       node.properties['eventDefinition'] !== undefined && node.properties['eventDefinition'].length > 0);
+    if (!hasMarker) {
+      const text: string = node.label;
+      ctx.fillStyle = textColor;
+      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + w / 2, y + h / 2);
+    }
 
     ctx.restore();
+  }
+
+  // ── 网关内部标记 ──
+
+  private static drawGatewayMarker(
+    ctx: CanvasRenderingContext2D,
+    tagName: string,
+    cx: number,
+    cy: number,
+    s: number
+  ): void {
+    ctx.beginPath();
+    if (tagName === 'exclusiveGateway') {
+      ctx.moveTo(cx - s, cy - s);
+      ctx.lineTo(cx + s, cy + s);
+      ctx.moveTo(cx + s, cy - s);
+      ctx.lineTo(cx - s, cy + s);
+    } else if (tagName === 'parallelGateway') {
+      ctx.moveTo(cx - s, cy);
+      ctx.lineTo(cx + s, cy);
+      ctx.moveTo(cx, cy - s);
+      ctx.lineTo(cx, cy + s);
+    } else if (tagName === 'inclusiveGateway') {
+      ctx.arc(cx, cy, s * 0.7, 0, Math.PI * 2);
+    } else if (tagName === 'eventBasedGateway') {
+      let pentR: number = s * 0.8;
+      for (let i: number = 0; i < 5; i++) {
+        let angle: number = (Math.PI / 2) + (i * 2 * Math.PI / 5);
+        let px: number = cx + pentR * Math.cos(angle);
+        let py: number = cy - pentR * Math.sin(angle);
+        if (i === 0) { ctx.moveTo(px, py); }
+        else { ctx.lineTo(px, py); }
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+  }
+
+  // ── 事件定义图标 ──
+
+  private static drawEventIcon(
+    ctx: CanvasRenderingContext2D,
+    eventDef: string,
+    cx: number,
+    cy: number,
+    iconR: number
+  ): void {
+    ctx.beginPath();
+    if (eventDef === 'timerEventDefinition') {
+      ctx.arc(cx, cy, iconR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx - iconR * 0.45, cy - iconR * 0.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + iconR * 0.55, cy - iconR * 0.2);
+      ctx.stroke();
+    } else if (eventDef === 'messageEventDefinition') {
+      let hw: number = iconR * 1.1;
+      let hh: number = iconR * 0.7;
+      ctx.moveTo(cx - hw, cy - hh);
+      ctx.lineTo(cx + hw, cy - hh);
+      ctx.lineTo(cx + hw, cy + hh);
+      ctx.lineTo(cx - hw, cy + hh);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - hw, cy - hh);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + hw, cy - hh);
+      ctx.stroke();
+    } else if (eventDef === 'errorEventDefinition') {
+      let hs: number = iconR;
+      ctx.moveTo(cx + hs * 0.15, cy - hs);
+      ctx.lineTo(cx - hs * 0.4, cy - hs * 0.1);
+      ctx.lineTo(cx - hs * 0.15, cy);
+      ctx.lineTo(cx - hs * 0.15, cy + hs);
+      ctx.lineTo(cx + hs * 0.4, cy + hs * 0.1);
+      ctx.lineTo(cx + hs * 0.15, cy);
+      ctx.closePath();
+      ctx.fill();
+    } else if (eventDef === 'signalEventDefinition') {
+      let ts: number = iconR * 1.1;
+      ctx.moveTo(cx, cy - ts);
+      ctx.lineTo(cx + ts * 0.85, cy + ts * 0.5);
+      ctx.lineTo(cx - ts * 0.85, cy + ts * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (eventDef === 'terminateEventDefinition') {
+      ctx.arc(cx, cy, iconR * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   private static getShape(nodeType: NodeType): NodeShape {

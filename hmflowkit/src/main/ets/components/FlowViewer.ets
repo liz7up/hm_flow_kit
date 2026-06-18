@@ -38,6 +38,7 @@ export struct FlowViewer {
     if (this.xml.length > 0) {
       this.model = BpmnXmlParser.parse(this.xml)
     }
+    this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
     this._needFit = true
     this._highlightId = ''
   }
@@ -84,7 +85,6 @@ export struct FlowViewer {
 
   handleClick(event: ClickEvent): void {
     if (!this._canvasReady) return
-    this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
     let result: HitResult = this.hitTestManager.hitTest(event.x, event.y, this.canvasManager)
     if (result.type === HitType.NODE) {
       this._highlightId = result.nodeId

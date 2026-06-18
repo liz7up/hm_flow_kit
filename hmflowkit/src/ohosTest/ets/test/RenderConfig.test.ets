@@ -23,5 +23,15 @@ export default function renderConfigTest(): void {
       expect(c.taskSubtypeStroke['serviceTask']).assertEqual('#00897B');
       expect(c.taskSubtypeStroke['businessRuleTask']).assertEqual('#C62828');
     });
+
+    it('gateway_marker_color_should_default', 0, () => {
+      let c: RenderConfig = new RenderConfig();
+      expect(c.gatewayMarkerColor).assertEqual('#333333');
+    });
+
+    it('event_icon_color_should_default', 0, () => {
+      let c: RenderConfig = new RenderConfig();
+      expect(c.eventIconColor).assertEqual('#333333');
+    });
   });
 }

@@ -604,5 +604,93 @@ export default function bpmnXmlParserTest(): void {
       expect(t1 !== null ? t1.x : -1).assertEqual(210);
       expect(t1 !== null ? t1.y : -1).assertEqual(130);
     });
+
+    // ── EventDefinition 解析 ──
+
+    it('parse_startEvent_with_timerEventDefinition', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="start1">' +
+              '<timerEventDefinition>' +
+                '<timeDuration>PT5M</timeDuration>' +
+              '</timerEventDefinition>' +
+            '</startEvent>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('start1');
+      expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('timerEventDefinition');
+    });
+
+    it('parse_startEvent_without_eventDefinition_should_have_no_key', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="start1"/>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('start1');
+      let hasKey: boolean = n !== null && n.properties['eventDefinition'] !== undefined;
+      expect(hasKey).assertEqual(false);
+    });
+
+    it('parse_intermediateCatchEvent_with_messageEventDefinition', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<intermediateCatchEvent id="msg1">' +
+              '<messageEventDefinition/>' +
+            '</intermediateCatchEvent>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('msg1');
+      expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('messageEventDefinition');
+    });
+
+    it('parse_boundaryEvent_with_errorEventDefinition', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<task id="t1"/>' +
+            '<boundaryEvent id="err1" attachedToRef="t1">' +
+              '<errorEventDefinition/>' +
+            '</boundaryEvent>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('err1');
+      expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('errorEventDefinition');
+    });
+
+    it('parse_endEvent_with_terminateEventDefinition', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<endEvent id="end1">' +
+              '<terminateEventDefinition/>' +
+            '</endEvent>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('end1');
+      expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('terminateEventDefinition');
+    });
+
+    it('parse_startEvent_with_signalEventDefinition', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="sig1">' +
+              '<signalEventDefinition/>' +
+            '</startEvent>' +
+          '</process>' +
+        '</definitions>';
+      let m: GraphModel = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = m.getNode('sig1');
+      expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('signalEventDefinition');
+    });
   });
 }

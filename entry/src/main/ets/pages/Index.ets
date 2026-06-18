@@ -194,6 +194,11 @@ struct Index {
           Button('🍕 Pizza Demo')
             .fontSize(11)
             .onClick(() => { router.pushUrl({ url: 'pages/BpmnViewerPage' }) })
+          Button('🧪 Kitchen Sink')
+            .fontSize(11)
+            .onClick(() => {
+              router.pushUrl({ url: 'pages/BpmnViewerPage', params: { fileName: 'kitchen-sink.bpmn' } })
+            })
         }
         .justifyContent(FlexAlign.SpaceEvenly)
         .width('100%')

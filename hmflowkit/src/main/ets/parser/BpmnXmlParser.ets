@@ -164,6 +164,8 @@ class _NodeEntry {
   label: string = '';
   tagName: string = '';
   eventDefTag: string = '';
+  cancelActivity: string = '';
+  loopChar: string = '';
   constructor() {}
 }
 
@@ -224,13 +226,16 @@ class _Collector {
 
   warnings: string[] = [];
 
-  addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string): void {
+  addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string,
+          cancelActivity?: string, loopChar?: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
     e.label = label;
     e.tagName = tagName;
     e.eventDefTag = eventDefTag !== undefined ? eventDefTag : '';
+    e.cancelActivity = cancelActivity !== undefined ? cancelActivity : '';
+    e.loopChar = loopChar !== undefined ? loopChar : '';
     this._nodes.push(e);
   }
 
@@ -339,6 +344,12 @@ class _Collector {
       }
       if (nd.eventDefTag.length > 0) {
         props['eventDefinition'] = nd.eventDefTag;
+      }
+      if (nd.cancelActivity.length > 0) {
+        props['cancelActivity'] = nd.cancelActivity;
+      }
+      if (nd.loopChar.length > 0) {
+        props['loopCharacteristics'] = nd.loopChar;
       }
       model = model.addNode(
         new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
@@ -493,6 +504,7 @@ export class BpmnXmlParser {
     let flowNodeRefText: string = '';
     let currentLaneId: string = '';
     let currentEventDefTag: string = '';
+    let currentLoopChar: string = '';
     let laneStack: string[] = [];
 
     let shapeX: number = 0;
@@ -531,8 +543,15 @@ export class BpmnXmlParser {
         // EventDefinition 子元素（只捕获标签名）
         else if (tag === 'timerEventDefinition' || tag === 'messageEventDefinition' ||
                  tag === 'errorEventDefinition' || tag === 'signalEventDefinition' ||
-                 tag === 'terminateEventDefinition') {
+                 tag === 'terminateEventDefinition' || tag === 'cancelEventDefinition' ||
+                 tag === 'compensateEventDefinition' || tag === 'escalationEventDefinition' ||
+                 tag === 'conditionalEventDefinition' || tag === 'linkEventDefinition') {
           currentEventDefTag = tag;
+        }
+        else if (tag === 'multiInstanceLoopCharacteristics') {
+          currentLoopChar = 'multiInstance';
+        } else if (tag === 'standardLoopCharacteristics') {
+          currentLoopChar = 'standard';
         }
         // Pool/Lane — START_TAG 仅设状态标记
         else if (tag === 'collaboration') {
@@ -667,9 +686,12 @@ export class BpmnXmlParser {
             if (nid.length > 0) {
               collector.addNode(nid, mapNodeType(tag),
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), tag,
-                currentEventDefTag.length > 0 ? currentEventDefTag : undefined);
+                currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
+                currentAttrs['cancelActivity'],
+                currentLoopChar.length > 0 ? currentLoopChar : undefined);
             }
             currentEventDefTag = '';
+            currentLoopChar = '';
           }
         }
         return true;

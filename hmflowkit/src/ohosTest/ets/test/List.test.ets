@@ -3,6 +3,7 @@ import bpmnXmlParserTest from './BpmnXmlParser.test';
 import canvasManagerTest from './CanvasManager.test';
 import hitTestManagerTest from './HitTestManager.test';
 import renderConfigTest from './RenderConfig.test';
+import bpmnFullCoverageTest from './BpmnFullCoverage.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -10,4 +11,5 @@ export default function testsuite() {
   canvasManagerTest();
   hitTestManagerTest();
   renderConfigTest();
+  bpmnFullCoverageTest();
 }

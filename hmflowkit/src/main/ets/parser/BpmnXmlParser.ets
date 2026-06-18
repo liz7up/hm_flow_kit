@@ -174,6 +174,7 @@ class _EdgeEntry {
   src: string = '';
   tgt: string = '';
   label: string = '';
+  bpmnElement: string = '';
   constructor() {}
 }
 
@@ -239,12 +240,13 @@ class _Collector {
     this._nodes.push(e);
   }
 
-  addEdge(id: string, src: string, tgt: string, label: string): void {
+  addEdge(id: string, src: string, tgt: string, label: string, bpmnElement?: string): void {
     let e: _EdgeEntry = new _EdgeEntry();
     e.id = id;
     e.src = src;
     e.tgt = tgt;
     e.label = label;
+    e.bpmnElement = bpmnElement !== undefined ? bpmnElement : '';
     this._edges.push(e);
   }
 
@@ -371,6 +373,8 @@ class _Collector {
       let props: Record<string, string> = {};
       if (this._messageFlowIds[ed.id] === true) {
         props['bpmnElement'] = 'messageFlow';
+      } else if (ed.bpmnElement.length > 0) {
+        props['bpmnElement'] = ed.bpmnElement;
       }
       model = model.addEdge(
         new GraphEdge(ed.id, ed.src, ed.tgt, wps, EdgeStyle.POLYLINE, ed.label, props));
@@ -673,13 +677,14 @@ export class BpmnXmlParser {
         }
 
         if (inProcess && !inDiagram) {
-          if (tag === 'sequenceFlow') {
+          if (tag === 'sequenceFlow' || tag === 'association') {
             let fid: string = currentAttrs['id'] || '';
             let fsrc: string = currentAttrs['sourceRef'] || '';
             let ftgt: string = currentAttrs['targetRef'] || '';
             if (fid.length > 0 && fsrc.length > 0 && ftgt.length > 0) {
+              let be: string = tag === 'association' ? 'association' : '';
               collector.addEdge(fid, fsrc, ftgt,
-                decodeXmlCharacterRefs(currentAttrs['name'] || ''));
+                decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (isProcessElement(tag)) {
             let nid: string = currentAttrs['id'] || '';

@@ -3,7 +3,7 @@ import { EdgeRenderer, NodeRect } from '../renderer/EdgeRenderer'
 import { GridRenderer, GridType, GridConfig } from '../renderer/GridRenderer'
 import { CanvasManager, ViewportState } from '../renderer/CanvasManager'
 import { HitTestManager, HitType, HitResult } from '../renderer/HitTestManager'
-import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
+import { GraphModel, GraphNode, GraphEdge, NodeType, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser } from '../parser/BpmnXmlParser'
@@ -292,11 +292,20 @@ export struct FlowViewer {
       }, 0, 0, 1, this.renderConfig)
     }
 
-    // Nodes
+    // Nodes — 先普通节点，再边界事件（保证边界事件在最上层不被遮挡）
     let nodes: GraphNode[]
     nodes = this.model.getNodes()
+    let boundaryNodes: GraphNode[] = []
     for (let i: number = 0; i < nodes.length; i++) {
-      NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1)
+      let n: GraphNode = nodes[i]
+      if (n.type === NodeType.BOUNDARY_EVENT) {
+        boundaryNodes.push(n)
+      } else {
+        NodeRenderer.render(this.ctx, n, this.renderConfig, 0, 0, 1)
+      }
+    }
+    for (let i: number = 0; i < boundaryNodes.length; i++) {
+      NodeRenderer.render(this.ctx, boundaryNodes[i], this.renderConfig, 0, 0, 1)
     }
 
     // Highlight overlay

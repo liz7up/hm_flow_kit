@@ -692,5 +692,117 @@ export default function bpmnXmlParserTest(): void {
       let n: GraphNode | null = m.getNode('sig1');
       expect(n !== null ? n.properties['eventDefinition'] : '').assertEqual('signalEventDefinition');
     });
+
+    // ── MessageFlow 解析 ──
+
+    it('parse_messageFlow_in_collaboration', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="A" processRef="p1"/>' +
+            '<participant id="Pool2" name="B" processRef="p2"/>' +
+            '<messageFlow id="mf1" sourceRef="t1" targetRef="t2" name="order"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<userTask id="t1" name="TaskA"/>' +
+          '</process>' +
+          '<process id="p2">' +
+            '<userTask id="t2" name="TaskB"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      // 应包含 messageFlow 边
+      expect(model.getEdgeCount()).assertEqual(1);
+      let e = model.getEdge('mf1');
+      expect(e !== null ? e.sourceId : '').assertEqual('t1');
+      expect(e !== null ? e.targetId : '').assertEqual('t2');
+      expect(e !== null ? e.label : '').assertEqual('order');
+      expect(e !== null ? e.properties['bpmnElement'] : '').assertEqual('messageFlow');
+    });
+
+    it('parse_messageFlow_multiple_between_pools', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<collaboration id="c1">' +
+            '<participant id="Pool1" name="A" processRef="p1"/>' +
+            '<participant id="Pool2" name="B" processRef="p2"/>' +
+            '<messageFlow id="mf1" sourceRef="t1" targetRef="t3" name="msg1"/>' +
+            '<messageFlow id="mf2" sourceRef="t2" targetRef="t4" name="msg2"/>' +
+          '</collaboration>' +
+          '<process id="p1">' +
+            '<userTask id="t1"/>' +
+            '<userTask id="t2"/>' +
+          '</process>' +
+          '<process id="p2">' +
+            '<userTask id="t3"/>' +
+            '<userTask id="t4"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNEdge bpmnElement="mf1">' +
+              '<waypoint x="100" y="100"/>' +
+              '<waypoint x="200" y="200"/>' +
+            '</bpmndi:BPMNEdge>' +
+            '<bpmndi:BPMNEdge bpmnElement="mf2">' +
+              '<waypoint x="300" y="300"/>' +
+              '<waypoint x="400" y="400"/>' +
+            '</bpmndi:BPMNEdge>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      expect(model.getEdgeCount()).assertEqual(2);
+      let e1 = model.getEdge('mf1');
+      let e2 = model.getEdge('mf2');
+      expect(e1 !== null ? e1.waypoints.length : -1).assertEqual(2);
+      expect(e2 !== null ? e2.waypoints.length : -1).assertEqual(2);
+      expect(e1 !== null ? e1.properties['bpmnElement'] : '').assertEqual('messageFlow');
+      expect(e2 !== null ? e2.properties['bpmnElement'] : '').assertEqual('messageFlow');
+    });
+
+    // ── XML 字符引用解码 ──
+
+    it('parse_name_with_decimal_character_references', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1" name="&#8222;hello&#8220;"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = model.getNode('s1');
+      // &#8222; = „ (U+201E), &#8220; = " (U+201C)
+      expect(n !== null ? n.label.length : -1).assertEqual(7);
+    });
+
+    it('parse_name_with_hex_character_references', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<task id="t1" name="&#x201C;test&#x201D;"/>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = model.getNode('t1');
+      // &#x201C; = " (U+201C), &#x201D; = " (U+201D), + "test"
+      expect(n !== null ? n.label.length : -1).assertEqual(6);
+    });
+
+    it('parse_intermediateCatchEvent_with_quoted_name', 0, () => {
+      // 直接复现 pizza-collaboration 场景：intermediateCatchEvent + 引号字符引用
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<intermediateCatchEvent id="evt1" name="&#8222;where is my pizza?&#8220;">' +
+              '<messageEventDefinition/>' +
+            '</intermediateCatchEvent>' +
+          '</process>' +
+        '</definitions>';
+      model = BpmnXmlParser.parse(xml);
+      let n: GraphNode | null = model.getNode('evt1');
+      // label 不应为空
+      expect(n !== null && n.label.length > 0).assertEqual(true);
+      // node type 应正确映射
+      expect(n !== null ? n.type : NodeType.TASK).assertEqual(NodeType.START_EVENT);
+    });
   });
 }

@@ -101,14 +101,21 @@ export class EdgeRenderer {
 
     // Draw the polyline
     {
-      ctx.strokeStyle = config.edgeStrokeColor;
-      ctx.lineWidth = config.edgeStrokeWidth;
+      let isMessageFlow: boolean = edge.properties['bpmnElement'] === 'messageFlow';
+      ctx.strokeStyle = isMessageFlow ? config.messageFlowStrokeColor : config.edgeStrokeColor;
+      ctx.lineWidth = isMessageFlow ? config.messageFlowStrokeWidth : config.edgeStrokeWidth;
+      if (isMessageFlow) {
+        let src: number[] = config.messageFlowDashPattern;
+        let dp: number[] = [src[0] * zoom, src[1] * zoom];
+        ctx.setLineDash(dp);
+      }
       ctx.beginPath();
       ctx.moveTo(points[0][0], points[0][1]);
       for (let i = 1; i < points.length; i++) {
         ctx.lineTo(points[i][0], points[i][1]);
       }
       ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // Draw arrowhead at the end of the last segment
@@ -116,7 +123,6 @@ export class EdgeRenderer {
       const last: number[] = points[points.length - 1];
       const prev: number[] = points[points.length - 2];
 
-      // Segment vector pointing from prev to last
       const segDx: number = last[0] - prev[0];
       const segDy: number = last[1] - prev[1];
       const segLen: number = Math.sqrt(segDx * segDx + segDy * segDy);
@@ -126,19 +132,93 @@ export class EdgeRenderer {
         const arrowLen: number = config.arrowSize;
         const arrowAngle: number = Math.PI / 6;
 
+        let isMessageFlow: boolean = edge.properties['bpmnElement'] === 'messageFlow';
+        if (isMessageFlow) {
+          // Open arrowhead (空心箭头): stroke only, no fill
+          ctx.strokeStyle = config.messageFlowStrokeColor;
+          ctx.lineWidth = Math.max(1, config.messageFlowStrokeWidth * zoom);
+          ctx.beginPath();
+          ctx.moveTo(
+            last[0] - arrowLen * Math.cos(angle - arrowAngle),
+            last[1] - arrowLen * Math.sin(angle - arrowAngle)
+          );
+          ctx.lineTo(last[0], last[1]);
+          ctx.lineTo(
+            last[0] - arrowLen * Math.cos(angle + arrowAngle),
+            last[1] - arrowLen * Math.sin(angle + arrowAngle)
+          );
+          ctx.stroke();
+        } else {
+          // Filled arrowhead
+          ctx.fillStyle = config.edgeStrokeColor;
+          ctx.beginPath();
+          ctx.moveTo(last[0], last[1]);
+          ctx.lineTo(
+            last[0] - arrowLen * Math.cos(angle - arrowAngle),
+            last[1] - arrowLen * Math.sin(angle - arrowAngle)
+          );
+          ctx.lineTo(
+            last[0] - arrowLen * Math.cos(angle + arrowAngle),
+            last[1] - arrowLen * Math.sin(angle + arrowAngle)
+          );
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
+    // Draw edge label at path midpoint
+    {
+      let label: string = edge.label;
+      if (label.length > 0) {
+        // Compute total path length
+        let totalLen: number = 0;
+        let segLens: number[] = [];
+        for (let i: number = 1; i < points.length; i++) {
+          let sdx: number = points[i][0] - points[i - 1][0];
+          let sdy: number = points[i][1] - points[i - 1][1];
+          let sl: number = Math.sqrt(sdx * sdx + sdy * sdy);
+          segLens.push(sl);
+          totalLen = totalLen + sl;
+        }
+        // Find midpoint along path
+        let half: number = totalLen / 2;
+        let acc: number = 0;
+        let si: number = 0;
+        for (let i: number = 0; i < segLens.length; i++) {
+          if (acc + segLens[i] >= half) {
+            si = i;
+            break;
+          }
+          acc = acc + segLens[i];
+        }
+        let t: number = segLens[si] > 0.01 ? (half - acc) / segLens[si] : 0;
+        let mx: number = points[si][0] + (points[si + 1][0] - points[si][0]) * t;
+        let my: number = points[si][1] + (points[si + 1][1] - points[si][1]) * t;
+        // Perpendicular offset
+        let pdx: number = points[si + 1][0] - points[si][0];
+        let pdy: number = points[si + 1][1] - points[si][1];
+        let plen: number = segLens[si];
+        let off: number = 12;
+        let perpX: number = plen > 0.01 ? -pdy / plen : 0;
+        let perpY: number = plen > 0.01 ? pdx / plen : 1;
+        let lx: number = mx + perpX * off;
+        let ly: number = my + perpY * off;
+
+        let fontSize: number = Math.max(10, Math.round(config.fontSize * 0.92));
+        ctx.font = fontSize + 'px ' + config.fontFamily;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        let tm: TextMetrics = ctx.measureText(label);
+        let tw: number = tm.width;
+        let th: number = fontSize;
+        let pad: number = 3;
+        // Draw white background for readability
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fillRect(lx - tw / 2 - pad, ly - th / 2 - pad, tw + pad * 2, th + pad * 2);
+        // Draw text
         ctx.fillStyle = config.edgeStrokeColor;
-        ctx.beginPath();
-        ctx.moveTo(last[0], last[1]);
-        ctx.lineTo(
-          last[0] - arrowLen * Math.cos(angle - arrowAngle),
-          last[1] - arrowLen * Math.sin(angle - arrowAngle)
-        );
-        ctx.lineTo(
-          last[0] - arrowLen * Math.cos(angle + arrowAngle),
-          last[1] - arrowLen * Math.sin(angle + arrowAngle)
-        );
-        ctx.closePath();
-        ctx.fill();
+        ctx.fillText(label, lx, ly);
       }
     }
 

@@ -82,6 +82,40 @@ function localName(fullName: string): string {
   return colon !== -1 ? fullName.substring(colon + 1) : fullName;
 }
 
+// 解码 XML 数字字符引用（&#NNNN; / &#xHHHH;）
+function decodeXmlCharacterRefs(raw: string): string {
+  if (raw.length === 0 || raw.indexOf('&') === -1) {
+    return raw;
+  }
+  let result: string = raw;
+  // 十进制: &#8222;
+  let idx: number = result.indexOf('&#');
+  while (idx !== -1) {
+    let semi: number = result.indexOf(';', idx);
+    if (semi === -1) {
+      break;
+    }
+    let refBody: string = result.substring(idx + 2, semi);
+    let codePoint: number = -1;
+    if (refBody.length > 0 && (refBody.charAt(0) === 'x' || refBody.charAt(0) === 'X')) {
+      let hexStr: string = refBody.substring(1);
+      if (hexStr.length > 0 && hexStr.length <= 6) {
+        codePoint = parseInt(hexStr, 16);
+      }
+    } else if (refBody.length > 0 && refBody.length <= 7) {
+      codePoint = parseInt(refBody, 10);
+    }
+    if (codePoint > 0 && codePoint <= 0x10FFFF) {
+      let charStr: string = String.fromCharCode(codePoint);
+      result = result.substring(0, idx) + charStr + result.substring(semi + 1);
+      idx = result.indexOf('&#', idx + 1);
+    } else {
+      idx = result.indexOf('&#', idx + 1);
+    }
+  }
+  return result;
+}
+
 // ===== 内部数据类 =====
 
 class _NodeEntry {
@@ -146,6 +180,7 @@ class _Collector {
   private _laneShapes: Record<string, _ShapeInfo> = {};
   private _participantIds: Record<string, boolean> = {};
   private _laneIds: Record<string, boolean> = {};
+  private _messageFlowIds: Record<string, boolean> = {};
 
   warnings: string[] = [];
 
@@ -236,6 +271,10 @@ class _Collector {
     return this._laneIds[id] === true;
   }
 
+  markAsMessageFlow(id: string): void {
+    this._messageFlowIds[id] = true;
+  }
+
   build(): GraphModel {
     let model: GraphModel = GraphModel.createEmpty();
 
@@ -278,8 +317,12 @@ class _Collector {
           wps.push(new Waypoint(tn.x + tn.width / 2, tn.y + tn.height / 2));
         }
       }
+      let props: Record<string, string> = {};
+      if (this._messageFlowIds[ed.id] === true) {
+        props['bpmnElement'] = 'messageFlow';
+      }
       model = model.addEdge(
-        new GraphEdge(ed.id, ed.src, ed.tgt, wps, EdgeStyle.POLYLINE, ed.label, {}));
+        new GraphEdge(ed.id, ed.src, ed.tgt, wps, EdgeStyle.POLYLINE, ed.label, props));
     }
 
     // 3. 构建 Pools
@@ -384,6 +427,9 @@ export class BpmnXmlParser {
     if (cleaned.length > 0 && cleaned.charCodeAt(0) === 0xFEFF) {
       cleaned = cleaned.substring(1);
     }
+    // 预处理 XML 数字字符引用（&#NNNN; / &#xHHHH;），
+    // 避免 attributeValueCallback 因 & 字符而丢失值
+    cleaned = decodeXmlCharacterRefs(cleaned);
 
     let encoder: util.TextEncoder = new util.TextEncoder();
     let bytes: Uint8Array = encoder.encodeInto(cleaned);
@@ -532,7 +578,7 @@ export class BpmnXmlParser {
             let parentId: string = laneStack.length > 0
               ? laneStack[laneStack.length - 1]
               : '';
-            collector.addLaneDef(lid, currentAttrs['name'] || '', parentId);
+            collector.addLaneDef(lid, decodeXmlCharacterRefs(currentAttrs['name'] || ''), parentId);
           }
         } else if (tag === 'flowNodeRef' && inLane) {
           inFlowNodeRef = false;
@@ -551,10 +597,18 @@ export class BpmnXmlParser {
         if (inCollaboration && !inDiagram) {
           if (tag === 'participant') {
             let pid: string = currentAttrs['id'] || '';
-            let pname: string = currentAttrs['name'] || '';
+            let pname: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
             let pref: string = currentAttrs['processRef'] || '';
             if (pid.length > 0) {
               collector.addParticipant(pid, pname, pref);
+            }
+          } else if (tag === 'messageFlow') {
+            let mid: string = currentAttrs['id'] || '';
+            let msrc: string = currentAttrs['sourceRef'] || '';
+            let mtgt: string = currentAttrs['targetRef'] || '';
+            if (mid.length > 0 && msrc.length > 0 && mtgt.length > 0) {
+              collector.addEdge(mid, msrc, mtgt, decodeXmlCharacterRefs(currentAttrs['name'] || ''));
+              collector.markAsMessageFlow(mid);
             }
           }
         }
@@ -566,13 +620,13 @@ export class BpmnXmlParser {
             let ftgt: string = currentAttrs['targetRef'] || '';
             if (fid.length > 0 && fsrc.length > 0 && ftgt.length > 0) {
               collector.addEdge(fid, fsrc, ftgt,
-                currentAttrs['name'] || '');
+                decodeXmlCharacterRefs(currentAttrs['name'] || ''));
             }
           } else if (isProcessElement(tag)) {
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               collector.addNode(nid, mapNodeType(tag),
-                currentAttrs['name'] || '', tag,
+                decodeXmlCharacterRefs(currentAttrs['name'] || ''), tag,
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined);
             }
             currentEventDefTag = '';

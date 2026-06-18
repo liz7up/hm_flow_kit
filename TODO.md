@@ -7,7 +7,7 @@
 
 ## 一、当前实现状态总览
 
-### ✅ 已完成（4 个 Spec，31/31 测试通过）
+### ✅ 已完成（4 个 Spec，120 项测试全部通过）
 
 | Spec | 模块 | 规模 | 状态 |
 |------|------|------|------|
@@ -140,6 +140,37 @@
 - `defaultNodeSize(NodeType)` 按类型返回默认尺寸：Task 120x60, Gateway 50x50, Event 36x36
 - `_Collector.build()` 从硬编码改为调用 `defaultNodeSize()`
 - 已合并到 master（同上 commit）
+
+### 3.5 与 bpmn.io 对比发现的渲染问题 (2026-06-18)
+
+**问题 1：Event/Task/Gateway 类型视觉区分不够丰富** ✅ 已修复 (`4f3a8d7`)
+- Gateway 内部标记（X / + / ○ / 五边形套圆）+ EventDefinition 图标（时钟/信封/闪电等）已实现
+
+**问题 2：Event 文字位置错误**
+- 现状：Event 的 name/label 显示在圆圈内部
+- 期望：应与 bpmn.io 一致，文字显示在圆圈下方
+- ✅ 已修复 — 事件文字始终渲染在圆圈下方（含 eventDefinition 图标的事件也显示 label）
+
+**问题 3：Pool/Lane 标题栏文字方向错误**
+- 现状：文字垂直于泳道方向（竖排），字间距大，字号偏小
+- 期望：文字应与泳道平行（横排），便于阅读
+- ✅ 已修复 — fillVerticalText 替换为 canvas rotate(-PI/2)，文字连续横排渲染
+
+**问题 4：跨 Pool/Lane 的 MessageFlow 连线未渲染**
+- 现状：BPMN XML 中跨越不同 Pool/Lane 的 messageFlow 连线完全不显示
+- 期望：应显示为虚线与空心箭头，表示跨泳池/泳道的消息传递
+- 影响：pizza-collaboration.bpmn 等含多参与者协作的流程图中，Pool 之间的消息流全部丢失
+- ✅ 已修复 — 解析器支持 collaboration/messageFlow 解析；EdgeRenderer 支持虚线 + 空心箭头渲染；RenderConfig 新增 messageFlowDashPattern
+
+### 3.6 缩放功能（触屏 Pinch + PC 滚轮）
+
+**已完成部分：** Pinch 双指缩放 + 浮动 +/- 按钮
+
+**待实现（滚轮缩放）：**
+- 现状：PC 端无滚轮缩放、无键盘快捷键缩放
+- 期望：`Ctrl+滚轮` 或纯滚轮缩放画布（对标 bpmn.io、LogicFlow）
+- 阻塞：HarmonyOS PC 端 ArkUI 的 `onMouse`/`onWheel` 事件 API 不稳定，建议等平台 API 成熟后再补
+- 预计 API：`onMouse((event: MouseEvent) => { event.button; event.action; })` 或组件级 `onWheel` 回调
 
 ---
 

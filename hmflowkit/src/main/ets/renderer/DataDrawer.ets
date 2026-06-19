@@ -52,21 +52,22 @@ export class DataDrawer {
       ctx.lineTo(x + w, y + fold);
       ctx.stroke();
     } else if (node.type === NodeType.DATA_STORE) {
-      // Cylinder shape using quadratic curves (widely supported)
+      // Database cylinder: ellipse top + body + ellipse bottom
       let halfW: number = w / 2;
       let archH: number = 8 * zoom;
-      // Top ellipse (back arc, drawn first so sides overlap)
+      // Body: filled rectangle with arched bottom
       ctx.beginPath();
-      ctx.moveTo(x, y + archH / 2);
-      ctx.quadraticCurveTo(x + halfW, y - archH / 2, x + w, y + archH / 2);
-      ctx.stroke();
-      // Main body: sides + bottom arc
-      ctx.beginPath();
-      ctx.moveTo(x, y + archH / 2);
-      ctx.lineTo(x, y + h - archH / 2);
-      ctx.quadraticCurveTo(x + halfW, y + h + archH / 2, x + w, y + h - archH / 2);
-      ctx.lineTo(x + w, y + archH / 2);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + h - archH);
+      ctx.quadraticCurveTo(x + halfW, y + h + archH, x + w, y + h - archH);
+      ctx.lineTo(x + w, y);
       ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Top dome (ellipse arc): stroke separately on top
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + halfW, y - archH, x + w, y);
       ctx.fill();
       ctx.stroke();
     }

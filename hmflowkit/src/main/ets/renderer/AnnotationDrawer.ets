@@ -9,37 +9,41 @@ export class AnnotationDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    let bracketW: number = 6 * zoom;
-    // BPMN textAnnotation: left-side bracket "[" opening right
-    // Vertical stem + two short horizontal arms extending right
+    let bracketW: number = 8 * zoom;
+    let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom));
+
+    // BPMN textAnnotation: bracket "[" on left, opens right
+    // Vertical stem at x, with top+mid+bottom arms extending right
     ctx.beginPath();
-    // top arm
+    ctx.strokeStyle = config.textColor;
+    ctx.lineWidth = 1.5 * zoom;
+    // Top arm
     ctx.moveTo(x, y);
     ctx.lineTo(x + bracketW, y);
-    // vertical stem (top to bottom)
-    ctx.lineTo(x + bracketW, y + h);
-    // bottom arm
+    // Stem (top to bottom)
+    ctx.moveTo(x, y);
     ctx.lineTo(x, y + h);
-    ctx.strokeStyle = config.textColor;
-    ctx.lineWidth = 1 * zoom;
+    // Bottom arm
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x + bracketW, y + h);
     ctx.stroke();
 
-    // Multi-line text
-    let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom));
+    // Multi-line text, right-indented from bracket
     ctx.fillStyle = config.textColor;
     ctx.font = fontSize + 'px ' + config.fontFamily;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     let textX: number = x + bracketW + 3 * zoom;
+    let textW: number = w - bracketW - 6 * zoom;
+    let maxChars: number = Math.floor(textW / (fontSize * 0.55));
 
-    let maxCharsPerLine: number = Math.floor((w - bracketW - 3 * zoom) / (fontSize * 0.6));
     let text: string = node.label;
     let lineY: number = y + 2 * zoom;
     while (text.length > 0 && lineY < y + h) {
       let line: string = text;
-      if (text.length > maxCharsPerLine) {
-        line = text.substring(0, maxCharsPerLine);
-        text = text.substring(maxCharsPerLine);
+      if (text.length > maxChars) {
+        line = text.substring(0, maxChars);
+        text = text.substring(maxChars);
       } else {
         text = '';
       }

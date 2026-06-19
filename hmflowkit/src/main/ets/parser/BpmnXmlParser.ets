@@ -511,6 +511,14 @@ export class BpmnXmlParser {
     let currentEventDefTag: string = '';
     let currentLoopChar: string = '';
     let laneStack: string[] = [];
+    let inTextAnnotation: boolean = false;
+    let annotationText: string = '';
+    let inDataAssoc: boolean = false;
+    let inDataSrcRef: boolean = false;
+    let inDataTgtRef: boolean = false;
+    let dataAssocSrc: string = '';
+    let dataAssocTgt: string = '';
+    let dataAssocId: string = '';
 
     let shapeX: number = 0;
     let shapeY: number = 0;
@@ -518,6 +526,21 @@ export class BpmnXmlParser {
     let shapeH: number = 0;
 
     let waypointBuf: Waypoint[] = [];
+
+    // ── text callback ──
+    let textCb: (text: string) => boolean;
+    textCb = (text: string): boolean => {
+      if (inTextAnnotation) {
+        annotationText = annotationText + text;
+      }
+      if (inDataSrcRef) {
+        dataAssocSrc = text.trim();
+      }
+      if (inDataTgtRef) {
+        dataAssocTgt = text.trim();
+      }
+      return true;
+    };
 
     // ── attribute callback ──
     let attrCb: (name: string, value: string) => boolean;
@@ -563,6 +586,20 @@ export class BpmnXmlParser {
                  tag === 'compensateEventDefinition' || tag === 'escalationEventDefinition' ||
                  tag === 'conditionalEventDefinition' || tag === 'linkEventDefinition') {
           currentEventDefTag = tag;
+        }
+        // textAnnotation + data assoc text capture
+        else if (tag === 'textAnnotation') {
+          inTextAnnotation = true;
+          annotationText = '';
+        } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
+          inDataAssoc = true;
+          dataAssocSrc = '';
+          dataAssocTgt = '';
+          dataAssocId = currentAttrs['id'] || '';
+        } else if (tag === 'sourceRef') {
+          inDataSrcRef = true;
+        } else if (tag === 'targetRef') {
+          inDataTgtRef = true;
         }
         else if (tag === 'multiInstanceLoopCharacteristics') {
           currentLoopChar = 'multiInstance';
@@ -689,8 +726,7 @@ export class BpmnXmlParser {
         }
 
         if (inProcess && !inDiagram) {
-          if (tag === 'sequenceFlow' || tag === 'association' ||
-              tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
+          if (tag === 'sequenceFlow' || tag === 'association') {
             let fid: string = currentAttrs['id'] || '';
             let fsrc: string = currentAttrs['sourceRef'] || '';
             let ftgt: string = currentAttrs['targetRef'] || '';
@@ -699,7 +735,34 @@ export class BpmnXmlParser {
               collector.addEdge(fid, fsrc, ftgt,
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
+          } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
+            // sourceRef/targetRef are child elements, captured via text callback
+            if (dataAssocId.length > 0 && dataAssocSrc.length > 0 && dataAssocTgt.length > 0) {
+              collector.addEdge(dataAssocId, dataAssocSrc, dataAssocTgt, '', tag);
+            }
+            inDataAssoc = false;
+            dataAssocSrc = '';
+            dataAssocTgt = '';
+            dataAssocId = '';
+          } else if (tag === 'textAnnotation') {
+            inTextAnnotation = false;
+          } else if (tag === 'sourceRef') {
+            inDataSrcRef = false;
+          } else if (tag === 'targetRef') {
+            inDataTgtRef = false;
           } else if (isProcessElement(tag)) {
+            let nid: string = currentAttrs['id'] || '';
+            if (nid.length > 0) {
+              // Use captured annotation text if this is a textAnnotation
+              let label: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
+              if (tag === 'textAnnotation' && annotationText.length > 0) {
+                label = annotationText;
+              }
+              collector.addNode(nid, mapNodeType(tag), label, tag,
+                currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
+                currentAttrs['cancelActivity'],
+                currentLoopChar.length > 0 ? currentLoopChar : undefined);
+            }
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               collector.addNode(nid, mapNodeType(tag),
@@ -733,7 +796,8 @@ export class BpmnXmlParser {
         supportDoctype: false,
         ignoreNameSpace: true,
         attributeValueCallbackFunction: attrCb,
-        tokenValueCallbackFunction: tokenCb
+        tokenValueCallbackFunction: tokenCb,
+        textValueCallbackFunction: textCb
       };
       parser.parseXml(options);
     } catch (e) {

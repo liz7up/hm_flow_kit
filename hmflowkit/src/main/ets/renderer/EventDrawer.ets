@@ -193,22 +193,30 @@ export class EventDrawer {
       }
       case 'linkEventDefinition': {
         // Right-pointing arrow: shaft + arrowhead
-        let shaftL: number = s * 0.7;
-        let headW: number = s * 0.35;
+        let shaftL: number = s * 0.9;
+        let headW: number = s * 0.45;
+        if (!isThrow) {
+          let lw: number = ctx.lineWidth;
+          ctx.save();
+          ctx.lineWidth = Math.max(0.5, lw * 0.5);
+        }
         // Shaft
         ctx.beginPath();
         ctx.moveTo(cx - shaftL, cy);
-        ctx.lineTo(cx + shaftL * 0.6, cy);
+        ctx.lineTo(cx + shaftL * 0.5, cy);
         ctx.stroke();
         // Arrowhead
         ctx.beginPath();
-        ctx.moveTo(cx + shaftL * 0.6, cy - headW);
+        ctx.moveTo(cx + shaftL * 0.5, cy - headW);
         ctx.lineTo(cx + shaftL, cy);
-        ctx.lineTo(cx + shaftL * 0.6, cy + headW);
+        ctx.lineTo(cx + shaftL * 0.5, cy + headW);
         if (isThrow) {
           ctx.fill();
         }
         ctx.stroke();
+        if (!isThrow) {
+          ctx.restore();
+        }
         break;
       }
       default: break;

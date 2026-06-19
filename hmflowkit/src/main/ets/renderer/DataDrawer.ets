@@ -65,12 +65,12 @@ export class DataDrawer {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // 1. Body outline: left side + bottom arc (left→right) + right side
+      // 1. Body outline: right side + bottom arc + left side
       ctx.beginPath();
-      ctx.moveTo(cx - rx, topY);
-      ctx.lineTo(cx - rx, topY + height);
-      ctx.ellipse(cx, topY + height, rx, ry, 0, 0, Math.PI, false);
-      ctx.lineTo(cx + rx, topY);
+      ctx.moveTo(cx + rx, topY);
+      ctx.lineTo(cx + rx, topY + height);
+      ctx.ellipse(cx, topY + height, rx, ry, 0, Math.PI * 2, Math.PI, false);
+      ctx.lineTo(cx - rx, topY);
       ctx.stroke();
 
       // 2. Two decorative horizontal arcs inside the cylinder

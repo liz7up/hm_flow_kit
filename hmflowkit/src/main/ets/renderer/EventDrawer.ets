@@ -192,24 +192,29 @@ export class EventDrawer {
         break;
       }
       case 'linkEventDefinition': {
-        // Right-pointing arrow: shaft + arrowhead
-        let shaftL: number = s * 0.9;
-        let headW: number = s * 0.45;
+        // Right-pointing arrow: rectangular tail + triangular head
+        let totalW: number = s * 1.8;
+        let headH: number = s * 1.1;
+        let tailH: number = s * 0.44;
+        let headL: number = s * 0.55;
+        let startX: number = cx - totalW / 2;
+        let endX: number = cx + totalW / 2;
+        let joinX: number = endX - headL;
         if (!isThrow) {
-          let lw: number = ctx.lineWidth;
           ctx.save();
-          ctx.lineWidth = Math.max(0.5, lw * 0.5);
+          ctx.lineWidth = Math.max(0.5, ctx.lineWidth * 0.45);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
         }
-        // Shaft
         ctx.beginPath();
-        ctx.moveTo(cx - shaftL, cy);
-        ctx.lineTo(cx + shaftL * 0.5, cy);
-        ctx.stroke();
-        // Arrowhead
-        ctx.beginPath();
-        ctx.moveTo(cx + shaftL * 0.5, cy - headW);
-        ctx.lineTo(cx + shaftL, cy);
-        ctx.lineTo(cx + shaftL * 0.5, cy + headW);
+        ctx.moveTo(startX, cy - tailH / 2);
+        ctx.lineTo(joinX, cy - tailH / 2);
+        ctx.lineTo(joinX, cy - headH / 2);
+        ctx.lineTo(endX, cy);
+        ctx.lineTo(joinX, cy + headH / 2);
+        ctx.lineTo(joinX, cy + tailH / 2);
+        ctx.lineTo(startX, cy + tailH / 2);
+        ctx.closePath();
         if (isThrow) {
           ctx.fill();
         }

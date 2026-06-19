@@ -52,22 +52,24 @@ export class DataDrawer {
       ctx.lineTo(x + w, y + fold);
       ctx.stroke();
     } else if (node.type === NodeType.DATA_STORE) {
-      // Database cylinder: ellipse top + body + ellipse bottom
+      // Database cylinder icon: solid body + visible top ellipse
       let halfW: number = w / 2;
-      let archH: number = 8 * zoom;
-      // Body: filled rectangle with arched bottom
+      let archH: number = Math.max(6 * zoom, h * 0.18);
+      // Body: rectangle from top arches midpoint to bottom arches midpoint
       ctx.beginPath();
-      ctx.moveTo(x, y);
+      ctx.moveTo(x, y + archH);
       ctx.lineTo(x, y + h - archH);
       ctx.quadraticCurveTo(x + halfW, y + h + archH, x + w, y + h - archH);
-      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + archH);
+      ctx.quadraticCurveTo(x + halfW, y + archH, x + w, y + archH);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Top dome (ellipse arc): stroke separately on top
+      // Top dome
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + halfW, y - archH, x + w, y);
+      ctx.moveTo(x, y + archH);
+      ctx.quadraticCurveTo(x + halfW, y - archH, x + w, y + archH);
+      ctx.closePath();
       ctx.fill();
       ctx.stroke();
     }

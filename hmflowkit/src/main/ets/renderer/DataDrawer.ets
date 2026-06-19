@@ -52,39 +52,38 @@ export class DataDrawer {
       ctx.lineTo(x + w, y + fold);
       ctx.stroke();
     } else if (node.type === NodeType.DATA_STORE) {
-      // Database cylinder — top ellipse, sides, bottom arc
+      // Database cylinder — integrated body + decorative arcs + top ellipse
       let cx: number = x + w / 2;
-      let jw: number = w * 0.86;
-      let eh: number = jw * 0.2;
-      let bodyTop: number = y + eh;
-      let bodyBot: number = y + h - eh;
-      let hw: number = jw / 2;
-      let heh: number = eh / 2;
+      let rx: number = w * 0.43;
+      let ry: number = rx * 0.31;
+      let height: number = h - ry * 2;
+      let topY: number = y + ry;
+      let step: number = ry * 0.72;
 
       ctx.lineWidth = config.strokeWidth * zoom;
       ctx.strokeStyle = config.strokeColor;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
 
-      // Top ellipse (full outline)
+      // 1. Body outline: left side + bottom arc + right side
       ctx.beginPath();
-      ctx.ellipse(cx, bodyTop, hw, heh, 0, 0, Math.PI * 2);
+      ctx.moveTo(cx - rx, topY);
+      ctx.lineTo(cx - rx, topY + height);
+      ctx.ellipse(cx, topY + height, rx, ry, 0, 0, Math.PI, false);
+      ctx.lineTo(cx + rx, topY);
       ctx.stroke();
 
-      // Inner bottom arc of top ellipse (visible inside)
+      // 2. Two decorative horizontal arcs inside the cylinder
       ctx.beginPath();
-      ctx.ellipse(cx, bodyTop, hw, heh, 0, Math.PI, Math.PI * 2);
+      ctx.ellipse(cx, topY + step, rx, ry, 0, 0, Math.PI, false);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, topY + step * 2, rx, ry, 0, 0, Math.PI, false);
       ctx.stroke();
 
-      // Side lines
+      // 3. Top ellipse (drawn last, on top of everything)
       ctx.beginPath();
-      ctx.moveTo(cx - hw, bodyTop);
-      ctx.lineTo(cx - hw, bodyBot);
-      ctx.moveTo(cx + hw, bodyTop);
-      ctx.lineTo(cx + hw, bodyBot);
-      ctx.stroke();
-
-      // Bottom arc (perspective)
-      ctx.beginPath();
-      ctx.ellipse(cx, bodyBot, hw, heh, 0, 0, Math.PI);
+      ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI * 2, false);
       ctx.stroke();
     }
 

@@ -116,16 +116,39 @@ export class EventDrawer {
         break;
       }
       case 'messageEventDefinition': {
-        // Envelope — fill for throw, stroke only for catch
-        ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
-        ctx.lineTo(cx + s, cy - s * 0.5);
-        ctx.lineTo(cx + s, cy + s * 0.5);
-        ctx.lineTo(cx - s, cy + s * 0.5);
-        ctx.closePath();
-        if (isThrow) { ctx.fill(); }
-        ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
-        ctx.lineTo(cx, cy); ctx.lineTo(cx + s, cy - s * 0.5); ctx.stroke();
+        // Envelope body: dark filled rect (throw) or stroked rect (catch)
+        let ew: number = s * 1.6;
+        let eh: number = s * 1.0;
+        let ex: number = cx - ew / 2;
+        let ey: number = cy - eh / 2;
+        if (isThrow) {
+          ctx.fillRect(ex, ey, ew, eh);
+          // White V-flap
+          ctx.save();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = Math.max(1, ctx.lineWidth * 0.6);
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(ex + 2, ey + 2);
+          ctx.lineTo(cx, cy + eh * 0.25);
+          ctx.lineTo(ex + ew - 2, ey + 2);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(ex, ey + eh * 0.5);
+          ctx.lineTo(ex, ey + eh);
+          ctx.lineTo(ex + ew, ey + eh);
+          ctx.lineTo(ex + ew, ey + eh * 0.5);
+          ctx.closePath();
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(ex, ey + eh * 0.5);
+          ctx.lineTo(cx, cy + eh * 0.6);
+          ctx.lineTo(ex + ew, ey + eh * 0.5);
+          ctx.stroke();
+        }
         break;
       }
       case 'errorEventDefinition': {

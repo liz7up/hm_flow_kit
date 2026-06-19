@@ -825,8 +825,10 @@ export class BpmnXmlParser {
     }
 
     // 处理 pending dataAssoc edges (text captured after END_TAG)
+    console.info('[parser] pendingDataEdges count: ' + pendingDataEdges.length);
     for (let i: number = 0; i < pendingDataEdges.length; i++) {
       let de: _DataAssocEntry = pendingDataEdges[i];
+      console.info('[parser] pending[' + i + ']: id=' + de.id + ' src=' + de.src + ' tgt=' + de.tgt + ' complete=' + (de.id.length>0 && de.src.length>0 && de.tgt.length>0));
       if (de.id.length > 0 && de.src.length > 0 && de.tgt.length > 0) {
         let tag: string = de.isAssoc ? 'dataInputAssociation' : 'dataOutputAssociation';
         collector.addEdge(de.id, de.src, de.tgt, '', tag);

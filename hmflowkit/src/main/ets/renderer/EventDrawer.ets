@@ -116,12 +116,14 @@ export class EventDrawer {
         break;
       }
       case 'messageEventDefinition': {
-        // Envelope
+        // Envelope — fill for throw, stroke only for catch
         ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
         ctx.lineTo(cx + s, cy - s * 0.5);
         ctx.lineTo(cx + s, cy + s * 0.5);
         ctx.lineTo(cx - s, cy + s * 0.5);
-        ctx.closePath(); ctx.stroke();
+        ctx.closePath();
+        if (isThrow) { ctx.fill(); }
+        ctx.stroke();
         ctx.beginPath(); ctx.moveTo(cx - s, cy - s * 0.5);
         ctx.lineTo(cx, cy); ctx.lineTo(cx + s, cy - s * 0.5); ctx.stroke();
         break;

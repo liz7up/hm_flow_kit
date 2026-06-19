@@ -573,6 +573,11 @@ export class BpmnXmlParser {
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
+        // DEBUG: log all tags containing "data" or "Data"
+        if (tag.indexOf('data') >= 0 || tag.indexOf('Data') >= 0 || tag.indexOf('assoc') >= 0) {
+          let raw: string = info.getName();
+          console.info('[parser] *** FOUND tag=[' + tag + '] raw=[' + raw + ']');
+        }
         // 保存当前 currentAttrs 到栈，重置供新元素使用
         // （不能用 = {}，因为闭包捕获了初始引用）
         let snapshot: Record<string, string> = {};

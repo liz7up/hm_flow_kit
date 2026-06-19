@@ -749,6 +749,9 @@ export class BpmnXmlParser {
         }
 
         if (inProcess && !inDiagram) {
+          if (tag.indexOf('data') >= 0 || tag.indexOf('Data') >= 0 || tag.indexOf('assoc') >= 0) {
+            console.info('[parser] *** END_TAG data: tag=' + tag + ' inProcess=' + inProcess + ' inDiagram=' + inDiagram);
+          }
           if (tag === 'sequenceFlow' || tag === 'association') {
             let fid: string = currentAttrs['id'] || '';
             let fsrc: string = currentAttrs['sourceRef'] || '';

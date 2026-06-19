@@ -527,17 +527,17 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
-    // ── text callback ──
-    let textCb: (text: string) => boolean;
-    textCb = (text: string): boolean => {
-      if (inTextAnnotation) {
-        annotationText = annotationText + text;
+    // ── tag value / text callback ──
+    let tagValCb: (tagName: string, textValue: string) => boolean;
+    tagValCb = (tagName: string, textValue: string): boolean => {
+      if (inTextAnnotation && (tagName === 'textAnnotation' || tagName === 'text')) {
+        annotationText = annotationText + textValue;
       }
       if (inDataSrcRef) {
-        dataAssocSrc = text.trim();
+        dataAssocSrc = textValue.trim();
       }
       if (inDataTgtRef) {
-        dataAssocTgt = text.trim();
+        dataAssocTgt = textValue.trim();
       }
       return true;
     };
@@ -753,20 +753,11 @@ export class BpmnXmlParser {
           } else if (isProcessElement(tag)) {
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
-              // Use captured annotation text if this is a textAnnotation
-              let label: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
+              let nodeLabel: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
               if (tag === 'textAnnotation' && annotationText.length > 0) {
-                label = annotationText;
+                nodeLabel = annotationText;
               }
-              collector.addNode(nid, mapNodeType(tag), label, tag,
-                currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
-                currentAttrs['cancelActivity'],
-                currentLoopChar.length > 0 ? currentLoopChar : undefined);
-            }
-            let nid: string = currentAttrs['id'] || '';
-            if (nid.length > 0) {
-              collector.addNode(nid, mapNodeType(tag),
-                decodeXmlCharacterRefs(currentAttrs['name'] || ''), tag,
+              collector.addNode(nid, mapNodeType(tag), nodeLabel, tag,
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
                 currentAttrs['cancelActivity'],
                 currentLoopChar.length > 0 ? currentLoopChar : undefined);
@@ -797,7 +788,7 @@ export class BpmnXmlParser {
         ignoreNameSpace: true,
         attributeValueCallbackFunction: attrCb,
         tokenValueCallbackFunction: tokenCb,
-        textValueCallbackFunction: textCb
+        tagValueCallbackFunction: tagValCb
       };
       parser.parseXml(options);
     } catch (e) {

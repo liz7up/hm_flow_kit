@@ -65,11 +65,11 @@ export class DataDrawer {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // 1. Body outline: left side + bottom arc + right side
+      // 1. Body outline: left side + bottom arc (left→right) + right side
       ctx.beginPath();
       ctx.moveTo(cx - rx, topY);
       ctx.lineTo(cx - rx, topY + height);
-      ctx.ellipse(cx, topY + height, rx, ry, 0, 0, Math.PI, false);
+      ctx.ellipse(cx, topY + height, rx, ry, 0, Math.PI, Math.PI * 2, false);
       ctx.lineTo(cx + rx, topY);
       ctx.stroke();
 

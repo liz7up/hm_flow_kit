@@ -28,22 +28,33 @@ export class AnnotationDrawer {
     ctx.lineTo(x + bracketW, y + h);
     ctx.stroke();
 
-    // Multi-line text, right-indented from bracket
+    // Multi-line text
     ctx.fillStyle = config.textColor;
     ctx.font = fontSize + 'px ' + config.fontFamily;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     let textX: number = x + bracketW + 2 * zoom;
-    let textW: number = w - bracketW - 3 * zoom;
-    let maxChars: number = Math.floor(textW / (fontSize * 0.48));
+    let textW: number = w - bracketW - 4 * zoom;
 
     let text: string = node.label;
     let lineY: number = y + 2 * zoom;
     while (text.length > 0 && lineY < y + h) {
       let line: string = text;
-      if (text.length > maxChars) {
-        line = text.substring(0, maxChars);
-        text = text.substring(maxChars);
+      let m: TextMetrics = ctx.measureText(text);
+      if (m.width > textW && text.length > 1) {
+        // Binary search for the right split point
+        let lo: number = 1;
+        let hi: number = text.length;
+        while (lo < hi) {
+          let mid: number = Math.floor((lo + hi) / 2);
+          if (ctx.measureText(text.substring(0, mid)).width > textW) {
+            hi = mid;
+          } else {
+            lo = mid + 1;
+          }
+        }
+        line = text.substring(0, lo - 1);
+        text = text.substring(lo - 1);
       } else {
         text = '';
       }

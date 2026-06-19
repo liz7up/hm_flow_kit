@@ -85,7 +85,8 @@ export class EventDrawer {
       ctx.fillStyle = config.eventIconColor;
       ctx.strokeStyle = config.eventIconColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);
-      EventDrawer.drawEventIcon(ctx, evDef, cx, cy, r * 0.55);
+      let isThrow: boolean = node.properties['bpmnElement'] === 'intermediateThrowEvent';
+      EventDrawer.drawEventIcon(ctx, evDef, cx, cy, r * 0.55, isThrow);
     }
 
     // Label below circle (对标 bpmn.io)
@@ -103,7 +104,7 @@ export class EventDrawer {
 
   private static drawEventIcon(
     ctx: CanvasRenderingContext2D, evDef: string,
-    cx: number, cy: number, s: number
+    cx: number, cy: number, s: number, isThrow: boolean = false
   ): void {
     switch (evDef) {
       case 'timerEventDefinition': {
@@ -191,9 +192,18 @@ export class EventDrawer {
         break;
       }
       case 'linkEventDefinition': {
-        // Two connected circles (like a chain link)
-        ctx.beginPath(); ctx.arc(cx - s * 0.3, cy, s * 0.35, 0, Math.PI * 2); ctx.stroke();
-        ctx.beginPath(); ctx.arc(cx + s * 0.3, cy, s * 0.35, 0, Math.PI * 2); ctx.stroke();
+        // Right-pointing arrow: filled (throw) or hollow (catch)
+        let aw: number = s * 0.7;
+        let ah: number = s * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - aw, cy - ah);
+        ctx.lineTo(cx + aw, cy);
+        ctx.lineTo(cx - aw, cy + ah);
+        ctx.closePath();
+        if (isThrow) {
+          ctx.fill();
+        }
+        ctx.stroke();
         break;
       }
       default: break;

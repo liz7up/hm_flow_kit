@@ -207,6 +207,14 @@ class _LaneDefData {
   constructor() {}
 }
 
+class _DataAssocEntry {
+  id: string = '';
+  src: string = '';
+  tgt: string = '';
+  isAssoc: boolean = false;
+  constructor() {}
+}
+
 // ===== 解析收集器 =====
 
 class _Collector {
@@ -527,18 +535,33 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
-    // ── tag value callback (dataAssoc sourceRef/targetRef only) ──
+    // ── pending data association edges (text captured after END_TAG) ──
+    let pendingDataEdges: _DataAssocEntry[] = [];
+
+    // ── tag value callback ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
       let n: string = tagName.indexOf(':') >= 0 ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
-      console.info('[parser] tagValCb: tag=' + tagName + ' n=' + n + ' val=' + textValue.substring(0, 50));
-      if (n === 'sourceRef') {
-        dataAssocSrc = textValue.trim();
-        console.info('[parser] dataAssocSrc=' + dataAssocSrc);
+      if (n === 'sourceRef' && textValue.trim().length > 0) {
+        // Find or create pending entry for this edge
+        if (dataAssocId.length > 0 && dataAssocSrc.length === 0) {
+          dataAssocSrc = textValue.trim();
+        }
       }
-      if (n === 'targetRef') {
-        dataAssocTgt = textValue.trim();
-        console.info('[parser] dataAssocTgt=' + dataAssocTgt);
+      if (n === 'targetRef' && textValue.trim().length > 0) {
+        if (dataAssocId.length > 0 && dataAssocTgt.length === 0) {
+          dataAssocTgt = textValue.trim();
+          // Both source and target captured — save to pending
+          if (dataAssocSrc.length > 0) {
+            let e: _DataAssocEntry = new _DataAssocEntry();
+            e.id = dataAssocId;
+            e.src = dataAssocSrc;
+            e.tgt = dataAssocTgt;
+            e.isAssoc = inDataAssoc;
+            pendingDataEdges.push(e);
+            console.info('[parser] pending dataAssoc edge: ' + e.id + ' ' + e.src + '->' + e.tgt);
+          }
+        }
       }
       return true;
     };
@@ -558,28 +581,18 @@ export class BpmnXmlParser {
       // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
-        if (tag.indexOf('source') >= 0 || tag.indexOf('target') >= 0 || t.indexOf('Data') >= 0 || inDataSrcRef || inDataTgtRef) {
-          console.info('[parser] TEXT dataAssoc: tag=' + tag + ' t=' + t + ' inSrc=' + inDataSrcRef + ' inTgt=' + inDataTgtRef);
-        }
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
-        if (inDataSrcRef) {
-          dataAssocSrc = dataAssocSrc + t.trim();
-          console.info('[parser] dataAssocSrc=' + dataAssocSrc);
+        if (inDataSrcRef && t.trim().length > 0) {
+          dataAssocSrc = t.trim();
         }
-        if (inDataTgtRef) {
-          dataAssocTgt = dataAssocTgt + t.trim();
-          console.info('[parser] dataAssocTgt=' + dataAssocTgt);
+        if (inDataTgtRef && t.trim().length > 0) {
+          dataAssocTgt = t.trim();
         }
       }
 
       if (eventType === xml.EventType.START_TAG) {
-        // DEBUG: log all tags containing "data" or "Data"
-        if (tag.indexOf('data') >= 0 || tag.indexOf('Data') >= 0 || tag.indexOf('assoc') >= 0) {
-          let raw: string = info.getName();
-          console.info('[parser] *** FOUND tag=[' + tag + '] raw=[' + raw + ']');
-        }
         // 保存当前 currentAttrs 到栈，重置供新元素使用
         // （不能用 = {}，因为闭包捕获了初始引用）
         let snapshot: Record<string, string> = {};
@@ -617,16 +630,15 @@ export class BpmnXmlParser {
           inTextAnnotation = true;
           annotationText = '';
         } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-          inDataAssoc = true;
+          // Reset for this new edge; ID set in END_TAG, text set via TEXT event
+          inDataAssoc = (tag === 'dataInputAssociation');
           dataAssocSrc = '';
           dataAssocTgt = '';
-          dataAssocId = currentAttrs['id'] || '';
+          dataAssocId = '';
         } else if (tag === 'sourceRef') {
           inDataSrcRef = true;
-          console.info('[parser] *** sourceRef START');
         } else if (tag === 'targetRef') {
           inDataTgtRef = true;
-          console.info('[parser] *** targetRef START');
         }
         else if (tag === 'multiInstanceLoopCharacteristics') {
           currentLoopChar = 'multiInstance';
@@ -753,9 +765,6 @@ export class BpmnXmlParser {
         }
 
         if (inProcess && !inDiagram) {
-          if (tag.indexOf('data') >= 0 || tag.indexOf('Data') >= 0 || tag.indexOf('assoc') >= 0) {
-            console.info('[parser] *** END_TAG data: tag=' + tag + ' inProcess=' + inProcess + ' inDiagram=' + inDiagram);
-          }
           if (tag === 'sequenceFlow' || tag === 'association') {
             let fid: string = currentAttrs['id'] || '';
             let fsrc: string = currentAttrs['sourceRef'] || '';
@@ -766,18 +775,11 @@ export class BpmnXmlParser {
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-            // sourceRef/targetRef captured via TEXT event or tagValCb
-            let fid: string = currentAttrs['id'] || '';
-            console.info('[parser] dataAssoc END: fid=' + fid + ' src=' + dataAssocSrc + ' tgt=' + dataAssocTgt);
-            if (fid.length > 0 && dataAssocSrc.length > 0 && dataAssocTgt.length > 0) {
-              collector.addEdge(fid, dataAssocSrc, dataAssocTgt, '', tag);
-              console.info('[parser] dataAssoc edge CREATED');
-            } else {
-              console.info('[parser] dataAssoc edge SKIPPED');
-            }
-            inDataAssoc = false;
-            dataAssocSrc = '';
-            dataAssocTgt = '';
+            // Set ID from currentAttrs (available in END_TAG, not START_TAG)
+            // Source/target text will be captured by TEXT event (which fires after this)
+            dataAssocId = currentAttrs['id'] || '';
+            inDataAssoc = (tag === 'dataInputAssociation');
+            // DON'T reset dataAssocSrc/dataAssocTgt — TEXT event fires after END_TAG
             dataAssocId = '';
           } else if (tag === 'sourceRef') {
             inDataSrcRef = false;
@@ -832,6 +834,15 @@ export class BpmnXmlParser {
       result.warnings.push('XML parse error: ' + e);
     }
 
+    // 处理 pending dataAssoc edges (text captured after END_TAG)
+    for (let i: number = 0; i < pendingDataEdges.length; i++) {
+      let de: _DataAssocEntry = pendingDataEdges[i];
+      if (de.id.length > 0 && de.src.length > 0 && de.tgt.length > 0) {
+        let tag: string = de.isAssoc ? 'dataInputAssociation' : 'dataOutputAssociation';
+        collector.addEdge(de.id, de.src, de.tgt, '', tag);
+        console.info('[parser] pending edge added: ' + de.id + ' ' + de.src + '->' + de.tgt);
+      }
+    }
     // 转发 Collector 中的警告
     for (let i: number = 0; i < collector.warnings.length; i++) {
       result.warnings.push(collector.warnings[i]);

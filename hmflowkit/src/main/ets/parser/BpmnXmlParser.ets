@@ -493,6 +493,7 @@ export class BpmnXmlParser {
 
     // ── 状态变量 ──
     let currentAttrs: Record<string, string> = {};
+    let attrStack: Record<string, string>[] = [];
     let inProcess: boolean = false;
     let inDiagram: boolean = false;
     let inShape: boolean = false;
@@ -531,14 +532,16 @@ export class BpmnXmlParser {
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
-        // 重置 currentAttrs（不能用 = {} 因为闭包捕获了初始引用）
-        currentAttrs['id'] = '';
-        currentAttrs['name'] = '';
-        currentAttrs['sourceRef'] = '';
-        currentAttrs['targetRef'] = '';
-        currentAttrs['cancelActivity'] = '';
-        currentAttrs['processRef'] = '';
-        currentAttrs['bpmnElement'] = '';
+        // 保存当前 currentAttrs 到栈，重置供新元素使用
+        // （不能用 = {}，因为闭包捕获了初始引用）
+        let snapshot: Record<string, string> = {};
+        let allKeys: string[] = Object.keys(currentAttrs);
+        for (let ki: number = 0; ki < allKeys.length; ki++) {
+          let k: string = allKeys[ki];
+          snapshot[k] = currentAttrs[k];
+          currentAttrs[k] = '';
+        }
+        attrStack.push(snapshot);
 
         if (tag === 'process') {
           inProcess = true;
@@ -707,6 +710,14 @@ export class BpmnXmlParser {
             }
             currentEventDefTag = '';
             currentLoopChar = '';
+          }
+        }
+        // 弹出栈顶，恢复父级 currentAttrs
+        if (attrStack.length > 0) {
+          let prev: Record<string, string> = attrStack.pop()!;
+          let pk: string[] = Object.keys(prev);
+          for (let pi: number = 0; pi < pk.length; pi++) {
+            currentAttrs[pk[pi]] = prev[pk[pi]];
           }
         }
         return true;

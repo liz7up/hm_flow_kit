@@ -46,10 +46,16 @@ export class GatewayDrawer {
     ctx.lineWidth = config.strokeWidth * zoom;
     ctx.stroke();
 
-    // Gateway internal marker
+    // Gateway internal marker — per-type sizing
     let gwTag: string | undefined = node.properties['bpmnElement'];
     if (gwTag !== undefined && gwTag.length > 0) {
-      let s: number = Math.min(w, h) * 0.16 * zoom;
+      let base: number = Math.min(w, h);
+      let s: number;
+      if (gwTag === 'exclusiveGateway') {
+        s = base * 0.16 * zoom;
+      } else {
+        s = base * 0.28 * zoom;
+      }
       ctx.fillStyle = config.gatewayMarkerColor;
       ctx.strokeStyle = config.gatewayMarkerColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);

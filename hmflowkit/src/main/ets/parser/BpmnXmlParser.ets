@@ -758,13 +758,14 @@ export class BpmnXmlParser {
             dataAssocSrc = '';
             dataAssocTgt = '';
             dataAssocId = '';
-          } else if (tag === 'textAnnotation') {
-            inTextAnnotation = false;
           } else if (tag === 'sourceRef') {
             inDataSrcRef = false;
           } else if (tag === 'targetRef') {
             inDataTgtRef = false;
           } else if (isProcessElement(tag)) {
+            if (tag === 'textAnnotation') {
+              inTextAnnotation = false;
+            }
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               let nodeLabel: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');

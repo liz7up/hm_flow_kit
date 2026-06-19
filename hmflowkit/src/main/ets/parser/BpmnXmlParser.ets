@@ -527,21 +527,6 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
-    // ── tag value / text callback ──
-    let tagValCb: (tagName: string, textValue: string) => boolean;
-    tagValCb = (tagName: string, textValue: string): boolean => {
-      if (inTextAnnotation) {
-        annotationText = annotationText + textValue;
-      }
-      if (inDataSrcRef) {
-        dataAssocSrc = dataAssocSrc + textValue.trim();
-      }
-      if (inDataTgtRef) {
-        dataAssocTgt = dataAssocTgt + textValue.trim();
-      }
-      return true;
-    };
-
     // ── attribute callback ──
     let attrCb: (name: string, value: string) => boolean;
     attrCb = (name: string, value: string): boolean => {
@@ -802,8 +787,7 @@ export class BpmnXmlParser {
         supportDoctype: false,
         ignoreNameSpace: true,
         attributeValueCallbackFunction: attrCb,
-        tokenValueCallbackFunction: tokenCb,
-        tagValueCallbackFunction: tagValCb
+        tokenValueCallbackFunction: tokenCb
       };
       parser.parseXml(options);
     } catch (e) {

@@ -192,14 +192,19 @@ export class EventDrawer {
         break;
       }
       case 'linkEventDefinition': {
-        // Right-pointing arrow: filled (throw) or hollow (catch)
-        let aw: number = s * 0.7;
-        let ah: number = s * 0.5;
+        // Right-pointing arrow: shaft + arrowhead
+        let shaftL: number = s * 0.7;
+        let headW: number = s * 0.35;
+        // Shaft
         ctx.beginPath();
-        ctx.moveTo(cx - aw, cy - ah);
-        ctx.lineTo(cx + aw, cy);
-        ctx.lineTo(cx - aw, cy + ah);
-        ctx.closePath();
+        ctx.moveTo(cx - shaftL, cy);
+        ctx.lineTo(cx + shaftL * 0.6, cy);
+        ctx.stroke();
+        // Arrowhead
+        ctx.beginPath();
+        ctx.moveTo(cx + shaftL * 0.6, cy - headW);
+        ctx.lineTo(cx + shaftL, cy);
+        ctx.lineTo(cx + shaftL * 0.6, cy + headW);
         if (isThrow) {
           ctx.fill();
         }

@@ -550,10 +550,17 @@ export class BpmnXmlParser {
     // ── token callback ──
     let tokenCb: (eventType: xml.EventType, info: xml.ParseInfo) => boolean;
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
-      // TEXT event: capture textAnnotation content
+      // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
+        let t: string = info.getText();
         if (inTextAnnotation) {
-          annotationText = annotationText + info.getText();
+          annotationText = annotationText + t;
+        }
+        if (inDataSrcRef) {
+          dataAssocSrc = dataAssocSrc + t.trim();
+        }
+        if (inDataTgtRef) {
+          dataAssocTgt = dataAssocTgt + t.trim();
         }
       }
 
@@ -741,9 +748,10 @@ export class BpmnXmlParser {
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-            // sourceRef/targetRef are child elements, captured via text callback
-            if (dataAssocId.length > 0 && dataAssocSrc.length > 0 && dataAssocTgt.length > 0) {
-              collector.addEdge(dataAssocId, dataAssocSrc, dataAssocTgt, '', tag);
+            // sourceRef/targetRef captured via TEXT event or tagValCb
+            let fid: string = currentAttrs['id'] || '';
+            if (fid.length > 0 && dataAssocSrc.length > 0 && dataAssocTgt.length > 0) {
+              collector.addEdge(fid, dataAssocSrc, dataAssocTgt, '', tag);
             }
             inDataAssoc = false;
             dataAssocSrc = '';

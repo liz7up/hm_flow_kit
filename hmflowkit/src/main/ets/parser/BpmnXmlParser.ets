@@ -537,6 +537,8 @@ export class BpmnXmlParser {
 
     // ── pending data association edges (text captured after END_TAG) ──
     let pendingDataEdges: _DataAssocEntry[] = [];
+    let pendingMap: Record<number, _DataAssocEntry> = {};
+    let pendingSeq: number = 0;
 
     // ── tag value callback ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
@@ -563,20 +565,18 @@ export class BpmnXmlParser {
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
-        if (inDataSrcRef && trimmed.length > 0) {
-          dataAssocSrc = trimmed;
-          // Add pending entry now (source known, target to follow)
-          let e: _DataAssocEntry = new _DataAssocEntry();
-          e.id = dataAssocId;
-          e.src = trimmed;
-          e.isAssoc = inDataAssoc;
-          pendingDataEdges.push(e);
-        }
-        if (inDataTgtRef && trimmed.length > 0) {
-          // Fill the last pending entry's target
-          let last: number = pendingDataEdges.length - 1;
-          if (last >= 0 && pendingDataEdges[last].tgt.length === 0) {
-            pendingDataEdges[last].tgt = trimmed;
+        if (pendingSeq > 0 && trimmed.length > 0) {
+          if (inDataSrcRef) {
+            // sourceRef text: allocate new slot
+            if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].src.length === 0) {
+              pendingMap[pendingSeq].src = trimmed;
+            }
+          }
+          if (inDataTgtRef) {
+            // targetRef text: fill current slot
+            if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].tgt.length === 0) {
+              pendingMap[pendingSeq].tgt = trimmed;
+            }
           }
         }
       }
@@ -619,11 +619,15 @@ export class BpmnXmlParser {
           inTextAnnotation = true;
           annotationText = '';
         } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-          // Reset for this new edge; ID set in END_TAG, text set via TEXT event
+          // Allocate entry immediately so TEXT can fill src/tgt
           inDataAssoc = (tag === 'dataInputAssociation');
           dataAssocSrc = '';
           dataAssocTgt = '';
           dataAssocId = '';
+          pendingSeq++;
+          pendingMap[pendingSeq] = new _DataAssocEntry();
+          pendingMap[pendingSeq].id = '';  // filled in END_TAG
+          pendingMap[pendingSeq].isAssoc = inDataAssoc;
         } else if (tag === 'sourceRef') {
           inDataSrcRef = true;
         } else if (tag === 'targetRef') {
@@ -764,9 +768,12 @@ export class BpmnXmlParser {
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-            // ID set here for TEXT events that fire after this
-            dataAssocId = currentAttrs['id'] || '';
-            inDataAssoc = (tag === 'dataInputAssociation');
+            // Fill real ID now that attrCb has fired
+            let realId: string = currentAttrs['id'] || '';
+            if (realId.length > 0 && pendingSeq > 0) {
+              pendingMap[pendingSeq].id = realId;
+            }
+            inDataAssoc = false;
             dataAssocSrc = '';
             dataAssocTgt = '';
             dataAssocId = '';
@@ -823,15 +830,17 @@ export class BpmnXmlParser {
       result.warnings.push('XML parse error: ' + e);
     }
 
-    // 处理 pending dataAssoc edges (text captured after END_TAG)
-    console.info('[parser] pendingDataEdges count: ' + pendingDataEdges.length);
-    for (let i: number = 0; i < pendingDataEdges.length; i++) {
-      let de: _DataAssocEntry = pendingDataEdges[i];
-      console.info('[parser] pending[' + i + ']: id=' + de.id + ' src=' + de.src + ' tgt=' + de.tgt + ' complete=' + (de.id.length>0 && de.src.length>0 && de.tgt.length>0));
+    // 处理 pending dataAssoc edges
+    let allKeys: string[] = Object.keys(pendingMap);
+    console.info('[parser] pendingMap keys: ' + allKeys.length);
+    for (let i: number = 0; i < allKeys.length; i++) {
+      let k: number = Number(allKeys[i]);
+      let de: _DataAssocEntry = pendingMap[k];
+      console.info('[parser] pending[' + k + ']: id=' + de.id + ' src=' + de.src + ' tgt=' + de.tgt + ' complete=' + (de.id.length>0 && de.src.length>0 && de.tgt.length>0));
       if (de.id.length > 0 && de.src.length > 0 && de.tgt.length > 0) {
-        let tag: string = de.isAssoc ? 'dataInputAssociation' : 'dataOutputAssociation';
-        collector.addEdge(de.id, de.src, de.tgt, '', tag);
-        console.info('[parser] pending edge added: ' + de.id + ' ' + de.src + '->' + de.tgt);
+        let edgeTag: string = de.isAssoc ? 'dataInputAssociation' : 'dataOutputAssociation';
+        collector.addEdge(de.id, de.src, de.tgt, '', edgeTag);
+        console.info('[parser] edge added via map: ' + de.id);
       }
     }
     // 转发 Collector 中的警告

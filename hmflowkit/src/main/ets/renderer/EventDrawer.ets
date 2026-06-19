@@ -137,6 +137,8 @@ export class EventDrawer {
           ctx.restore();
         } else {
           // Hollow envelope: full rect + V-flap + bottom diagonals
+          ctx.save();
+          ctx.lineWidth = Math.max(0.5, ctx.lineWidth * 0.5);
           let vpy: number = cy + eh * 0.25;
           // Body outline
           ctx.beginPath();
@@ -159,6 +161,7 @@ export class EventDrawer {
           ctx.moveTo(ex + ew, ey + eh);
           ctx.lineTo(cx, vpy);
           ctx.stroke();
+          ctx.restore();
         }
         break;
       }

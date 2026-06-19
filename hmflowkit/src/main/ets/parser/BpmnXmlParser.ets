@@ -527,6 +527,21 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
+    // ── tag value callback (captures text content of elements) ──
+    let tagValCb: (tagName: string, textValue: string) => boolean;
+    tagValCb = (tagName: string, textValue: string): boolean => {
+      if (tagName === 'textAnnotation' || tagName === 'text') {
+        annotationText = annotationText + textValue;
+      }
+      if (tagName === 'sourceRef') {
+        dataAssocSrc = textValue.trim();
+      }
+      if (tagName === 'targetRef') {
+        dataAssocTgt = textValue.trim();
+      }
+      return true;
+    };
+
     // ── attribute callback ──
     let attrCb: (name: string, value: string) => boolean;
     attrCb = (name: string, value: string): boolean => {
@@ -537,20 +552,6 @@ export class BpmnXmlParser {
     // ── token callback ──
     let tokenCb: (eventType: xml.EventType, info: xml.ParseInfo) => boolean;
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
-      // Capture text content between tags
-      if (eventType === xml.EventType.TEXT) {
-        let t: string = info.getText();
-        if (inTextAnnotation) {
-          annotationText = annotationText + t;
-        }
-        if (inDataSrcRef) {
-          dataAssocSrc = t.trim();
-        }
-        if (inDataTgtRef) {
-          dataAssocTgt = t.trim();
-        }
-      }
-
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
@@ -787,7 +788,8 @@ export class BpmnXmlParser {
         supportDoctype: false,
         ignoreNameSpace: true,
         attributeValueCallbackFunction: attrCb,
-        tokenValueCallbackFunction: tokenCb
+        tokenValueCallbackFunction: tokenCb,
+        tagValueCallbackFunction: tagValCb
       };
       parser.parseXml(options);
     } catch (e) {

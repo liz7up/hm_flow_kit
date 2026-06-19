@@ -54,7 +54,7 @@ export class DataDrawer {
     } else if (node.type === NodeType.DATA_STORE) {
       // Database cylinder — top ellipse, sides, bottom arc
       let cx: number = x + w / 2;
-      let jw: number = w * 0.75;
+      let jw: number = w * 0.86;
       let eh: number = jw * 0.2;
       let bodyTop: number = y + eh;
       let bodyBot: number = y + h - eh;
@@ -64,9 +64,14 @@ export class DataDrawer {
       ctx.lineWidth = config.strokeWidth * zoom;
       ctx.strokeStyle = config.strokeColor;
 
-      // Top ellipse
+      // Top ellipse (full outline)
       ctx.beginPath();
       ctx.ellipse(cx, bodyTop, hw, heh, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner bottom arc of top ellipse (visible inside)
+      ctx.beginPath();
+      ctx.ellipse(cx, bodyTop, hw, heh, 0, Math.PI, Math.PI * 2);
       ctx.stroke();
 
       // Side lines

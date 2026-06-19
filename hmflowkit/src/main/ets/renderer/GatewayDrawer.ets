@@ -49,7 +49,7 @@ export class GatewayDrawer {
     // Gateway internal marker
     let gwTag: string | undefined = node.properties['bpmnElement'];
     if (gwTag !== undefined && gwTag.length > 0) {
-      let s: number = Math.min(w, h) * 0.35 * zoom;
+      let s: number = Math.min(w, h) * 0.28 * zoom;
       ctx.fillStyle = config.gatewayMarkerColor;
       ctx.strokeStyle = config.gatewayMarkerColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);
@@ -93,11 +93,15 @@ export class GatewayDrawer {
     } else if (tagName === 'inclusiveGateway') {
       ctx.arc(cx, cy, s * 0.7, 0, Math.PI * 2);
     } else if (tagName === 'eventBasedGateway') {
-      let pentR: number = s * 0.8;
+      // Pentagon inside circle (outer circle, inner pentagon)
+      ctx.arc(cx, cy, s * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      let pentR: number = s * 0.35;
       for (let i: number = 0; i < 5; i++) {
-        let angle: number = (Math.PI / 2) + (i * 2 * Math.PI / 5);
+        let angle: number = (-Math.PI / 2) + (i * 2 * Math.PI / 5);
         let px: number = cx + pentR * Math.cos(angle);
-        let py: number = cy - pentR * Math.sin(angle);
+        let py: number = cy + pentR * Math.sin(angle);
         if (i === 0) {
           ctx.moveTo(px, py);
         } else {
@@ -105,9 +109,18 @@ export class GatewayDrawer {
         }
       }
       ctx.closePath();
+    } else if (tagName === 'complexGateway') {
+      // Asterisk/star: 3 crossed lines inside circle
+      ctx.arc(cx, cy, s * 0.55, 0, Math.PI * 2);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(cx, cy, s * 0.35, 0, Math.PI * 2);
+      for (let i: number = 0; i < 3; i++) {
+        let angle: number = (Math.PI * i) / 3;
+        let dx: number = s * 0.4 * Math.cos(angle);
+        let dy: number = s * 0.4 * Math.sin(angle);
+        ctx.moveTo(cx - dx, cy - dy);
+        ctx.lineTo(cx + dx, cy + dy);
+      }
     }
     ctx.stroke();
   }

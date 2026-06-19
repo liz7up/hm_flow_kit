@@ -136,17 +136,28 @@ export class EventDrawer {
           ctx.stroke();
           ctx.restore();
         } else {
+          // Hollow envelope: full rect + V-flap + bottom diagonals
+          let vpy: number = cy + eh * 0.25;
+          // Body outline
           ctx.beginPath();
-          ctx.moveTo(ex, ey + eh * 0.5);
-          ctx.lineTo(ex, ey + eh);
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(ex + ew, ey);
           ctx.lineTo(ex + ew, ey + eh);
-          ctx.lineTo(ex + ew, ey + eh * 0.5);
+          ctx.lineTo(ex, ey + eh);
           ctx.closePath();
           ctx.stroke();
+          // V-flap
           ctx.beginPath();
-          ctx.moveTo(ex, ey + eh * 0.5);
-          ctx.lineTo(cx, cy + eh * 0.6);
-          ctx.lineTo(ex + ew, ey + eh * 0.5);
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(cx, vpy);
+          ctx.lineTo(ex + ew, ey);
+          ctx.stroke();
+          // Diagonals from bottom corners to V-point
+          ctx.beginPath();
+          ctx.moveTo(ex, ey + eh);
+          ctx.lineTo(cx, vpy);
+          ctx.moveTo(ex + ew, ey + eh);
+          ctx.lineTo(cx, vpy);
           ctx.stroke();
         }
         break;

@@ -541,28 +541,6 @@ export class BpmnXmlParser {
     // ── tag value callback ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
-      let n: string = tagName.indexOf(':') >= 0 ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
-      if (n === 'sourceRef' && textValue.trim().length > 0) {
-        // Find or create pending entry for this edge
-        if (dataAssocId.length > 0 && dataAssocSrc.length === 0) {
-          dataAssocSrc = textValue.trim();
-        }
-      }
-      if (n === 'targetRef' && textValue.trim().length > 0) {
-        if (dataAssocId.length > 0 && dataAssocTgt.length === 0) {
-          dataAssocTgt = textValue.trim();
-          // Both source and target captured — save to pending
-          if (dataAssocSrc.length > 0) {
-            let e: _DataAssocEntry = new _DataAssocEntry();
-            e.id = dataAssocId;
-            e.src = dataAssocSrc;
-            e.tgt = dataAssocTgt;
-            e.isAssoc = inDataAssoc;
-            pendingDataEdges.push(e);
-            console.info('[parser] pending dataAssoc edge: ' + e.id + ' ' + e.src + '->' + e.tgt);
-          }
-        }
-      }
       return true;
     };
 
@@ -578,17 +556,23 @@ export class BpmnXmlParser {
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
       let tag: string = localName(info.getName());
 
-      // TEXT event: capture text for textAnnotation + dataAssoc
+      // TEXT event: capture text for textAnnotation + fill pending dataAssoc entries
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
         if (inDataSrcRef && t.trim().length > 0) {
-          dataAssocSrc = t.trim();
+          let last: number = pendingDataEdges.length - 1;
+          if (last >= 0 && pendingDataEdges[last].src.length === 0) {
+            pendingDataEdges[last].src = t.trim();
+          }
         }
         if (inDataTgtRef && t.trim().length > 0) {
-          dataAssocTgt = t.trim();
+          let last: number = pendingDataEdges.length - 1;
+          if (last >= 0) {
+            pendingDataEdges[last].tgt = t.trim();
+          }
         }
       }
 
@@ -775,11 +759,17 @@ export class BpmnXmlParser {
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-            // Set ID from currentAttrs (available in END_TAG, not START_TAG)
-            // Source/target text will be captured by TEXT event (which fires after this)
+            // TEXT event fires after END_TAG; stash pending entry now, fill text later
             dataAssocId = currentAttrs['id'] || '';
             inDataAssoc = (tag === 'dataInputAssociation');
-            // DON'T reset dataAssocSrc/dataAssocTgt — TEXT event fires after END_TAG
+            if (dataAssocId.length > 0) {
+              let e: _DataAssocEntry = new _DataAssocEntry();
+              e.id = dataAssocId;
+              e.isAssoc = inDataAssoc;
+              pendingDataEdges.push(e);
+              dataAssocSrc = '';
+              dataAssocTgt = '';
+            }
             dataAssocId = '';
           } else if (tag === 'sourceRef') {
             inDataSrcRef = false;

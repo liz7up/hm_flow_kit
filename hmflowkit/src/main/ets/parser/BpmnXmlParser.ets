@@ -530,13 +530,14 @@ export class BpmnXmlParser {
     // ── tag value callback (captures text content of elements) ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
-      if (tagName === 'textAnnotation' || tagName === 'text') {
+      let n: string = tagName.indexOf(':') >= 0 ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
+      if (n === 'textAnnotation' || n === 'text') {
         annotationText = annotationText + textValue;
       }
-      if (tagName === 'sourceRef') {
+      if (n === 'sourceRef') {
         dataAssocSrc = textValue.trim();
       }
-      if (tagName === 'targetRef') {
+      if (n === 'targetRef') {
         dataAssocTgt = textValue.trim();
       }
       return true;

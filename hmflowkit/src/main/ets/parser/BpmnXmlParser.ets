@@ -530,14 +530,14 @@ export class BpmnXmlParser {
     // ── tag value / text callback ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
-      if (inTextAnnotation && (tagName === 'textAnnotation' || tagName === 'text')) {
+      if (inTextAnnotation) {
         annotationText = annotationText + textValue;
       }
       if (inDataSrcRef) {
-        dataAssocSrc = textValue.trim();
+        dataAssocSrc = dataAssocSrc + textValue.trim();
       }
       if (inDataTgtRef) {
-        dataAssocTgt = textValue.trim();
+        dataAssocTgt = dataAssocTgt + textValue.trim();
       }
       return true;
     };
@@ -755,7 +755,7 @@ export class BpmnXmlParser {
             if (nid.length > 0) {
               let nodeLabel: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
               if (tag === 'textAnnotation' && annotationText.length > 0) {
-                nodeLabel = annotationText;
+                nodeLabel = annotationText.trim();
               }
               collector.addNode(nid, mapNodeType(tag), nodeLabel, tag,
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined,

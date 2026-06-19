@@ -99,10 +99,12 @@ export class EdgeRenderer {
       }
     }
 
-    let isAssociation: boolean =
+    let isDashed: boolean =
       edge.properties['bpmnElement'] === 'association' ||
       edge.properties['bpmnElement'] === 'dataInputAssociation' ||
       edge.properties['bpmnElement'] === 'dataOutputAssociation';
+    let isArrowless: boolean =
+      edge.properties['bpmnElement'] === 'association';
 
     // Draw the polyline
     {
@@ -113,7 +115,7 @@ export class EdgeRenderer {
         let src: number[] = config.messageFlowDashPattern;
         let dp: number[] = [src[0] * zoom, src[1] * zoom];
         ctx.setLineDash(dp);
-      } else if (isAssociation) {
+      } else if (isDashed) {
         ctx.setLineDash([6 * zoom, 4 * zoom]);
       }
       ctx.beginPath();
@@ -126,7 +128,7 @@ export class EdgeRenderer {
     }
 
     // Draw arrowhead at the end of the last segment (skip for associations)
-    if (points.length >= 2 && !isAssociation) {
+    if (points.length >= 2 && !isArrowless) {
       const last: number[] = points[points.length - 1];
       const prev: number[] = points[points.length - 2];
 

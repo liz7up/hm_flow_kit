@@ -10,7 +10,7 @@ export class AnnotationDrawer {
     zoom: number
   ): void {
     let bracketW: number = 8 * zoom;
-    let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom)) * 2;
+    let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom * 1.4));
 
     // BPMN textAnnotation: bracket "[" on left, opens right
     // Vertical stem at x, with top+mid+bottom arms extending right

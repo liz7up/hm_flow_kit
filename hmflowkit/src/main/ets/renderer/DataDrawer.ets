@@ -52,63 +52,34 @@ export class DataDrawer {
       ctx.lineTo(x + w, y + fold);
       ctx.stroke();
     } else if (node.type === NodeType.DATA_STORE) {
-      // Database cylinder — use ellipse() for smooth rendering
+      // Database cylinder — top ellipse, sides, bottom arc
       let cx: number = x + w / 2;
-      let jw: number = w * 0.75;          // jar body width
-      let eh: number = jw * 0.2;          // ellipse height
-      let bodyTop: number = y + h * 0.1 + eh;
+      let jw: number = w * 0.75;
+      let eh: number = jw * 0.2;
+      let bodyTop: number = y + eh;
       let bodyBot: number = y + h - eh;
-      let lidH: number = h * 0.12;        // lid ring height
-      let lidW: number = jw + 10 * zoom;  // lid slightly wider
-      let lidTop: number = y + h * 0.05;  // lid top position
-      let lidBot: number = bodyTop;       // lid sits on top of body
-
       let hw: number = jw / 2;
-      let lw: number = lidW / 2;
       let heh: number = eh / 2;
 
       ctx.lineWidth = config.strokeWidth * zoom;
       ctx.strokeStyle = config.strokeColor;
 
-      // 1. Body top ellipse (jar mouth)
+      // Top ellipse
       ctx.beginPath();
       ctx.ellipse(cx, bodyTop, hw, heh, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // 2. Body side lines
+      // Side lines
       ctx.beginPath();
       ctx.moveTo(cx - hw, bodyTop);
       ctx.lineTo(cx - hw, bodyBot);
-      ctx.stroke();
-      ctx.beginPath();
       ctx.moveTo(cx + hw, bodyTop);
       ctx.lineTo(cx + hw, bodyBot);
       ctx.stroke();
 
-      // 3. Body bottom arc (lower half only, for perspective)
+      // Bottom arc (perspective)
       ctx.beginPath();
       ctx.ellipse(cx, bodyBot, hw, heh, 0, 0, Math.PI);
-      ctx.stroke();
-
-      // 4. Lid top ellipse (slightly wider than jar)
-      let lheh: number = (eh + 4 * zoom) / 2;
-      ctx.beginPath();
-      ctx.ellipse(cx, lidTop, lw, lheh, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // 5. Lid side lines
-      ctx.beginPath();
-      ctx.moveTo(cx - lw, lidTop);
-      ctx.lineTo(cx - lw, lidBot);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx + lw, lidTop);
-      ctx.lineTo(cx + lw, lidBot);
-      ctx.stroke();
-
-      // 6. Lid bottom arc (upper half, connects to jar mouth)
-      ctx.beginPath();
-      ctx.ellipse(cx, lidBot, lw, lheh, 0, Math.PI, Math.PI * 2);
       ctx.stroke();
     }
 

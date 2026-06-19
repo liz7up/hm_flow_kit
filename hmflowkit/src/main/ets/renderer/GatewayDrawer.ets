@@ -53,6 +53,8 @@ export class GatewayDrawer {
       let s: number;
       if (gwTag === 'exclusiveGateway') {
         s = base * 0.16 * zoom;
+      } else if (gwTag === 'complexGateway' || gwTag === 'eventBasedGateway') {
+        s = base * 0.42 * zoom;
       } else {
         s = base * 0.28 * zoom;
       }

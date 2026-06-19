@@ -531,11 +531,14 @@ export class BpmnXmlParser {
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
       let n: string = tagName.indexOf(':') >= 0 ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
+      console.info('[parser] tagValCb: tag=' + tagName + ' n=' + n + ' val=' + textValue.substring(0, 50));
       if (n === 'sourceRef') {
         dataAssocSrc = textValue.trim();
+        console.info('[parser] dataAssocSrc=' + dataAssocSrc);
       }
       if (n === 'targetRef') {
         dataAssocTgt = textValue.trim();
+        console.info('[parser] dataAssocTgt=' + dataAssocTgt);
       }
       return true;
     };
@@ -553,14 +556,17 @@ export class BpmnXmlParser {
       // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
+        console.info('[parser] TEXT: t=' + t.substring(0, 30) + ' inTextAnnotation=' + inTextAnnotation + ' inDataSrc=' + inDataSrcRef + ' inDataTgt=' + inDataTgtRef);
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
         if (inDataSrcRef) {
           dataAssocSrc = dataAssocSrc + t.trim();
+          console.info('[parser] dataAssocSrc=' + dataAssocSrc);
         }
         if (inDataTgtRef) {
           dataAssocTgt = dataAssocTgt + t.trim();
+          console.info('[parser] dataAssocTgt=' + dataAssocTgt);
         }
       }
 
@@ -750,8 +756,12 @@ export class BpmnXmlParser {
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
             // sourceRef/targetRef captured via TEXT event or tagValCb
             let fid: string = currentAttrs['id'] || '';
+            console.info('[parser] dataAssoc END: fid=' + fid + ' src=' + dataAssocSrc + ' tgt=' + dataAssocTgt);
             if (fid.length > 0 && dataAssocSrc.length > 0 && dataAssocTgt.length > 0) {
               collector.addEdge(fid, dataAssocSrc, dataAssocTgt, '', tag);
+              console.info('[parser] dataAssoc edge CREATED');
+            } else {
+              console.info('[parser] dataAssoc edge SKIPPED');
             }
             inDataAssoc = false;
             dataAssocSrc = '';

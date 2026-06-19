@@ -69,7 +69,7 @@ export class DataDrawer {
       ctx.beginPath();
       ctx.moveTo(cx - rx, topY);
       ctx.lineTo(cx - rx, topY + height);
-      ctx.ellipse(cx, topY + height, rx, ry, 0, Math.PI, Math.PI * 2, false);
+      ctx.ellipse(cx, topY + height, rx, ry, 0, 0, Math.PI, false);
       ctx.lineTo(cx + rx, topY);
       ctx.stroke();
 

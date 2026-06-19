@@ -527,13 +527,10 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
-    // ── tag value callback (captures text content of elements) ──
+    // ── tag value callback (dataAssoc sourceRef/targetRef only) ──
     let tagValCb: (tagName: string, textValue: string) => boolean;
     tagValCb = (tagName: string, textValue: string): boolean => {
       let n: string = tagName.indexOf(':') >= 0 ? tagName.substring(tagName.indexOf(':') + 1) : tagName;
-      if (n === 'textAnnotation' || n === 'text') {
-        annotationText = annotationText + textValue;
-      }
       if (n === 'sourceRef') {
         dataAssocSrc = textValue.trim();
       }
@@ -553,6 +550,13 @@ export class BpmnXmlParser {
     // ── token callback ──
     let tokenCb: (eventType: xml.EventType, info: xml.ParseInfo) => boolean;
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
+      // TEXT event: capture textAnnotation content
+      if (eventType === xml.EventType.TEXT) {
+        if (inTextAnnotation) {
+          annotationText = annotationText + info.getText();
+        }
+      }
+
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {

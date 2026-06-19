@@ -553,6 +553,8 @@ export class BpmnXmlParser {
     // ── token callback ──
     let tokenCb: (eventType: xml.EventType, info: xml.ParseInfo) => boolean;
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
+      let tag: string = localName(info.getName());
+
       // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
@@ -571,8 +573,6 @@ export class BpmnXmlParser {
           console.info('[parser] dataAssocTgt=' + dataAssocTgt);
         }
       }
-
-      let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
         // DEBUG: log all tags containing "data" or "Data"

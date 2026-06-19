@@ -556,22 +556,27 @@ export class BpmnXmlParser {
     tokenCb = (eventType: xml.EventType, info: xml.ParseInfo): boolean => {
       let tag: string = localName(info.getName());
 
-      // TEXT event: capture text for textAnnotation + fill pending dataAssoc entries
+      // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
+        let trimmed: string = t.trim();
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
-        if (inDataSrcRef && t.trim().length > 0) {
-          let last: number = pendingDataEdges.length - 1;
-          if (last >= 0 && pendingDataEdges[last].src.length === 0) {
-            pendingDataEdges[last].src = t.trim();
-          }
+        if (inDataSrcRef && trimmed.length > 0) {
+          dataAssocSrc = trimmed;
+          // Add pending entry now (source known, target to follow)
+          let e: _DataAssocEntry = new _DataAssocEntry();
+          e.id = dataAssocId;
+          e.src = trimmed;
+          e.isAssoc = inDataAssoc;
+          pendingDataEdges.push(e);
         }
-        if (inDataTgtRef && t.trim().length > 0) {
+        if (inDataTgtRef && trimmed.length > 0) {
+          // Fill the last pending entry's target
           let last: number = pendingDataEdges.length - 1;
-          if (last >= 0) {
-            pendingDataEdges[last].tgt = t.trim();
+          if (last >= 0 && pendingDataEdges[last].tgt.length === 0) {
+            pendingDataEdges[last].tgt = trimmed;
           }
         }
       }
@@ -759,17 +764,11 @@ export class BpmnXmlParser {
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }
           } else if (tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
-            // TEXT event fires after END_TAG; stash pending entry now, fill text later
+            // ID set here for TEXT events that fire after this
             dataAssocId = currentAttrs['id'] || '';
             inDataAssoc = (tag === 'dataInputAssociation');
-            if (dataAssocId.length > 0) {
-              let e: _DataAssocEntry = new _DataAssocEntry();
-              e.id = dataAssocId;
-              e.isAssoc = inDataAssoc;
-              pendingDataEdges.push(e);
-              dataAssocSrc = '';
-              dataAssocTgt = '';
-            }
+            dataAssocSrc = '';
+            dataAssocTgt = '';
             dataAssocId = '';
           } else if (tag === 'sourceRef') {
             inDataSrcRef = false;

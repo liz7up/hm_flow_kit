@@ -49,7 +49,7 @@ export class GatewayDrawer {
     // Gateway internal marker
     let gwTag: string | undefined = node.properties['bpmnElement'];
     if (gwTag !== undefined && gwTag.length > 0) {
-      let s: number = Math.min(w, h) * 0.28 * zoom;
+      let s: number = Math.min(w, h) * 0.22 * zoom;
       ctx.fillStyle = config.gatewayMarkerColor;
       ctx.strokeStyle = config.gatewayMarkerColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);

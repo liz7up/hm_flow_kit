@@ -556,7 +556,9 @@ export class BpmnXmlParser {
       // TEXT event: capture text for textAnnotation + dataAssoc
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
-        console.info('[parser] TEXT: t=' + t.substring(0, 30) + ' inTextAnnotation=' + inTextAnnotation + ' inDataSrc=' + inDataSrcRef + ' inDataTgt=' + inDataTgtRef);
+        if (tag.indexOf('source') >= 0 || tag.indexOf('target') >= 0 || t.indexOf('Data') >= 0 || inDataSrcRef || inDataTgtRef) {
+          console.info('[parser] TEXT dataAssoc: tag=' + tag + ' t=' + t + ' inSrc=' + inDataSrcRef + ' inTgt=' + inDataTgtRef);
+        }
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
@@ -621,8 +623,10 @@ export class BpmnXmlParser {
           dataAssocId = currentAttrs['id'] || '';
         } else if (tag === 'sourceRef') {
           inDataSrcRef = true;
+          console.info('[parser] *** sourceRef START');
         } else if (tag === 'targetRef') {
           inDataTgtRef = true;
+          console.info('[parser] *** targetRef START');
         }
         else if (tag === 'multiInstanceLoopCharacteristics') {
           currentLoopChar = 'multiInstance';

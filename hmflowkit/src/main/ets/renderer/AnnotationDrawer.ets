@@ -33,9 +33,9 @@ export class AnnotationDrawer {
     ctx.font = fontSize + 'px ' + config.fontFamily;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    let textX: number = x + bracketW + 3 * zoom;
-    let textW: number = w - bracketW - 6 * zoom;
-    let maxChars: number = Math.floor(textW / (fontSize * 0.55));
+    let textX: number = x + bracketW + 2 * zoom;
+    let textW: number = w - bracketW - 3 * zoom;
+    let maxChars: number = Math.floor(textW / (fontSize * 0.48));
 
     let text: string = node.label;
     let lineY: number = y + 2 * zoom;

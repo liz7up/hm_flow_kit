@@ -9,31 +9,32 @@ export class AnnotationDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    // Open-left text annotation: three sides of a rectangle (no right border)
+    let bracketW: number = 6 * zoom;
+    // BPMN textAnnotation: left-side bracket "[" opening right
+    // Vertical stem + two short horizontal arms extending right
     ctx.beginPath();
+    // top arm
     ctx.moveTo(x, y);
+    ctx.lineTo(x + bracketW, y);
+    // vertical stem (top to bottom)
+    ctx.lineTo(x + bracketW, y + h);
+    // bottom arm
     ctx.lineTo(x, y + h);
-    ctx.lineTo(x + w, y + h);
-    ctx.lineTo(x + w, y);
     ctx.strokeStyle = config.textColor;
     ctx.lineWidth = 1 * zoom;
     ctx.stroke();
-    // Small bracket on left
-    ctx.beginPath();
-    ctx.moveTo(x, y + h);
-    ctx.lineTo(x - 6 * zoom, y + h);
-    ctx.stroke();
 
-    // Multi-line text word wrap
+    // Multi-line text
     let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom));
     ctx.fillStyle = config.textColor;
     ctx.font = fontSize + 'px ' + config.fontFamily;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
+    let textX: number = x + bracketW + 3 * zoom;
 
-    let maxCharsPerLine: number = Math.floor(w / (fontSize * 0.6));
+    let maxCharsPerLine: number = Math.floor((w - bracketW - 3 * zoom) / (fontSize * 0.6));
     let text: string = node.label;
-    let lineY: number = y + 4 * zoom;
+    let lineY: number = y + 2 * zoom;
     while (text.length > 0 && lineY < y + h) {
       let line: string = text;
       if (text.length > maxCharsPerLine) {
@@ -42,7 +43,7 @@ export class AnnotationDrawer {
       } else {
         text = '';
       }
-      ctx.fillText(line, x + 4 * zoom, lineY);
+      ctx.fillText(line, textX, lineY);
       lineY += fontSize + 2 * zoom;
     }
   }

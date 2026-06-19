@@ -531,6 +531,15 @@ export class BpmnXmlParser {
       let tag: string = localName(info.getName());
 
       if (eventType === xml.EventType.START_TAG) {
+        // 重置 currentAttrs（不能用 = {} 因为闭包捕获了初始引用）
+        currentAttrs['id'] = '';
+        currentAttrs['name'] = '';
+        currentAttrs['sourceRef'] = '';
+        currentAttrs['targetRef'] = '';
+        currentAttrs['cancelActivity'] = '';
+        currentAttrs['processRef'] = '';
+        currentAttrs['bpmnElement'] = '';
+
         if (tag === 'process') {
           inProcess = true;
         } else if (tag === 'BPMNDiagram') {
@@ -677,12 +686,13 @@ export class BpmnXmlParser {
         }
 
         if (inProcess && !inDiagram) {
-          if (tag === 'sequenceFlow' || tag === 'association') {
+          if (tag === 'sequenceFlow' || tag === 'association' ||
+              tag === 'dataInputAssociation' || tag === 'dataOutputAssociation') {
             let fid: string = currentAttrs['id'] || '';
             let fsrc: string = currentAttrs['sourceRef'] || '';
             let ftgt: string = currentAttrs['targetRef'] || '';
             if (fid.length > 0 && fsrc.length > 0 && ftgt.length > 0) {
-              let be: string = tag === 'association' ? 'association' : '';
+              let be: string = (tag === 'sequenceFlow') ? '' : tag;
               collector.addEdge(fid, fsrc, ftgt,
                 decodeXmlCharacterRefs(currentAttrs['name'] || ''), be);
             }

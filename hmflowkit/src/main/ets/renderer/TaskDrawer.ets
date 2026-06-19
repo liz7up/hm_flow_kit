@@ -79,9 +79,10 @@ export class TaskDrawer {
       TaskDrawer.drawLoopMarker(ctx, loopChar, config, x, y, w, h, zoom);
     }
 
-    // businessRuleTask icon
-    if (subtype === 'businessRuleTask') {
-      TaskDrawer.drawRuleTaskIcon(ctx, x, y, w, h, config, zoom);
+    // Task subtype icon (top-left)
+    if (subtype !== undefined && subtype.length > 0) {
+      let iconColor: string = stroke !== config.taskStrokeColor ? stroke : config.taskTextColor;
+      TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom);
     }
 
     // Label
@@ -117,25 +118,90 @@ export class TaskDrawer {
     }
   }
 
-  private static drawRuleTaskIcon(
+  private static drawSubtypeIcon(
     ctx: CanvasRenderingContext2D,
-    x: number, y: number, w: number, h: number,
-    config: RenderConfig, zoom: number
+    subtype: string,
+    x: number, y: number, _w: number, _h: number,
+    iconColor: string, zoom: number
   ): void {
-    let ix: number = x + 6 * zoom;
-    let iy: number = y + 6 * zoom;
-    let iw: number = 16 * zoom;
-    let ih: number = 12 * zoom;
-    ctx.strokeStyle = config.taskTextColor;
+    let ix: number = x + 4 * zoom;
+    let iy: number = y + 4 * zoom;
+    let s: number = 12 * zoom;
+    ctx.strokeStyle = iconColor;
+    ctx.fillStyle = iconColor;
     ctx.lineWidth = 1.5 * zoom;
-    ctx.strokeRect(ix, iy, iw, ih);
-    ctx.beginPath();
-    ctx.moveTo(ix, iy + ih * 0.4);
-    ctx.lineTo(ix + iw, iy + ih * 0.4);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(ix + iw * 0.5, iy + ih * 0.4);
-    ctx.lineTo(ix + iw * 0.5, iy + ih);
-    ctx.stroke();
+
+    if (subtype === 'userTask') {
+      // Person icon: circle head + body lines
+      ctx.beginPath();
+      ctx.arc(ix + s / 2, iy + s * 0.3, s * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ix + s * 0.15, iy + s * 0.85);
+      ctx.lineTo(ix + s / 2, iy + s * 0.5);
+      ctx.lineTo(ix + s * 0.85, iy + s * 0.85);
+      ctx.stroke();
+    } else if (subtype === 'sendTask') {
+      // Filled envelope (dark)
+      ctx.fillRect(ix, iy + s * 0.15, s, s * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(ix, iy + s * 0.15);
+      ctx.lineTo(ix + s / 2, iy + s * 0.55);
+      ctx.lineTo(ix + s, iy + s * 0.15);
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1 * zoom;
+      ctx.stroke();
+      ctx.strokeStyle = iconColor;
+      ctx.lineWidth = 1.5 * zoom;
+    } else if (subtype === 'receiveTask') {
+      // Empty envelope
+      ctx.strokeRect(ix, iy + s * 0.15, s, s * 0.7);
+      ctx.beginPath();
+      ctx.moveTo(ix, iy + s * 0.15);
+      ctx.lineTo(ix + s / 2, iy + s * 0.55);
+      ctx.lineTo(ix + s, iy + s * 0.15);
+      ctx.stroke();
+    } else if (subtype === 'serviceTask') {
+      // Gear icon: circle + notches
+      ctx.beginPath();
+      ctx.arc(ix + s / 2, iy + s / 2, s * 0.35, 0, Math.PI * 2);
+      ctx.stroke();
+      let gearR: number = s * 0.45;
+      for (let i: number = 0; i < 6; i++) {
+        let a: number = (i * Math.PI) / 3;
+        let gx: number = ix + s / 2 + gearR * Math.cos(a);
+        let gy: number = iy + s / 2 + gearR * Math.sin(a);
+        ctx.fillRect(gx - s * 0.08, gy - s * 0.08, s * 0.16, s * 0.16);
+      }
+    } else if (subtype === 'scriptTask') {
+      // Script/code icon: angled brackets
+      ctx.font = Math.max(10, Math.round(10 * zoom)) + 'px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('</>', ix + s / 2, iy + s / 2);
+      ctx.textAlign = 'start';
+    } else if (subtype === 'manualTask') {
+      // Hand icon: palm + fingers
+      ctx.fillRect(ix + s * 0.3, iy + s * 0.2, s * 0.4, s * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(ix + s * 0.15, iy + s * 0.25);
+      ctx.lineTo(ix + s * 0.15, iy + s * 0.85);
+      ctx.moveTo(ix + s / 2, iy + s * 0.1);
+      ctx.lineTo(ix + s / 2, iy + s * 0.85);
+      ctx.moveTo(ix + s * 0.85, iy + s * 0.25);
+      ctx.lineTo(ix + s * 0.85, iy + s * 0.85);
+      ctx.stroke();
+    } else if (subtype === 'businessRuleTask') {
+      // Table/grid icon
+      ctx.strokeRect(ix, iy, s, s * 0.75);
+      ctx.beginPath();
+      ctx.moveTo(ix, iy + s * 0.3);
+      ctx.lineTo(ix + s, iy + s * 0.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ix + s * 0.5, iy + s * 0.3);
+      ctx.lineTo(ix + s * 0.5, iy + s * 0.75);
+      ctx.stroke();
+    }
   }
 }

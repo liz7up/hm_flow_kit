@@ -52,31 +52,29 @@ export class DataDrawer {
       ctx.lineTo(x + w, y + fold);
       ctx.stroke();
     } else if (node.type === NodeType.DATA_STORE) {
-      // Database cylinder: standing body, bottom arc, top ellipse with inner arc
+      // Database cylinder: bottom arc, sides, top flat disc (side view)
       let halfW: number = w / 2;
-      let archH: number = Math.max(6 * zoom, h * 0.15);
+      let archH: number = Math.max(5 * zoom, h * 0.12);
+      let topY: number = y + archH;
+      let botY: number = y + h - archH;
       // Bottom arc
+      ctx.strokeStyle = config.strokeColor;
+      ctx.lineWidth = config.strokeWidth * zoom;
       ctx.beginPath();
-      ctx.moveTo(x, y + h - archH);
-      ctx.quadraticCurveTo(x + halfW, y + h + archH, x + w, y + h - archH);
+      ctx.moveTo(x, botY);
+      ctx.quadraticCurveTo(x + halfW, y + h + archH, x + w, botY);
       ctx.stroke();
       // Sides
       ctx.beginPath();
-      ctx.moveTo(x, y + archH);
-      ctx.lineTo(x, y + h - archH);
-      ctx.moveTo(x + w, y + archH);
-      ctx.lineTo(x + w, y + h - archH);
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, botY);
+      ctx.moveTo(x + w, topY);
+      ctx.lineTo(x + w, botY);
       ctx.stroke();
-      // Top ellipse (full outline)
+      // Top disc: single smooth horizontal oval
       ctx.beginPath();
-      ctx.moveTo(x, y + archH);
-      ctx.quadraticCurveTo(x + halfW, y - archH, x + w, y + archH);
-      ctx.quadraticCurveTo(x + halfW, y + archH * 3, x, y + archH);
-      ctx.stroke();
-      // Inner bottom arc (visible inside of cylinder)
-      ctx.beginPath();
-      ctx.moveTo(x, y + archH);
-      ctx.quadraticCurveTo(x + halfW, y + archH * 3, x + w, y + archH);
+      ctx.moveTo(x, topY);
+      ctx.quadraticCurveTo(x + halfW, y - archH * 2, x + w, topY);
       ctx.stroke();
     }
 

@@ -505,12 +505,12 @@ cat .bitfun/build-latest.log
 - Step 0: `ohpm install --all`（刷新依赖 + 文件变更）
 - Step 1: `hvigorw assembleHar`（库模块）
 - Step 2: `hvigorw assembleHap`（Demo 应用）
-- Step 3: 写入 `.bitfun/build-latest.log` + 重置 build-flag=0
+- Step 3: `hvigorw genOnDeviceTestHap`（ohosTest 单元测试编译）
+- 写入 `.bitfun/build-latest.log` + 重置 build-flag=0
 
 ### 测试
 
-- `sh test_all.sh` — 编译 HAR + ohosTest 模块（编译验证，需 DevEco 环境）
-- 真机执行：DevEco Studio 中右键 `ohosTest → Run`
+测试编译已集成到 `build.sh` Step 3，无需单独运行。`build.sh` 一次触发即可完成 HAR + HAP + Test 全部编译。
 
 ### 其他操作
 

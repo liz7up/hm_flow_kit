@@ -842,6 +842,7 @@ export class BpmnXmlParser {
       result.warnings.push(collector.warnings[i]);
     }
     result.model = collector.build();
+    console.info('[parser] BUILD: nodes=' + result.model.getNodeCount() + ' edges=' + result.model.getEdgeCount());
     return result;
   }
 }

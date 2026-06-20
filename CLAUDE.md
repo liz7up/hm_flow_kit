@@ -387,42 +387,68 @@ BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法，基于 XmlPullPa
 
 ### 编译桥接流程（BitFun ↔ DevEco Studio）
 
-无法直接编译鸿蒙项目。通过 `build.sh` + `.bitfun/build-latest.log` 实现编译结果的传递：
+无法直接编译鸿蒙项目。通过 `build.sh` 后台监听 + `.bitfun/build-flag` 触发编译：
 
 ```
                     ┌──────────────────────────┐
                     │   你的 DevEco Studio       │
                     │                          │
-                    │  1. 同步代码               │
-                    │  2. sh build.sh           │
-                    │     └→ .bitfun/build-     │
-                    │        latest.log         │
+                    │  1. 打开 Terminal         │
+                    │  2. sh build.sh &         │
+                    │     (后台持续监听)         │
+                    │     └→ 检测 build-flag=1  │
+                    │        → sync → build    │
+                    │        → 写入 build-      │
+                    │          latest.log       │
+                    │        → 重置 flag=0      │
                     └──────────┬───────────────┘
-                               │
+                               │ 共享文件系统
                     ┌──────────▼───────────────┐
                     │      BitFun 沙箱          │
                     │                          │
-                    │  3. 读取 build-latest.log │
-                    │  4. 分析错误 → 修复代码    │
+                    │  3. echo 1 > build-flag  │
+                    │  4. 轮询 flag 变回 0      │
+                    │  5. 读取 build-latest.log │
+                    │  6. 分析错误 → 修复代码    │
                     └──────────────────────────┘
 ```
 
-**操作步骤：**
+**操作步骤（一次性启动）：**
 
-1. 在 DevEco Studio 中同步项目：`File → Sync Project`
-2. 打开 DevEco 底部 Terminal 面板
-3. 运行 `sh build.sh`
-4. 将 `.bitfun/build-latest.log` 内容粘贴到对话中，或说 "读一下 build log"
+在 DevEco Studio 中：
+1. `File → Sync Project` 同步项目
+2. 打开底部 Terminal 面板
+3. 启动后台监听：`sh build.sh`
+4. 保持 Terminal 打开（或 `nohup sh build.sh &`）
 
-**build.sh 做了什么：**
-- 调用 `hvigorw assembleHar` 编译库模块
-- 调用 `hvigorw assembleHap` 编译 Demo 应用
-- 全部输出写入 `.bitfun/build-latest.log`
-- 额外产出 `.bitfun/har.log`、`.bitfun/hap.log`
-- `sh build.sh --sync` 仅执行 ohpm install
+**Claude 触发编译：**
+
+```bash
+echo "1" > .bitfun/build-flag
+# 等待 flag 变回 0（编译完成信号），最多等待 120s
+until [ "$(cat .bitfun/build-flag 2>/dev/null)" = "0" ]; do sleep 2; done
+cat .bitfun/build-latest.log
+```
+
+**build.sh 模式：**
+| 命令 | 用途 |
+|------|------|
+| `sh build.sh` | 后台监听模式，轮询 build-flag |
+| `sh build.sh --once` | 单次编译（手动触发） |
+| `sh build.sh --sync` | 仅 ohpm install |
+
+**编译流程（每次）：**
+- Step 0: `ohpm install --all`（刷新依赖 + 文件变更）
+- Step 1: `hvigorw assembleHar`（库模块）
+- Step 2: `hvigorw assembleHap`（Demo 应用）
+- Step 3: 写入 `.bitfun/build-latest.log` + 重置 build-flag=0
+
+### 测试
+
+- `sh test_all.sh` — 编译 HAR + ohosTest 模块（编译验证，需 DevEco 环境）
+- 真机执行：DevEco Studio 中右键 `ohosTest → Run`
 
 ### 其他操作
 
-- 测试：DevEco Studio 内置测试框架，每个模块需有对应的 `.test.ets` 文件
 - 发布：`ohpm publish` 到 OHPM 三方库中心仓
 - 版本号：遵循 SemVer（当前 0.1.0）

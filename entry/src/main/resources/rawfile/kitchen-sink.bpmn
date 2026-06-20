@@ -172,7 +172,7 @@
     </bpmn:boundaryEvent>
     <bpmn:association id="Association_1whofyr" sourceRef="ExclusiveGateway_0w2zn42" targetRef="TextAnnotation_13stt0v" />
     <bpmn:textAnnotation id="TextAnnotation_13stt0v">
-      <bpmn:text>Hello World! Kitchin sink!!!</bpmn:text>
+      <bpmn:text>Hello World</bpmn:text>
     </bpmn:textAnnotation>
   </bpmn:process>
   <bpmn:process id="Process_0abj3w2" isExecutable="false">

@@ -159,4 +159,53 @@ export class RenderConfig {
 
   constructor() {
   }
+
+  /** 暗色主题预设：白字白线 + 深色底 */
+  static darkPreset(): RenderConfig {
+    let c: RenderConfig = new RenderConfig();
+    // 通用
+    c.strokeColor = '#FFFFFF';
+    c.fillColor = '#1E1E1E';
+    c.activeStrokeColor = '#FFFFFF';
+    c.activeFillColor = '#333333';
+    c.textColor = '#FFFFFF';
+    // Task
+    c.taskFillColor = '#1E1E1E';
+    c.taskStrokeColor = '#FFFFFF';
+    c.taskTextColor = '#FFFFFF';
+    c.taskSubtypeStroke = {
+      'userTask': '#FFFFFF', 'serviceTask': '#FFFFFF', 'scriptTask': '#FFFFFF',
+      'manualTask': '#FFFFFF', 'sendTask': '#FFFFFF', 'receiveTask': '#FFFFFF',
+      'businessRuleTask': '#FFFFFF'
+    };
+    // Gateway
+    c.gatewayFillColor = '#1E1E1E';
+    c.gatewayStrokeColor = '#FFFFFF';
+    c.gatewayTextColor = '#FFFFFF';
+    // Event
+    c.eventStartFillColor = '#1E1E1E';
+    c.eventStartStrokeColor = '#FFFFFF';
+    c.eventEndFillColor = '#FFFFFF';
+    c.eventEndStrokeColor = '#FFFFFF';
+    // Pool/Lane
+    c.poolFillColor = '#252525';
+    c.poolStrokeColor = '#666666';
+    c.poolHeaderFillColor = '#333333';
+    c.poolHeaderTextColor = '#FFFFFF';
+    c.laneFillColor = '#252525';
+    c.laneStrokeColor = '#444444';
+    c.laneHeaderFillColor = '#2A2A2A';
+    c.laneHeaderTextColor = '#FFFFFF';
+    // Edge
+    c.edgeStrokeColor = '#FFFFFF';
+    c.messageFlowStrokeColor = '#FFFFFF';
+    // Marker/icon
+    c.gatewayMarkerColor = '#FFFFFF';
+    c.eventIconColor = '#FFFFFF';
+    // Highlight
+    c.highlightColor = 'rgba(255, 255, 255, 0.18)';
+    // Grid
+    c.gridColor = '#333333';
+    return c;
+  }
 }

@@ -49,13 +49,35 @@ export class SubProcessDrawer {
     ctx.fillStyle = config.taskFillColor;
     ctx.fill();
     ctx.strokeStyle = config.taskStrokeColor;
-    ctx.lineWidth = config.strokeWidth * zoom;
-    // Event subProcess (triggeredByEvent) → dashed border
+    let isTx: boolean = node.properties['bpmnElement'] === 'transaction';
+    // Event subProcess → dashed; Transaction → double-line
     if (node.properties['triggeredByEvent'] === 'true') {
+      ctx.lineWidth = config.strokeWidth * zoom;
       ctx.setLineDash([6 * zoom, 3 * zoom]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (isTx) {
+      // Double border: outer + inner
+      ctx.lineWidth = config.strokeWidth * zoom * 1.5;
+      ctx.stroke();
+      let inset: number = 3 * zoom;
+      ctx.beginPath();
+      ctx.moveTo(x + r + inset, y + inset);
+      ctx.lineTo(x + w - r - inset, y + inset);
+      ctx.arcTo(x + w - inset, y + inset, x + w - inset, y + r + inset, r - inset);
+      ctx.lineTo(x + w - inset, y + h - r - inset);
+      ctx.arcTo(x + w - inset, y + h - inset, x + w - r - inset, y + h - inset, r - inset);
+      ctx.lineTo(x + r + inset, y + h - inset);
+      ctx.arcTo(x + inset, y + h - inset, x + inset, y + h - r - inset, r - inset);
+      ctx.lineTo(x + inset, y + r + inset);
+      ctx.arcTo(x + inset, y + inset, x + r + inset, y + inset, r - inset);
+      ctx.closePath();
+      ctx.lineWidth = config.strokeWidth * zoom;
+      ctx.stroke();
+    } else {
+      ctx.lineWidth = config.strokeWidth * zoom;
+      ctx.stroke();
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
 
     // [+] expand marker — only <subProcess>, not <transaction>
     if (node.properties['bpmnElement'] !== 'transaction') {

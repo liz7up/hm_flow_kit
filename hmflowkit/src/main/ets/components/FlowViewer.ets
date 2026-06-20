@@ -18,6 +18,7 @@ export struct FlowViewer {
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
   @Prop renderConfig: RenderConfig = new RenderConfig()
+  @StorageProp('currentColorMode') currentColorMode: number = 0
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -39,6 +40,12 @@ export struct FlowViewer {
   @State _parseWarnings: string[] = []
 
   aboutToAppear(): void {
+    // 系统暗色主题 → 自动使用暗色预设（用户已传自定义 config 则跳过）
+    if (this.currentColorMode === 1 &&
+        this.renderConfig.textColor === '#000000' &&
+        this.renderConfig.fillColor === '#FFFFFF') {
+      this.renderConfig = RenderConfig.darkPreset()
+    }
     if (this.xml.length > 0) {
       try {
         let result: ParseResult = BpmnXmlParser.parseBestEffort(this.xml)

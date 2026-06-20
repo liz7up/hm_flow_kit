@@ -26,7 +26,6 @@ export struct FlowViewer {
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private canvasManager: CanvasManager = new CanvasManager()
   private hitTestManager: HitTestManager = new HitTestManager()
-  private hitTestManager: HitTestManager = new HitTestManager()
   private _canvasWidth: number = 0
   private _canvasHeight: number = 0
   private _canvasReady: boolean = false

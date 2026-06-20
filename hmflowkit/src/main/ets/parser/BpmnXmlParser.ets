@@ -166,6 +166,7 @@ class _NodeEntry {
   eventDefTag: string = '';
   cancelActivity: string = '';
   loopChar: string = '';
+  triggeredByEvent: string = '';
   constructor() {}
 }
 
@@ -236,7 +237,7 @@ class _Collector {
   warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string,
-          cancelActivity?: string, loopChar?: string): void {
+          cancelActivity?: string, loopChar?: string, triggeredByEvent?: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
@@ -245,6 +246,7 @@ class _Collector {
     e.eventDefTag = eventDefTag !== undefined ? eventDefTag : '';
     e.cancelActivity = cancelActivity !== undefined ? cancelActivity : '';
     e.loopChar = loopChar !== undefined ? loopChar : '';
+    e.triggeredByEvent = triggeredByEvent !== undefined ? triggeredByEvent : '';
     this._nodes.push(e);
   }
 
@@ -360,6 +362,9 @@ class _Collector {
       }
       if (nd.loopChar.length > 0) {
         props['loopCharacteristics'] = nd.loopChar;
+      }
+      if (nd.triggeredByEvent.length > 0) {
+        props['triggeredByEvent'] = nd.triggeredByEvent;
       }
       model = model.addNode(
         new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
@@ -786,7 +791,8 @@ export class BpmnXmlParser {
               collector.addNode(nid, mapNodeType(tag), nodeLabel, tag,
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
                 currentAttrs['cancelActivity'],
-                currentLoopChar.length > 0 ? currentLoopChar : undefined);
+                currentLoopChar.length > 0 ? currentLoopChar : undefined,
+                currentAttrs['triggeredByEvent']);
             }
             currentEventDefTag = '';
             currentLoopChar = '';

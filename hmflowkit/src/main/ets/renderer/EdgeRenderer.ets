@@ -208,20 +208,20 @@ export class EdgeRenderer {
         let pdx: number = points[si + 1][0] - points[si][0];
         let pdy: number = points[si + 1][1] - points[si][1];
         let plen: number = segLens[si];
-        let off: number = 12;
+        let off: number = config.edgeLabelOffset;
         let perpX: number = plen > 0.01 ? -pdy / plen : 0;
         let perpY: number = plen > 0.01 ? pdx / plen : 1;
         let lx: number = mx + perpX * off;
         let ly: number = my + perpY * off;
 
-        let fontSize: number = Math.max(10, Math.round(config.fontSize * 0.92));
+        let fontSize: number = Math.max(config.fontSizeMin - 2, Math.round(config.fontSize * 0.92));
         ctx.font = fontSize + 'px ' + config.fontFamily;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         let tm: TextMetrics = ctx.measureText(label);
         let tw: number = tm.width;
         let th: number = fontSize;
-        let pad: number = 3;
+        let pad: number = config.edgeLabelPadding;
         // Draw white background for readability
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         ctx.fillRect(lx - tw / 2 - pad, ly - th / 2 - pad, tw + pad * 2, th + pad * 2);

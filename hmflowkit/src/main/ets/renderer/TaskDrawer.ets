@@ -175,7 +175,7 @@ export class TaskDrawer {
       }
     } else if (subtype === 'scriptTask') {
       // Script/code icon: angled brackets
-      ctx.font = Math.max(10, Math.round(10 * zoom)) + 'px monospace';
+      ctx.font = Math.max(12, Math.round(14 * zoom)) + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('</>', ix + s / 2, iy + s / 2);

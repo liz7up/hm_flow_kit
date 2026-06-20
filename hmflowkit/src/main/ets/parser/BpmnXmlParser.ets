@@ -536,16 +536,10 @@ export class BpmnXmlParser {
     let waypointBuf: Waypoint[] = [];
 
     // ── pending data association edges (text captured after END_TAG) ──
-    let pendingDataEdges: _DataAssocEntry[] = [];
     let pendingMap: Record<number, _DataAssocEntry> = {};
     let pendingSeq: number = 0;
 
     // ── tag value callback ──
-    let tagValCb: (tagName: string, textValue: string) => boolean;
-    tagValCb = (tagName: string, textValue: string): boolean => {
-      return true;
-    };
-
     // ── attribute callback ──
     let attrCb: (name: string, value: string) => boolean;
     attrCb = (name: string, value: string): boolean => {
@@ -562,9 +556,6 @@ export class BpmnXmlParser {
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
         let trimmed: string = t.trim();
-        if (trimmed.length > 0) {
-          console.info('[parser] TEXT: t=[' + trimmed + '] inSrc=' + inDataSrcRef + ' inTgt=' + inDataTgtRef + ' pendingSeq=' + pendingSeq + ' tag=' + tag);
-        }
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
@@ -572,13 +563,11 @@ export class BpmnXmlParser {
           if (inDataSrcRef) {
             if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].src.length === 0) {
               pendingMap[pendingSeq].src = trimmed;
-              console.info('[parser] SET src[' + pendingSeq + ']=' + trimmed);
             }
           }
           if (inDataTgtRef) {
             if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].tgt.length === 0) {
               pendingMap[pendingSeq].tgt = trimmed;
-              console.info('[parser] SET tgt[' + pendingSeq + ']=' + trimmed);
             }
           }
         }
@@ -824,8 +813,7 @@ export class BpmnXmlParser {
         supportDoctype: false,
         ignoreNameSpace: true,
         attributeValueCallbackFunction: attrCb,
-        tokenValueCallbackFunction: tokenCb,
-        tagValueCallbackFunction: tagValCb
+        tokenValueCallbackFunction: tokenCb
       };
       parser.parseXml(options);
     } catch (e) {
@@ -833,17 +821,14 @@ export class BpmnXmlParser {
       result.warnings.push('XML parse error: ' + e);
     }
 
-    // 处理 pending dataAssoc edges
-    let allKeys: string[] = Object.keys(pendingMap);
-    console.info('[parser] pendingMap keys: ' + allKeys.length);
-    for (let i: number = 0; i < allKeys.length; i++) {
-      let k: number = Number(allKeys[i]);
+    // 处理 pending dataAssoc edges (文本在 END_TAG 之后捕获)
+    let daKeys: string[] = Object.keys(pendingMap);
+    for (let i: number = 0; i < daKeys.length; i++) {
+      let k: number = Number(daKeys[i]);
       let de: _DataAssocEntry = pendingMap[k];
-      console.info('[parser] pending[' + k + ']: id=' + de.id + ' src=' + de.src + ' tgt=' + de.tgt + ' complete=' + (de.id.length>0 && de.src.length>0 && de.tgt.length>0));
       if (de.id.length > 0 && de.src.length > 0 && de.tgt.length > 0) {
         let edgeTag: string = de.isAssoc ? 'dataInputAssociation' : 'dataOutputAssociation';
         collector.addEdge(de.id, de.src, de.tgt, '', edgeTag);
-        console.info('[parser] edge added via map: ' + de.id);
       }
     }
     // 转发 Collector 中的警告

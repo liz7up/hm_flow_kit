@@ -82,7 +82,7 @@ export class TaskDrawer {
     // Task subtype icon (top-left)
     if (subtype !== undefined && subtype.length > 0) {
       let iconColor: string = stroke !== config.taskStrokeColor ? stroke : config.taskTextColor;
-      TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom);
+      TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom, config);
     }
 
     // callActivity bottom-center [+] marker (inside, above border, boxed)
@@ -124,7 +124,7 @@ export class TaskDrawer {
     ctx.fillStyle = config.textColor;
     ctx.strokeStyle = config.textColor;
     ctx.lineWidth = 1.5 * zoom;
-    ctx.font = Math.max(11, Math.round(config.loopMarkerSize * 2.8 * zoom)) + 'px ' + config.fontFamily;
+    ctx.font = Math.max(config.fontSizeMin, Math.round(config.loopMarkerSize * 2.8 * zoom)) + 'px ' + config.fontFamily;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     let hw: number = config.loopMarkerSize * zoom;
@@ -165,7 +165,7 @@ export class TaskDrawer {
     ctx: CanvasRenderingContext2D,
     subtype: string,
     x: number, y: number, _w: number, _h: number,
-    iconColor: string, zoom: number
+    iconColor: string, zoom: number, config: RenderConfig
   ): void {
     let ix: number = x + config.taskIconOffset * zoom;
     let iy: number = y + config.taskIconOffset * zoom;

@@ -3,7 +3,7 @@ import { EdgeRenderer, NodeRect } from '../renderer/EdgeRenderer'
 import { GridRenderer, GridType, GridConfig } from '../renderer/GridRenderer'
 import { CanvasManager, ViewportState } from '../renderer/CanvasManager'
 import { HitTestManager, HitType, HitResult } from '../renderer/HitTestManager'
-import { GraphModel, GraphNode, GraphEdge, NodeType, Pool } from '../model/GraphModel'
+import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser } from '../parser/BpmnXmlParser'
@@ -283,38 +283,40 @@ export struct FlowViewer {
     // 重新应用 Canvas 变换（防止泳道渲染的 save/restore 导致变换矩阵丢失）
     this.canvasManager.applyTransform(this.ctx)
 
-    // Collect all renderable items with layer priorities
-    let items: { priority: number, node?: GraphNode, edge?: GraphEdge }[] = [];
+    // Collect nodes and edges as separate typed arrays, then render by priority
+    // (avoiding ArkTS-forbidden object literal types)
     let nodes: GraphNode[] = this.model.getNodes();
+    let edges: GraphEdge[] = this.model.getEdges();
 
+    // Priority arrays (aligned with nodes/edges by index)
+    let nodePris: number[] = [];
     for (let i: number = 0; i < nodes.length; i++) {
       let n: GraphNode = nodes[i];
       let pri: number | undefined = this.renderConfig.layerPriorities[n.type as string];
-      items.push({
-        priority: pri !== undefined ? pri : this.renderConfig.defaultLayerPriority,
-        node: n
-      });
+      nodePris.push(pri !== undefined ? pri : this.renderConfig.defaultLayerPriority);
     }
 
-    let edges: GraphEdge[]
-    edges = this.model.getEdges()
+    let edgePris: number[] = [];
+    let edgePriVal: number;
+    let ep: number | undefined = this.renderConfig.layerPriorities['edge'];
+    edgePriVal = ep !== undefined ? ep : this.renderConfig.defaultLayerPriority;
     for (let i: number = 0; i < edges.length; i++) {
-      let edgePri: number | undefined = this.renderConfig.layerPriorities['edge'];
-      items.push({
-        priority: edgePri !== undefined ? edgePri : this.renderConfig.defaultLayerPriority,
-        edge: edges[i]
-      });
+      edgePris.push(edgePriVal);
     }
 
-    items.sort((a, b) => a.priority - b.priority);
-
-    for (let i: number = 0; i < items.length; i++) {
-      if (items[i].node !== undefined) {
-        NodeRenderer.render(this.ctx, items[i].node, this.renderConfig, 0, 0, 1);
-      } else if (items[i].edge !== undefined) {
-        EdgeRenderer.render(this.ctx, items[i].edge, (id: string): NodeRect => {
-          return this.getNodePosition(id);
-        }, 0, 0, 1, this.renderConfig);
+    // Render in priority order 0..6 (stable, by insertion within same priority)
+    for (let p: number = 0; p <= 6; p++) {
+      for (let i: number = 0; i < nodes.length; i++) {
+        if (nodePris[i] === p) {
+          NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1);
+        }
+      }
+      for (let i: number = 0; i < edges.length; i++) {
+        if (edgePris[i] === p) {
+          EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
+            return this.getNodePosition(id);
+          }, 0, 0, 1, this.renderConfig);
+        }
       }
     }
 

@@ -1,6 +1,6 @@
 # hm-flow-kit — 项目覆盖场景与不足待办清单
 
-> 最后更新：2026-06-18
+> 最后更新：2026-06-20
 > 基于：对项目代码、spec 文档、README 声明和已实现功能的全面巡视
 
 ---
@@ -18,14 +18,17 @@
 |   | — PoolLaneRenderer | 180 行 | ✅ |
 |   | — CanvasManager | 350 行 | ✅ |
 |   | — HitTestManager | 492 行 | ✅ |
-|   | — RenderConfig | 91 行 | ✅ |
+|   | — RenderConfig | 120 行 | ✅ |
 |   | — GridRenderer | 参考 CLAUDE.md | ✅ |
 | Spec 03/v2 | BpmnXmlParser（BPMN 2.0 XML 解析器） | 662 行，39 项测试 | ✅ 完成 |
 | Spec 06 | FlowViewer 组件 | 315 行 | ✅ 完成 |
 | P1-1 | Pool/Lane 泳池泳道 | 数据模型 + 解析 + 渲染 + HitTest | ✅ 完成 |
 | Phase 1 | 按类型分色样式系统 | RenderConfig 12+7 字段，NodeRenderer/EdgeRenderer 去硬编码 | ✅ 完成 |
-| Phase 2 | 自动化单元测试 | 118 项测试，test_all.sh 编译验证 | ✅ 完成 |
+| Phase 2 | 自动化单元测试 | 120 项测试，build.sh 编译验证 | ✅ 完成 |
 | Phase 2 | Parser 错误恢复 + 类型默认尺寸 | parseBestEffort() / defaultNodeSize() | ✅ 完成 |
+| Phase 3 | BPMN 全覆盖（Kitchen Sink 验收） | NodeType 4→13，6 新 Drawer，10 事件图标，7 任务图标，3 SubProcess 边框，5 层 Z-order | ✅ 完成 |
+| Phase 4 | 风格统一 — RenderConfig design tokens | ~30 测量 token（cornerRadiusRatio, nodePadding, eventIconScale...），6 Drawer + Edge + HitTest + FlowViewer 去硬编码，textBaseline 统一 middle，layerPriorities 配置化绘制顺序 | ✅ 完成 |
+| DevOps | build.sh daemon + flag 触发编译 | test_all.sh 合并进 build.sh Step 3，一次触发 HAR+HAP+Test 全部编译 | ✅ 完成 |
 | TODO-3.5 | 渲染修复 | 见下方 3.5 详情 | ✅ 完成 |
 |   | Gateway 内部标记（X / + / ○ / 五边形） | NodeRenderer 绘制 | ✅ |
 |   | EventDefinition 图标（5 种） | 时钟/信封/闪电/三角/实心圆 | ✅ |
@@ -36,7 +39,7 @@
 |   | Pinch 双指缩放 + 浮动 +/- 按钮 | GestureGroup + Stack 覆盖层 | ✅ |
 |   | FlowViewer fitToView 考虑泳池边界 | 自动适配内容缩放 | ✅ |
 
-**当前总验收：118 项自动化单元测试编译通过**
+**当前总验收：120 项自动化单元测试编译通过**
 
 ### ⏳ 已推迟
 
@@ -162,7 +165,7 @@
 
 ### 4.3 测试基础设施薄弱
 
-- 当前测试：118 项纯手写单元测试
+- 当前测试：120 项纯手写单元测试
 - 缺失：
   - 视觉回归测试（截图对比，确保渲染结果稳定）
   - 集成测试（BPMN XML → 解析 → 渲染 → HitTest 端到端）
@@ -252,10 +255,11 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 - 没有对象池（Object Pool）
 - 大图场景下可能频繁 GC
 
-### 6.4 无主题系统
+### 6.4 主题系统
 
-- 所有颜色/样式集中在 RenderConfig 中，但用户无法一键切换深色模式或品牌色
-- 对标 bpmn.js 的 theming 能力有差距
+- ✅ RenderConfig 已有 ~80 个样式/度量字段（含 Phase 4 design tokens），可完整控制颜色、线宽、间距、比例
+- ⚠️ 缺失一键切换预设主题（深色模式、品牌色）的便捷 API
+- ⚠️ 对标 bpmn.js 的 theming 能力，便捷性有差距
 
 ### 6.5 文件规模
 

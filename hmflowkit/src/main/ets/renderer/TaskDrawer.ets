@@ -174,38 +174,36 @@ export class TaskDrawer {
         ctx.fillRect(gx - s * 0.08, gy - s * 0.08, s * 0.16, s * 0.16);
       }
     } else if (subtype === 'scriptTask') {
-      // Script/code icon: angled brackets
-      ctx.font = Math.max(12, Math.round(14 * zoom)) + 'px monospace';
+      // Script/code icon: bold angled brackets
+      let fSize: number = Math.max(12, Math.round(14 * zoom));
+      ctx.font = 'bold ' + fSize + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('</>', ix + s / 2, iy + s / 2);
       ctx.textAlign = 'start';
     } else if (subtype === 'manualTask') {
-      // Hand icon: palm + 5 fingers
+      // Hand icon: palm outline + thumb + 4 fingers
       let cxH: number = ix + s / 2;
-      let cyP: number = iy + s * 0.6;
-      // Palm (rounded rect)
-      let pw: number = s * 0.55;
-      let ph: number = s * 0.4;
+      let t: number = Math.max(1.2, 1.5 * zoom);
+      let pw: number = s * 0.5;
+      ctx.lineWidth = t;
+      // Thumb (angled out left)
       ctx.beginPath();
-      ctx.moveTo(cxH - pw / 2, cyP);
-      ctx.lineTo(cxH - pw / 2, cyP + ph);
-      ctx.lineTo(cxH + pw / 2, cyP + ph);
-      ctx.lineTo(cxH + pw / 2, cyP);
+      ctx.moveTo(cxH - pw * 0.45, iy + s * 0.5);
+      ctx.lineTo(cxH - pw * 0.45, iy + s * 0.2);
       ctx.stroke();
-      // 5 Fingers
+      // Palm
+      ctx.strokeRect(cxH - pw * 0.15, iy + s * 0.45, s * 0.6, s * 0.45);
+      // Fingers
       ctx.beginPath();
-      let fTop: number = cyP - s * 0.1;
-      let fStep: number = pw / 5;
-      for (let fi: number = 0; fi < 5; fi++) {
-        let fx: number = cxH - pw * 0.35 + fStep * fi;
-        ctx.moveTo(fx, cyP);
-        let fy: number = fTop;
-        if (fi === 0) { fy = fTop + s * 0.08; }
-        if (fi === 4) { fy = fTop + s * 0.08; }
-        ctx.lineTo(fx, fy);
+      let fBase: number = iy + s * 0.35;
+      for (let fi: number = 0; fi < 4; fi++) {
+        let fx: number = cxH - pw * 0.1 + fi * pw * 0.35;
+        ctx.moveTo(fx, fBase);
+        ctx.lineTo(fx, iy + s * 0.08);
       }
       ctx.stroke();
+      ctx.lineWidth = Math.max(1.5, 2 * zoom);
     } else if (subtype === 'businessRuleTask') {
       // Table/grid icon
       ctx.strokeRect(ix, iy, s, s * 0.75);

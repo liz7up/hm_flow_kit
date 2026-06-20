@@ -8,12 +8,12 @@ export enum NodeShape {
 export class RenderConfig {
   nodeWidth: number = 120;
   nodeHeight: number = 60;
-  strokeColor: string = '#333333';
+  strokeColor: string = '#000000';
   strokeWidth: number = 2;
   fillColor: string = '#FFFFFF';
-  activeStrokeColor: string = '#1890FF';
-  activeFillColor: string = '#E6F7FF';
-  textColor: string = '#333333';
+  activeStrokeColor: string = '#000000';
+  activeFillColor: string = '#E0E0E0';
+  textColor: string = '#000000';
   fontSize: number = 12;
   fontFamily: string = 'HarmonyOS Sans, sans-serif';
   // ═══ Node metrics ═══
@@ -69,7 +69,7 @@ export class RenderConfig {
   renderThrottleMs: number = 16;
 
   // ═══ Highlight ═══
-  highlightColor: string = 'rgba(24, 144, 255, 0.35)';
+  highlightColor: string = 'rgba(0, 0, 0, 0.12)';
   highlightPadding: number = 4;
 
   // ═══ Font ═══
@@ -88,74 +88,74 @@ export class RenderConfig {
   };
   defaultLayerPriority: number = 3;
 
-  // ── 按 NodeType 分色（优先于通用字段）──
+  // ── 按 NodeType 分色（黑白配色）──
 
-  // Task 节点（白底 + 深灰边框，不抢高亮蓝色）
+  // Task 节点（白底 + 黑边框）
   taskFillColor: string = '#FFFFFF';
-  taskStrokeColor: string = '#616161';
-  taskTextColor: string = '#333333';
+  taskStrokeColor: string = '#000000';
+  taskTextColor: string = '#000000';
 
-  // 按 Task 子类型（BPMN 标签名）的边框色
+  // Task 子类型边框色（统一黑色）
   taskSubtypeStroke: Record<string, string> = {
-    'userTask': '#1976D2',
-    'serviceTask': '#00897B',
-    'scriptTask': '#7B1FA2',
-    'manualTask': '#795548',
-    'sendTask': '#F57C00',
-    'receiveTask': '#3949AB',
-    'businessRuleTask': '#C62828',
+    'userTask': '#000000',
+    'serviceTask': '#000000',
+    'scriptTask': '#000000',
+    'manualTask': '#000000',
+    'sendTask': '#000000',
+    'receiveTask': '#000000',
+    'businessRuleTask': '#000000',
   };
 
-  // Gateway 节点（浅黄底 + 琥珀边框）
-  gatewayFillColor: string = '#FFFDE7';
-  gatewayStrokeColor: string = '#FFB300';
-  gatewayTextColor: string = '#333333';
+  // Gateway 节点（白底 + 黑边框）
+  gatewayFillColor: string = '#FFFFFF';
+  gatewayStrokeColor: string = '#000000';
+  gatewayTextColor: string = '#000000';
 
-  // StartEvent（白底 + 绿边框，细线空心圆）
+  // StartEvent（白底 + 黑边框，细线空心圆）
   eventStartFillColor: string = '#FFFFFF';
-  eventStartStrokeColor: string = '#43A047';
+  eventStartStrokeColor: string = '#000000';
   eventStartStrokeWidth: number = 2;
 
-  // EndEvent（深灰实心 + 粗边框）
-  eventEndFillColor: string = '#424242';
-  eventEndStrokeColor: string = '#424242';
+  // EndEvent（纯黑实心 + 粗边框）
+  eventEndFillColor: string = '#000000';
+  eventEndStrokeColor: string = '#000000';
   eventEndStrokeWidth: number = 4;
 
   // ── Pool/Lane 泳道样式 ──
   poolFillColor: string = '#FAFAFA';
-  poolStrokeColor: string = '#BDBDBD';
+  poolStrokeColor: string = '#999999';
   poolStrokeWidth: number = 2;
   poolHeaderWidth: number = 30;
   poolHeaderFillColor: string = '#E0E0E0';
-  poolHeaderTextColor: string = '#424242';
+  poolHeaderTextColor: string = '#000000';
   poolHeaderFontSize: number = 12;
 
-  laneFillColor: string = '#F5F5F5';
-  laneStrokeColor: string = '#E0E0E0';
+  laneFillColor: string = '#FAFAFA';
+  laneStrokeColor: string = '#CCCCCC';
   laneStrokeWidth: number = 1;
   laneHeaderWidth: number = 20;
   laneHeaderIndent: number = 6;
   laneHeaderFillColor: string = '#EEEEEE';
-  laneHeaderTextColor: string = '#616161';
+  laneHeaderTextColor: string = '#000000';
   laneHeaderFontSize: number = 11;
 
   // ── 连线样式 ──
-  edgeStrokeColor: string = '#5E5E5E';
+  edgeStrokeColor: string = '#000000';
   edgeStrokeWidth: number = 1.5;
   arrowSize: number = 12;
 
   // ── MessageFlow 样式 ──
-  messageFlowStrokeColor: string = '#5E5E5E';
+  messageFlowStrokeColor: string = '#000000';
   messageFlowStrokeWidth: number = 1.2;
   messageFlowDashPattern: number[] = [6, 4];
 
   // ── 标记/图标样式 ──
-  gatewayMarkerColor: string = '#333333';
-  eventIconColor: string = '#333333';
+  gatewayMarkerColor: string = '#000000';
+  eventIconColor: string = '#000000';
 
   // ── 网格样式 ──
   gridSize: number = 20;
-  gridColor: string = '#E8E8E8';
+  gridColor: string = '#E0E0E0';
 
   constructor() {
   }

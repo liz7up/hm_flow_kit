@@ -149,8 +149,15 @@ export class TaskDrawer {
       ctx.lineTo(cx + hw, by - sp * 2);
       ctx.stroke();
     } else if (loopChar === 'standard') {
-      ctx.font = Math.max(12, Math.round(16 * zoom)) + 'px ' + config.fontFamily;
-      ctx.fillText('\u21BB', cx, by);
+      let r: number = 5 * zoom;
+      ctx.beginPath();
+      ctx.arc(cx, by - r, r, 0, Math.PI * 1.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx + r * 0.3, by - r * 1.6);
+      ctx.lineTo(cx, by - r * 2);
+      ctx.lineTo(cx - r * 0.3, by - r * 1.6);
+      ctx.stroke();
     }
   }
 

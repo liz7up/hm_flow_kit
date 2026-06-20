@@ -50,11 +50,15 @@ export class SubProcessDrawer {
     ctx.fill();
     ctx.strokeStyle = config.taskStrokeColor;
     ctx.lineWidth = config.strokeWidth * zoom;
+    // Event subProcess (triggeredByEvent) → dashed border
+    if (node.properties['triggeredByEvent'] === 'true') {
+      ctx.setLineDash([6 * zoom, 3 * zoom]);
+    }
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // [+] expand marker — subProcess only, not transaction
-    let isTransaction: boolean = node.properties['bpmnElement'] === 'transaction';
-    if (!isTransaction) {
+    // [+] expand marker — only <subProcess>, not <transaction>
+    if (node.properties['bpmnElement'] !== 'transaction') {
       let markerSize: number = 12 * zoom;
       let mx: number = x + w / 2;
       let my: number = y + h + markerSize / 2;

@@ -208,6 +208,7 @@ export class HitTestManager {
    * 每次 model 数据变化后需要调用
    */
   rebuild(model: GraphModel, canvasManager: CanvasManager, config: RenderConfig = new RenderConfig()): void {
+    this.edgeHitTolerance = config.edgeHitTolerance;
     const nodes: GraphNode[] = model.getNodes()
     const edges: GraphEdge[] = model.getEdges()
     const zoom: number = canvasManager.zoom

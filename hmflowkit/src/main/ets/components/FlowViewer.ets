@@ -283,17 +283,7 @@ export struct FlowViewer {
     // 重新应用 Canvas 变换（防止泳道渲染的 save/restore 导致变换矩阵丢失）
     this.canvasManager.applyTransform(this.ctx)
 
-    // Edges
-    let edges: GraphEdge[]
-    edges = this.model.getEdges()
-    for (let i: number = 0; i < edges.length; i++) {
-      EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
-        return this.getNodePosition(id)
-      }, 0, 0, 1, this.renderConfig)
-    }
-
-    // Nodes — 先普通节点，再边界事件（保证边界事件在最上层不被遮挡）
-    // Sort nodes: containers (subProcess) → regular → boundary (top)
+    // Split nodes by layer
     let nodes: GraphNode[] = this.model.getNodes();
     let subProcs: GraphNode[] = [];
     let regular: GraphNode[] = [];
@@ -308,12 +298,27 @@ export struct FlowViewer {
         regular.push(n);
       }
     }
+
+    // 1. SubProcess containers (background)
     for (let i: number = 0; i < subProcs.length; i++) {
       NodeRenderer.render(this.ctx, subProcs[i], this.renderConfig, 0, 0, 1);
     }
+
+    // 2. Edges (on top of subProcess fill)
+    let edges: GraphEdge[]
+    edges = this.model.getEdges()
+    for (let i: number = 0; i < edges.length; i++) {
+      EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
+        return this.getNodePosition(id)
+      }, 0, 0, 1, this.renderConfig)
+    }
+
+    // 3. Regular nodes (on top of edges)
     for (let i: number = 0; i < regular.length; i++) {
       NodeRenderer.render(this.ctx, regular[i], this.renderConfig, 0, 0, 1);
     }
+
+    // 4. Boundary events (topmost)
     for (let i: number = 0; i < boundary.length; i++) {
       NodeRenderer.render(this.ctx, boundary[i], this.renderConfig, 0, 0, 1);
     }

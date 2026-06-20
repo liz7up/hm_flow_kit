@@ -127,20 +127,29 @@ export class TaskDrawer {
     ctx.font = Math.max(11, Math.round(14 * zoom)) + 'px ' + config.fontFamily;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
+    let hw: number = 5 * zoom;
+    let sp: number = 4 * zoom;
+    ctx.lineWidth = 1.5 * zoom;
     if (loopChar === 'multiInstance') {
-      ctx.fillText('|||', cx, by);
+      ctx.beginPath();
+      ctx.moveTo(cx - hw, by - sp * 2);
+      ctx.lineTo(cx - hw, by);
+      ctx.moveTo(cx, by - sp * 2);
+      ctx.lineTo(cx, by);
+      ctx.moveTo(cx + hw, by - sp * 2);
+      ctx.lineTo(cx + hw, by);
+      ctx.stroke();
     } else if (loopChar === 'multiInstanceSeq') {
-      let hw: number = 5 * zoom;
       ctx.beginPath();
       ctx.moveTo(cx - hw, by);
       ctx.lineTo(cx + hw, by);
-      ctx.moveTo(cx - hw, by - 4 * zoom);
-      ctx.lineTo(cx + hw, by - 4 * zoom);
-      ctx.moveTo(cx - hw, by - 8 * zoom);
-      ctx.lineTo(cx + hw, by - 8 * zoom);
-      ctx.lineWidth = 1.5 * zoom;
+      ctx.moveTo(cx - hw, by - sp);
+      ctx.lineTo(cx + hw, by - sp);
+      ctx.moveTo(cx - hw, by - sp * 2);
+      ctx.lineTo(cx + hw, by - sp * 2);
       ctx.stroke();
     } else if (loopChar === 'standard') {
+      ctx.font = Math.max(12, Math.round(16 * zoom)) + 'px ' + config.fontFamily;
       ctx.fillText('\u21BB', cx, by);
     }
   }

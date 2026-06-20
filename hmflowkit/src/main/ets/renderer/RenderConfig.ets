@@ -79,7 +79,7 @@ export class RenderConfig {
   layerPriorities: Record<string, number> = {
     'poolLane': 0,
     'subProcess': 1,
-    'dataObject': 2, 'dataStore': 2, 'textAnnotation': 2,
+    'dataObject': 4, 'dataStore': 4, 'textAnnotation': 4,
     'edge': 3,
     'task': 4, 'callActivity': 4, 'gateway': 4,
     'eventBasedGateway': 4, 'complexGateway': 4,

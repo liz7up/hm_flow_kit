@@ -85,13 +85,14 @@ export class TaskDrawer {
       TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom);
     }
 
-    // callActivity bottom-center [+] marker (inside, above border)
+    // callActivity bottom-center [+] marker (inside, above border, boxed)
     if (node.type === NodeType.CALL_ACTIVITY) {
       let cx: number = x + w / 2;
       let cy: number = y + h - 10 * zoom;
       let s: number = 5 * zoom;
       ctx.strokeStyle = stroke;
-      ctx.lineWidth = Math.max(1.5, 2 * zoom);
+      ctx.lineWidth = Math.max(1, 1.5 * zoom);
+      ctx.strokeRect(cx - s * 1.2, cy - s * 1.2, s * 2.4, s * 2.4);
       ctx.beginPath();
       ctx.moveTo(cx - s, cy);
       ctx.lineTo(cx + s, cy);

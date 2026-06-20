@@ -165,6 +165,7 @@ class _NodeEntry {
   tagName: string = '';
   eventDefTag: string = '';
   cancelActivity: string = '';
+  isInterrupting: string = '';
   loopChar: string = '';
   triggeredByEvent: string = '';
   constructor() {}
@@ -237,7 +238,8 @@ class _Collector {
   warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string,
-          cancelActivity?: string, loopChar?: string, triggeredByEvent?: string): void {
+          cancelActivity?: string, loopChar?: string, triggeredByEvent?: string,
+          isInterrupting?: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
@@ -245,6 +247,7 @@ class _Collector {
     e.tagName = tagName;
     e.eventDefTag = eventDefTag !== undefined ? eventDefTag : '';
     e.cancelActivity = cancelActivity !== undefined ? cancelActivity : '';
+    e.isInterrupting = isInterrupting !== undefined ? isInterrupting : '';
     e.loopChar = loopChar !== undefined ? loopChar : '';
     e.triggeredByEvent = triggeredByEvent !== undefined ? triggeredByEvent : '';
     this._nodes.push(e);
@@ -359,6 +362,9 @@ class _Collector {
       }
       if (nd.cancelActivity.length > 0) {
         props['cancelActivity'] = nd.cancelActivity;
+      }
+      if (nd.isInterrupting.length > 0) {
+        props['isInterrupting'] = nd.isInterrupting;
       }
       if (nd.loopChar.length > 0) {
         props['loopCharacteristics'] = nd.loopChar;
@@ -792,7 +798,8 @@ export class BpmnXmlParser {
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
                 currentAttrs['cancelActivity'],
                 currentLoopChar.length > 0 ? currentLoopChar : undefined,
-                currentAttrs['triggeredByEvent']);
+                currentAttrs['triggeredByEvent'],
+                currentAttrs['isInterrupting']);
             }
             currentEventDefTag = '';
             currentLoopChar = '';

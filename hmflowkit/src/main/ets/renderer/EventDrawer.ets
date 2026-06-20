@@ -49,10 +49,13 @@ export class EventDrawer {
       fill = config.eventStartFillColor;
       stroke = config.eventStartStrokeColor;
       lineW = config.eventStartStrokeWidth;
-      // Non-interrupting boundary event: dashed border
+      // Non-interrupting: dashed border (boundary cancelActivity / start isInterrupting)
       if (node.type === NodeType.BOUNDARY_EVENT) {
-        let cancelActivity: string | undefined = node.properties['cancelActivity'];
-        if (cancelActivity === 'false') {
+        if (node.properties['cancelActivity'] === 'false') {
+          isDashed = true;
+        }
+      } else if (node.type === NodeType.START_EVENT || node.type === NodeType.INTERMEDIATE_EVENT) {
+        if (node.properties['isInterrupting'] === 'false') {
           isDashed = true;
         }
       }

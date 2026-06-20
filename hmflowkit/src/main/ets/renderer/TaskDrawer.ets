@@ -120,13 +120,13 @@ export class TaskDrawer {
     zoom: number
   ): void {
     let cx: number = x + w / 2;
-    let by: number = y + h + 2 * zoom;
+    let by: number = y + h - 5 * zoom;
     ctx.fillStyle = config.textColor;
     ctx.strokeStyle = config.textColor;
     ctx.lineWidth = 1.5 * zoom;
-    ctx.font = Math.max(10, Math.round(10 * zoom)) + 'px ' + config.fontFamily;
+    ctx.font = Math.max(11, Math.round(14 * zoom)) + 'px ' + config.fontFamily;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'bottom';
     if (loopChar === 'multiInstance') {
       ctx.fillText('|||', cx, by);
     } else if (loopChar === 'standard') {

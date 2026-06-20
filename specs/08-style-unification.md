@@ -9,7 +9,7 @@ pixel values and establishing design tokens in `RenderConfig`.
 
 ### Node Metrics
 ```
-cornerRadiusRatio: number = 0.067     // r = min(w,h)*ratio*zoom (replaces cornerRadius=8)
+cornerRadiusRatio: number = 0.133     // r = min(w,h)*0.133 ≈ 8 when h=60 (replaces cornerRadius=8)
 nodePadding: number = 4               // anchor inset, highlight padding, etc.
 ```
 

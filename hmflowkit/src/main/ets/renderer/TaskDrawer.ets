@@ -130,7 +130,16 @@ export class TaskDrawer {
     if (loopChar === 'multiInstance') {
       ctx.fillText('|||', cx, by);
     } else if (loopChar === 'multiInstanceSeq') {
-      ctx.fillText('=\u2261=', cx, by);
+      let hw: number = 5 * zoom;
+      ctx.beginPath();
+      ctx.moveTo(cx - hw, by);
+      ctx.lineTo(cx + hw, by);
+      ctx.moveTo(cx - hw, by - 4 * zoom);
+      ctx.lineTo(cx + hw, by - 4 * zoom);
+      ctx.moveTo(cx - hw, by - 8 * zoom);
+      ctx.lineTo(cx + hw, by - 8 * zoom);
+      ctx.lineWidth = 1.5 * zoom;
+      ctx.stroke();
     } else if (loopChar === 'standard') {
       ctx.fillText('\u21BB', cx, by);
     }

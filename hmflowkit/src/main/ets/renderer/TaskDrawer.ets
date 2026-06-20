@@ -62,7 +62,7 @@ export class TaskDrawer {
       }
     }
 
-    // callActivity thick border
+    // callActivity thick border + bottom [+] marker
     if (node.type === NodeType.CALL_ACTIVITY) {
       lineW = config.strokeWidth * 2.5;
     }
@@ -83,6 +83,21 @@ export class TaskDrawer {
     if (subtype !== undefined && subtype.length > 0) {
       let iconColor: string = stroke !== config.taskStrokeColor ? stroke : config.taskTextColor;
       TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom);
+    }
+
+    // callActivity bottom-center [+] marker
+    if (node.type === NodeType.CALL_ACTIVITY) {
+      let cx: number = x + w / 2;
+      let cy: number = y + h;
+      let s: number = 6 * zoom;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = Math.max(1.5, 2 * zoom);
+      ctx.beginPath();
+      ctx.moveTo(cx - s, cy);
+      ctx.lineTo(cx + s, cy);
+      ctx.moveTo(cx, cy - s);
+      ctx.lineTo(cx, cy + s);
+      ctx.stroke();
     }
 
     // Label

@@ -52,19 +52,22 @@ export class SubProcessDrawer {
     ctx.lineWidth = config.strokeWidth * zoom;
     ctx.stroke();
 
-    // [+] expand marker (bottom-center)
-    let markerSize: number = 12 * zoom;
-    let mx: number = x + w / 2;
-    let my: number = y + h + markerSize / 2;
-    ctx.strokeStyle = config.textColor;
-    ctx.lineWidth = 1.5 * zoom;
-    ctx.strokeRect(mx - markerSize / 2, my - markerSize / 2, markerSize, markerSize);
-    ctx.beginPath();
-    ctx.moveTo(mx - markerSize * 0.35, my);
-    ctx.lineTo(mx + markerSize * 0.35, my);
-    ctx.moveTo(mx, my - markerSize * 0.35);
-    ctx.lineTo(mx, my + markerSize * 0.35);
-    ctx.stroke();
+    // [+] expand marker — subProcess only, not transaction
+    let isTransaction: boolean = node.properties['bpmnElement'] === 'transaction';
+    if (!isTransaction) {
+      let markerSize: number = 12 * zoom;
+      let mx: number = x + w / 2;
+      let my: number = y + h + markerSize / 2;
+      ctx.strokeStyle = config.textColor;
+      ctx.lineWidth = 1.5 * zoom;
+      ctx.strokeRect(mx - markerSize / 2, my - markerSize / 2, markerSize, markerSize);
+      ctx.beginPath();
+      ctx.moveTo(mx - markerSize * 0.35, my);
+      ctx.lineTo(mx + markerSize * 0.35, my);
+      ctx.moveTo(mx, my - markerSize * 0.35);
+      ctx.lineTo(mx, my + markerSize * 0.35);
+      ctx.stroke();
+    }
 
     // Label
     let text: string = sanitizeLabel(node.label);

@@ -293,19 +293,29 @@ export struct FlowViewer {
     }
 
     // Nodes — 先普通节点，再边界事件（保证边界事件在最上层不被遮挡）
-    let nodes: GraphNode[]
-    nodes = this.model.getNodes()
-    let boundaryNodes: GraphNode[] = []
+    // Sort nodes: containers (subProcess) → regular → boundary (top)
+    let nodes: GraphNode[] = this.model.getNodes();
+    let subProcs: GraphNode[] = [];
+    let regular: GraphNode[] = [];
+    let boundary: GraphNode[] = [];
     for (let i: number = 0; i < nodes.length; i++) {
-      let n: GraphNode = nodes[i]
+      let n: GraphNode = nodes[i];
       if (n.type === NodeType.BOUNDARY_EVENT) {
-        boundaryNodes.push(n)
+        boundary.push(n);
+      } else if (n.type === NodeType.SUB_PROCESS) {
+        subProcs.push(n);
       } else {
-        NodeRenderer.render(this.ctx, n, this.renderConfig, 0, 0, 1)
+        regular.push(n);
       }
     }
-    for (let i: number = 0; i < boundaryNodes.length; i++) {
-      NodeRenderer.render(this.ctx, boundaryNodes[i], this.renderConfig, 0, 0, 1)
+    for (let i: number = 0; i < subProcs.length; i++) {
+      NodeRenderer.render(this.ctx, subProcs[i], this.renderConfig, 0, 0, 1);
+    }
+    for (let i: number = 0; i < regular.length; i++) {
+      NodeRenderer.render(this.ctx, regular[i], this.renderConfig, 0, 0, 1);
+    }
+    for (let i: number = 0; i < boundary.length; i++) {
+      NodeRenderer.render(this.ctx, boundary[i], this.renderConfig, 0, 0, 1);
     }
 
     // Highlight overlay

@@ -181,15 +181,30 @@ export class TaskDrawer {
       ctx.fillText('</>', ix + s / 2, iy + s / 2);
       ctx.textAlign = 'start';
     } else if (subtype === 'manualTask') {
-      // Hand icon: palm + fingers
-      ctx.fillRect(ix + s * 0.3, iy + s * 0.2, s * 0.4, s * 0.6);
+      // Hand icon: palm + 5 fingers
+      let cxH: number = ix + s / 2;
+      let cyP: number = iy + s * 0.6;
+      // Palm (rounded rect)
+      let pw: number = s * 0.55;
+      let ph: number = s * 0.4;
       ctx.beginPath();
-      ctx.moveTo(ix + s * 0.15, iy + s * 0.25);
-      ctx.lineTo(ix + s * 0.15, iy + s * 0.85);
-      ctx.moveTo(ix + s / 2, iy + s * 0.1);
-      ctx.lineTo(ix + s / 2, iy + s * 0.85);
-      ctx.moveTo(ix + s * 0.85, iy + s * 0.25);
-      ctx.lineTo(ix + s * 0.85, iy + s * 0.85);
+      ctx.moveTo(cxH - pw / 2, cyP);
+      ctx.lineTo(cxH - pw / 2, cyP + ph);
+      ctx.lineTo(cxH + pw / 2, cyP + ph);
+      ctx.lineTo(cxH + pw / 2, cyP);
+      ctx.stroke();
+      // 5 Fingers
+      ctx.beginPath();
+      let fTop: number = cyP - s * 0.1;
+      let fStep: number = pw / 5;
+      for (let fi: number = 0; fi < 5; fi++) {
+        let fx: number = cxH - pw * 0.35 + fStep * fi;
+        ctx.moveTo(fx, cyP);
+        let fy: number = fTop;
+        if (fi === 0) { fy = fTop + s * 0.08; }
+        if (fi === 4) { fy = fTop + s * 0.08; }
+        ctx.lineTo(fx, fy);
+      }
       ctx.stroke();
     } else if (subtype === 'businessRuleTask') {
       // Table/grid icon

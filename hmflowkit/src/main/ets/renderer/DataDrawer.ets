@@ -35,7 +35,7 @@ export class DataDrawer {
 
     if (node.type === NodeType.DATA_OBJECT) {
       // Document shape: rectangle with folded top-right corner
-      let fold: number = 12 * zoom;
+      let fold: number = config.dataObjectFoldSize * zoom;
       ctx.beginPath();
       ctx.moveTo(x, y);
       ctx.lineTo(x + w - fold, y);
@@ -91,7 +91,7 @@ export class DataDrawer {
     let text: string = sanitizeLabel(node.label);
     if (text.length > 0) {
       ctx.fillStyle = config.textColor;
-      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+      ctx.font = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x + w / 2, y + h / 2);

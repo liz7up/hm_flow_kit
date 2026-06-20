@@ -51,13 +51,8 @@ export class GatewayDrawer {
     if (gwTag !== undefined && gwTag.length > 0) {
       let base: number = Math.min(w, h);
       let s: number;
-      if (gwTag === 'exclusiveGateway') {
-        s = base * 0.16 * zoom;
-      } else if (gwTag === 'complexGateway' || gwTag === 'eventBasedGateway') {
-        s = base * 0.42 * zoom;
-      } else {
-        s = base * 0.28 * zoom;
-      }
+      let scale: number | undefined = config.gatewayMarkerScale[gwTag];
+      s = base * (scale !== undefined ? scale : 0.28) * zoom;
       ctx.fillStyle = config.gatewayMarkerColor;
       ctx.strokeStyle = config.gatewayMarkerColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);
@@ -70,7 +65,7 @@ export class GatewayDrawer {
       let text: string = sanitizeLabel(node.label);
       if (text.length > 0) {
         ctx.fillStyle = config.gatewayTextColor;
-        ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+        ctx.font = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, cx, cy);

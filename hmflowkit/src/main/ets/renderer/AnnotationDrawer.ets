@@ -9,8 +9,8 @@ export class AnnotationDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    let bracketW: number = 8 * zoom;
-    let fontSize: number = Math.max(12, Math.round(config.fontSize * zoom * 1.4));
+    let bracketW: number = config.annotationBracketWidth * zoom;
+    let fontSize: number = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom * config.annotationFontScale));
 
     // BPMN textAnnotation: bracket "[" on left, opens right
     // Vertical stem at x, with top+mid+bottom arms extending right
@@ -32,12 +32,12 @@ export class AnnotationDrawer {
     ctx.fillStyle = config.textColor;
     ctx.font = fontSize + 'px ' + config.fontFamily;
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    let textX: number = x + bracketW + 2 * zoom;
-    let textW: number = w - bracketW - 4 * zoom;
+    ctx.textBaseline = 'middle';
+    let textX: number = x + bracketW + config.nodePadding / 2 * zoom;
+    let textW: number = w - bracketW - config.nodePadding * zoom;
 
     let text: string = node.label;
-    let lineY: number = y + 2 * zoom;
+    let lineY: number = y + config.nodePadding / 2 * zoom + fontSize / 2;
     while (text.length > 0 && lineY < y + h) {
       let line: string = text;
       let m: TextMetrics = ctx.measureText(text);
@@ -59,7 +59,7 @@ export class AnnotationDrawer {
         text = '';
       }
       ctx.fillText(line, textX, lineY);
-      lineY += fontSize + 2 * zoom;
+      lineY += fontSize + config.nodePadding / 2 * zoom;
     }
   }
 }

@@ -77,7 +77,7 @@ export class EventDrawer {
     // Intermediate event: double ring (inner circle)
     if (node.type === NodeType.INTERMEDIATE_EVENT) {
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.82, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r * config.eventInnerRingScale, 0, Math.PI * 2);
       ctx.lineWidth = 1.5 * zoom;
       ctx.stroke();
     }
@@ -89,17 +89,18 @@ export class EventDrawer {
       ctx.strokeStyle = config.eventIconColor;
       ctx.lineWidth = Math.max(1.5, 2 * zoom);
       let isThrow: boolean = node.properties['bpmnElement'] === 'intermediateThrowEvent';
-      EventDrawer.drawEventIcon(ctx, evDef, cx, cy, r * 0.55, isThrow);
+      EventDrawer.drawEventIcon(ctx, evDef, cx, cy, r * config.eventIconScale, isThrow);
     }
 
     // Label below circle (对标 bpmn.io)
     let text: string = sanitizeLabel(node.label);
     if (text.length > 0) {
+      let efs: number = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom));
       ctx.fillStyle = config.textColor;
-      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+      ctx.font = efs + 'px ' + config.fontFamily;
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(text, cx, y + h / 2 + r + 4 * zoom);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, cx, y + h / 2 + r + config.eventLabelGap * zoom + efs / 2);
     }
   }
 

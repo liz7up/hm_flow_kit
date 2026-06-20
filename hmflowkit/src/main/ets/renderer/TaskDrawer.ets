@@ -32,7 +32,7 @@ export class TaskDrawer {
     zoom: number
   ): void {
     // Rounded rect path
-    let r: number = config.cornerRadius * zoom;
+    let r: number = Math.min(w, h) * config.cornerRadiusRatio * zoom;
     let left: number = x;
     let top: number = y;
     let right: number = x + w;
@@ -64,7 +64,7 @@ export class TaskDrawer {
 
     // callActivity thick border + bottom [+] marker
     if (node.type === NodeType.CALL_ACTIVITY) {
-      lineW = config.strokeWidth * 2.5;
+      lineW = config.strokeWidth * config.callActivityBorderRatio;
     }
 
     ctx.fillStyle = fill;
@@ -88,8 +88,8 @@ export class TaskDrawer {
     // callActivity bottom-center [+] marker (inside, above border, boxed)
     if (node.type === NodeType.CALL_ACTIVITY) {
       let cx: number = x + w / 2;
-      let cy: number = y + h - 10 * zoom;
-      let s: number = 5 * zoom;
+      let cy: number = y + h - config.callActivityMarkerOffset * zoom;
+      let s: number = config.callActivityMarkerSize * zoom;
       ctx.strokeStyle = stroke;
       ctx.lineWidth = Math.max(1, 1.5 * zoom);
       ctx.strokeRect(cx - s * 1.2, cy - s * 1.2, s * 2.4, s * 2.4);
@@ -105,7 +105,7 @@ export class TaskDrawer {
     let text: string = sanitizeLabel(node.label);
     if (text.length > 0) {
       ctx.fillStyle = textColor;
-      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+      ctx.font = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x + w / 2, y + h / 2);
@@ -120,15 +120,15 @@ export class TaskDrawer {
     zoom: number
   ): void {
     let cx: number = x + w / 2;
-    let by: number = y + h - 5 * zoom;
+    let by: number = y + h - config.loopMarkerOffset * zoom;
     ctx.fillStyle = config.textColor;
     ctx.strokeStyle = config.textColor;
     ctx.lineWidth = 1.5 * zoom;
-    ctx.font = Math.max(11, Math.round(14 * zoom)) + 'px ' + config.fontFamily;
+    ctx.font = Math.max(11, Math.round(config.loopMarkerSize * 2.8 * zoom)) + 'px ' + config.fontFamily;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    let hw: number = 5 * zoom;
-    let sp: number = 4 * zoom;
+    let hw: number = config.loopMarkerSize * zoom;
+    let sp: number = config.loopMarkerSpacing * zoom;
     ctx.lineWidth = 1.5 * zoom;
     if (loopChar === 'multiInstance') {
       ctx.beginPath();
@@ -149,7 +149,7 @@ export class TaskDrawer {
       ctx.lineTo(cx + hw, by - sp * 2);
       ctx.stroke();
     } else if (loopChar === 'standard') {
-      let r: number = 5 * zoom;
+      let r: number = config.loopMarkerSize * zoom;
       ctx.beginPath();
       ctx.arc(cx, by - r, r, 0, Math.PI * 1.5);
       ctx.stroke();
@@ -167,9 +167,9 @@ export class TaskDrawer {
     x: number, y: number, _w: number, _h: number,
     iconColor: string, zoom: number
   ): void {
-    let ix: number = x + 4 * zoom;
-    let iy: number = y + 4 * zoom;
-    let s: number = 12 * zoom;
+    let ix: number = x + config.taskIconOffset * zoom;
+    let iy: number = y + config.taskIconOffset * zoom;
+    let s: number = config.taskIconSize * zoom;
     ctx.strokeStyle = iconColor;
     ctx.fillStyle = iconColor;
     ctx.lineWidth = 1.5 * zoom;
@@ -218,7 +218,7 @@ export class TaskDrawer {
       }
     } else if (subtype === 'scriptTask') {
       // Script/code icon: bold angled brackets
-      let fSize: number = Math.max(12, Math.round(14 * zoom));
+      let fSize: number = Math.max(config.fontSizeMin, Math.round(config.taskIconSize * 1.17 * zoom));
       ctx.font = 'bold ' + fSize + 'px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

@@ -31,7 +31,7 @@ export class SubProcessDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    let r: number = config.cornerRadius * zoom;
+    let r: number = Math.min(w, h) * config.cornerRadiusRatio * zoom;
 
     // Rounded rect path
     ctx.beginPath();
@@ -53,14 +53,14 @@ export class SubProcessDrawer {
     // Event subProcess → dashed; Transaction → double-line
     if (node.properties['triggeredByEvent'] === 'true') {
       ctx.lineWidth = config.strokeWidth * zoom;
-      ctx.setLineDash([6 * zoom, 3 * zoom]);
+      ctx.setLineDash([config.subProcessDashPattern[0] * zoom, config.subProcessDashPattern[1] * zoom]);
       ctx.stroke();
       ctx.setLineDash([]);
     } else if (isTx) {
       // Double border: outer + inner
       ctx.lineWidth = config.strokeWidth * zoom * 1.5;
       ctx.stroke();
-      let inset: number = 3 * zoom;
+      let inset: number = config.subProcessInset * zoom;
       ctx.beginPath();
       ctx.moveTo(x + r + inset, y + inset);
       ctx.lineTo(x + w - r - inset, y + inset);
@@ -81,7 +81,7 @@ export class SubProcessDrawer {
 
     // [+] expand marker — only <subProcess>, not <transaction>
     if (node.properties['bpmnElement'] !== 'transaction') {
-      let markerSize: number = 12 * zoom;
+      let markerSize: number = config.subProcessExpandMarkerSize * zoom;
       let mx: number = x + w / 2;
       let my: number = y + h + markerSize / 2;
       ctx.strokeStyle = config.textColor;
@@ -99,7 +99,7 @@ export class SubProcessDrawer {
     let text: string = sanitizeLabel(node.label);
     if (text.length > 0) {
       ctx.fillStyle = config.taskTextColor;
-      ctx.font = Math.max(12, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
+      ctx.font = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x + w / 2, y + h / 2);

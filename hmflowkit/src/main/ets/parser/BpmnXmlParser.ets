@@ -562,20 +562,23 @@ export class BpmnXmlParser {
       if (eventType === xml.EventType.TEXT) {
         let t: string = info.getText();
         let trimmed: string = t.trim();
+        if (trimmed.length > 0) {
+          console.info('[parser] TEXT: t=[' + trimmed + '] inSrc=' + inDataSrcRef + ' inTgt=' + inDataTgtRef + ' pendingSeq=' + pendingSeq + ' tag=' + tag);
+        }
         if (inTextAnnotation) {
           annotationText = annotationText + t;
         }
         if (pendingSeq > 0 && trimmed.length > 0) {
           if (inDataSrcRef) {
-            // sourceRef text: allocate new slot
             if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].src.length === 0) {
               pendingMap[pendingSeq].src = trimmed;
+              console.info('[parser] SET src[' + pendingSeq + ']=' + trimmed);
             }
           }
           if (inDataTgtRef) {
-            // targetRef text: fill current slot
             if (pendingMap[pendingSeq] !== undefined && pendingMap[pendingSeq].tgt.length === 0) {
               pendingMap[pendingSeq].tgt = trimmed;
+              console.info('[parser] SET tgt[' + pendingSeq + ']=' + trimmed);
             }
           }
         }

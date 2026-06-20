@@ -159,7 +159,7 @@ export struct FlowViewer {
   // 节流渲染：限制手势回调重绘频率 ≤ 60fps
   private renderFrame(): void {
     let now: number = Date.now()
-    if (now - this._lastRenderTime < 16) {
+    if (now - this._lastRenderTime < this.renderConfig.renderThrottleMs) {
       return
     }
     this._lastRenderTime = now
@@ -251,10 +251,10 @@ export struct FlowViewer {
         let contentW: number = maxX - minX
         let contentH: number = maxY - minY
         if (contentW > 0 && contentH > 0) {
-          let pad: number = 40
+          let pad: number = this.renderConfig.fitToViewPadding
           let fitZoom: number = Math.min((w - pad * 2) / contentW, (h - pad * 2) / contentH)
-          if (fitZoom < 0.1) { fitZoom = 0.1 }
-          if (fitZoom > 3.0) { fitZoom = 3.0 }
+          if (fitZoom < this.renderConfig.fitToViewMinZoom) { fitZoom = this.renderConfig.fitToViewMinZoom }
+          if (fitZoom > this.renderConfig.fitToViewMaxZoom) { fitZoom = this.renderConfig.fitToViewMaxZoom }
           let fitOX: number = (w - contentW * fitZoom) / 2 - minX * fitZoom
           let fitOY: number = (h - contentH * fitZoom) / 2 - minY * fitZoom
           this.canvasManager.setViewport(new ViewportState(fitZoom, fitOX, fitOY))
@@ -283,44 +283,39 @@ export struct FlowViewer {
     // 重新应用 Canvas 变换（防止泳道渲染的 save/restore 导致变换矩阵丢失）
     this.canvasManager.applyTransform(this.ctx)
 
-    // Split nodes by layer
+    // Collect all renderable items with layer priorities
+    let items: { priority: number, node?: GraphNode, edge?: GraphEdge }[] = [];
     let nodes: GraphNode[] = this.model.getNodes();
-    let subProcs: GraphNode[] = [];
-    let regular: GraphNode[] = [];
-    let boundary: GraphNode[] = [];
+
     for (let i: number = 0; i < nodes.length; i++) {
       let n: GraphNode = nodes[i];
-      if (n.type === NodeType.BOUNDARY_EVENT) {
-        boundary.push(n);
-      } else if (n.type === NodeType.SUB_PROCESS) {
-        subProcs.push(n);
-      } else {
-        regular.push(n);
-      }
+      let pri: number | undefined = this.renderConfig.layerPriorities[n.type as string];
+      items.push({
+        priority: pri !== undefined ? pri : this.renderConfig.defaultLayerPriority,
+        node: n
+      });
     }
 
-    // 1. SubProcess containers (background)
-    for (let i: number = 0; i < subProcs.length; i++) {
-      NodeRenderer.render(this.ctx, subProcs[i], this.renderConfig, 0, 0, 1);
-    }
-
-    // 2. Edges (on top of subProcess fill)
     let edges: GraphEdge[]
     edges = this.model.getEdges()
     for (let i: number = 0; i < edges.length; i++) {
-      EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
-        return this.getNodePosition(id)
-      }, 0, 0, 1, this.renderConfig)
+      let edgePri: number | undefined = this.renderConfig.layerPriorities['edge'];
+      items.push({
+        priority: edgePri !== undefined ? edgePri : this.renderConfig.defaultLayerPriority,
+        edge: edges[i]
+      });
     }
 
-    // 3. Regular nodes (on top of edges)
-    for (let i: number = 0; i < regular.length; i++) {
-      NodeRenderer.render(this.ctx, regular[i], this.renderConfig, 0, 0, 1);
-    }
+    items.sort((a, b) => a.priority - b.priority);
 
-    // 4. Boundary events (topmost)
-    for (let i: number = 0; i < boundary.length; i++) {
-      NodeRenderer.render(this.ctx, boundary[i], this.renderConfig, 0, 0, 1);
+    for (let i: number = 0; i < items.length; i++) {
+      if (items[i].node !== undefined) {
+        NodeRenderer.render(this.ctx, items[i].node, this.renderConfig, 0, 0, 1);
+      } else if (items[i].edge !== undefined) {
+        EdgeRenderer.render(this.ctx, items[i].edge, (id: string): NodeRect => {
+          return this.getNodePosition(id);
+        }, 0, 0, 1, this.renderConfig);
+      }
     }
 
     // Highlight overlay
@@ -332,8 +327,9 @@ export struct FlowViewer {
       let hlNode: GraphNode | null
       hlNode = this.model.getNode(activeHighlightId)
       if (hlNode !== null) {
-        this.ctx.fillStyle = 'rgba(24, 144, 255, 0.35)'
-        this.ctx.fillRect(hlNode.x - 4, hlNode.y - 4, hlNode.width + 8, hlNode.height + 8)
+        let hp: number = this.renderConfig.highlightPadding
+        this.ctx.fillStyle = this.renderConfig.highlightColor
+        this.ctx.fillRect(hlNode.x - hp, hlNode.y - hp, hlNode.width + hp * 2, hlNode.height + hp * 2)
       }
     }
   }

@@ -11,8 +11,9 @@
 #    脚本持续轮询 .bitfun/build-flag 文件内容。
 #    当内容为 "1" 时触发编译流程：
 #      Step 0: ohpm install --all （同步依赖 + 刷新项目文件）
-#      Step 1: HAR 编译
-#      Step 2: HAP 编译
+#      Step 1: HAR 编译（hmflowkit 库模块）
+#      Step 2: HAP 编译（entry Demo 应用）
+#      Step 3: Test 编译（hmflowkit ohosTest 单元测试）
 #    编译完成后（无论成功失败）将 .bitfun/build-flag 重置为 "0"。
 #
 #  Claude 触发编译的方式：
@@ -72,12 +73,13 @@ do_sync() {
 }
 
 # ============================================================
-#  do_build — Step 1+2: HAR + HAP 编译
+#  do_build — Step 1+2+3: HAR + HAP + Test 编译
 # ============================================================
 do_build() {
   NOW="[$(date '+%H:%M:%S')]"
   HAR_ERROR_COUNT=0
   HAP_ERROR_COUNT=0
+  TEST_ERROR_COUNT=0
 
   : > "$LATEST_LOG"
 
@@ -120,6 +122,23 @@ do_build() {
     HAP_ERROR_COUNT=1
   fi
 
+  # Step 3: ohosTest
+  echo "$NOW 编译 Test (hmflowkit ohosTest) ..."
+  echo "" >> "$LATEST_LOG"
+  echo "$NOW ======================================== Test ========================================" >> "$LATEST_LOG"
+  if $NODE "$HVIGORW" \
+    -p module=hmflowkit@ohosTest \
+    -p product=default \
+    -p buildMode=debug \
+    genOnDeviceTestHap \
+    --no-daemon \
+    >> "$LATEST_LOG" 2>&1; then
+    echo "   ✅ Test 编译成功"
+  else
+    echo "   ❌ Test 编译失败"
+    TEST_ERROR_COUNT=1
+  fi
+
   # ---------- 摘要 ----------
   echo ""
   echo "============================================"
@@ -127,11 +146,12 @@ do_build() {
   echo "============================================"
   echo "  HAR: $([ "$HAR_ERROR_COUNT" -eq 0 ] && echo '✅ 成功' || echo '❌ 失败')"
   echo "  HAP: $([ "$HAP_ERROR_COUNT" -eq 0 ] && echo '✅ 成功' || echo '❌ 失败')"
+  echo "  Test:$([ "$TEST_ERROR_COUNT" -eq 0 ] && echo '✅ 成功' || echo '❌ 失败')"
   echo "  结束时间：$(date '+%Y-%m-%d %H:%M:%S')"
   echo "============================================"
 
   # ---------- 提取错误到摘要日志 ----------
-  if [ "$HAR_ERROR_COUNT" -ne 0 ] || [ "$HAP_ERROR_COUNT" -ne 0 ]; then
+  if [ "$HAR_ERROR_COUNT" -ne 0 ] || [ "$HAP_ERROR_COUNT" -ne 0 ] || [ "$TEST_ERROR_COUNT" -ne 0 ]; then
     echo "❌ 编译失败，完整日志见：$LATEST_LOG"
     echo "" >> "$LATEST_LOG"
     echo "$NOW ======================================== 错误摘要 ========================================" >> "$LATEST_LOG"
@@ -141,7 +161,7 @@ do_build() {
     echo "✅ 编译全部通过" >> "$LATEST_LOG"
   fi
 
-  return $([ "$HAR_ERROR_COUNT" -eq 0 ] && [ "$HAP_ERROR_COUNT" -eq 0 ])
+  return $([ "$HAR_ERROR_COUNT" -eq 0 ] && [ "$HAP_ERROR_COUNT" -eq 0 ] && [ "$TEST_ERROR_COUNT" -eq 0 ])
 }
 
 # ============================================================

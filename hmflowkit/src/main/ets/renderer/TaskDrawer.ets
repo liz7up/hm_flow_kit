@@ -129,6 +129,8 @@ export class TaskDrawer {
     ctx.textBaseline = 'bottom';
     if (loopChar === 'multiInstance') {
       ctx.fillText('|||', cx, by);
+    } else if (loopChar === 'multiInstanceSeq') {
+      ctx.fillText('=\u2261=', cx, by);
     } else if (loopChar === 'standard') {
       ctx.fillText('\u21BB', cx, by);
     }

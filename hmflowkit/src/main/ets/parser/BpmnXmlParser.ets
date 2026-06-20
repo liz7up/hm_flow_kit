@@ -708,6 +708,12 @@ export class BpmnXmlParser {
         else if (tag === 'BPMNLabel') {
           inLabel = false;
         }
+        // Capture isSequential on multiInstance (attr available in END_TAG)
+        else if (tag === 'multiInstanceLoopCharacteristics') {
+          if (currentAttrs['isSequential'] === 'true') {
+            currentLoopChar = 'multiInstanceSeq';
+          }
+        }
         // Pool/Lane end tags — 业务逻辑全部在 END_TAG
         else if (tag === 'collaboration') {
           inCollaboration = false;

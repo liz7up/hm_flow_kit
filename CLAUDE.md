@@ -267,6 +267,9 @@ PoolLaneRenderer.render(ctx: CanvasRenderingContext2D, pools: Pool[], config: Re
 // 通用字段
 nodeWidth: number = 120
 nodeHeight: number = 60
+// ── 通用 ──
+nodeWidth: number = 120
+nodeHeight: number = 60
 strokeColor: string = '#333333'
 strokeWidth: number = 2
 fillColor: string = '#FFFFFF'
@@ -275,7 +278,23 @@ activeFillColor: string = '#E6F7FF'
 textColor: string = '#333333'
 fontSize: number = 12
 fontFamily: string = 'HarmonyOS Sans, sans-serif'
-cornerRadius: number = 8
+fontSizeMin: number = 12
+
+// ── 节点度量（design tokens）──
+cornerRadiusRatio: number = 0.133     // r = min(w,h)*0.133 (60→8)
+nodePadding: number = 4
+
+// ── Task 标记 ──
+taskIconSize: number = 12
+taskIconOffset: number = 4
+loopMarkerSize: number = 5
+loopMarkerSpacing: number = 4
+loopMarkerOffset: number = 5
+
+// ── CallActivity ──
+callActivityBorderRatio: number = 2.5
+callActivityMarkerSize: number = 5
+callActivityMarkerOffset: number = 10
 
 // ── 按 NodeType 分色 ──
 taskFillColor: string = '#FFFFFF'
@@ -286,14 +305,25 @@ taskSubtypeStroke: Record<string,string> = { 'userTask':'#1976D2', 'serviceTask'
 gatewayFillColor: string = '#FFFDE7'
 gatewayStrokeColor: string = '#FFB300'
 gatewayTextColor: string = '#333333'
+gatewayMarkerScale: Record<string,number> = {
+  'exclusiveGateway': 0.16, 'parallelGateway': 0.28,
+  'inclusiveGateway': 0.28, 'complexGateway': 0.42, 'eventBasedGateway': 0.42
+}
 
 eventStartFillColor: string = '#FFFFFF'
 eventStartStrokeColor: string = '#43A047'
 eventStartStrokeWidth: number = 2
-
 eventEndFillColor: string = '#424242'
 eventEndStrokeColor: string = '#424242'
 eventEndStrokeWidth: number = 4
+eventIconScale: number = 0.55
+eventLabelGap: number = 4
+eventInnerRingScale: number = 0.82
+
+// ── SubProcess ──
+subProcessInset: number = 3
+subProcessExpandMarkerSize: number = 12
+subProcessDashPattern: number[] = [6, 3]
 
 // ── Pool/Lane 泳道 ──
 poolFillColor: string = '#FAFAFA'
@@ -312,10 +342,19 @@ laneHeaderFillColor: string = '#EEEEEE'
 laneHeaderTextColor: string = '#616161'
 laneHeaderFontSize: number = 11
 
+// ── Data ──
+dataObjectFoldSize: number = 12
+
+// ── Annotation ──
+annotationBracketWidth: number = 8
+annotationFontScale: number = 1.4
+
 // ── 连线 ──
 edgeStrokeColor: string = '#5E5E5E'
 edgeStrokeWidth: number = 1.5
 arrowSize: number = 12
+edgeLabelOffset: number = 12
+edgeLabelPadding: number = 3
 
 // ── 标记/图标 ──
 gatewayMarkerColor: string = '#333333'
@@ -324,6 +363,31 @@ eventIconColor: string = '#333333'
 // ── 网格 ──
 gridSize: number = 20
 gridColor: string = '#E8E8E8'
+
+// ── HitTest ──
+edgeHitTolerance: number = 12
+
+// ── 视口 ──
+fitToViewPadding: number = 40
+fitToViewMinZoom: number = 0.1
+fitToViewMaxZoom: number = 3.0
+renderThrottleMs: number = 16
+
+// ── 高亮 ──
+highlightColor: string = 'rgba(24, 144, 255, 0.35)'
+highlightPadding: number = 4
+
+// ── 绘制层序 ──
+layerPriorities: Record<string,number> = {
+  'poolLane': 0, 'subProcess': 1,
+  'dataObject': 4, 'dataStore': 4, 'textAnnotation': 4,
+  'edge': 3,
+  'task': 4, 'callActivity': 4, 'gateway': 4,
+  'eventBasedGateway': 4, 'complexGateway': 4,
+  'startEvent': 5, 'endEvent': 5, 'intermediateEvent': 5,
+  'boundaryEvent': 6
+}
+defaultLayerPriority: number = 3
 ```
 
 ### HitTestManager 方法

@@ -6,7 +6,7 @@ import { HitTestManager, HitType, HitResult } from '../renderer/HitTestManager'
 import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
-import { BpmnXmlParser } from '../parser/BpmnXmlParser'
+import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
 
 @Component
 export struct FlowViewer {
@@ -17,6 +17,7 @@ export struct FlowViewer {
   @Prop gridType: GridType = GridType.DOT
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
+  @Prop renderConfig: RenderConfig = new RenderConfig()
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -24,7 +25,7 @@ export struct FlowViewer {
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private ctx: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private canvasManager: CanvasManager = new CanvasManager()
-  private renderConfig: RenderConfig = new RenderConfig()
+  private hitTestManager: HitTestManager = new HitTestManager()
   private hitTestManager: HitTestManager = new HitTestManager()
   private _canvasWidth: number = 0
   private _canvasHeight: number = 0
@@ -35,10 +36,22 @@ export struct FlowViewer {
   private _highlightId: string = ''
   private _pinchStartZoom: number = 1
   private _lastRenderTime: number = 0
+  @State _parseError: string = ''
+  @State _parseWarnings: string[] = []
 
   aboutToAppear(): void {
     if (this.xml.length > 0) {
-      this.model = BpmnXmlParser.parse(this.xml)
+      try {
+        let result: ParseResult = BpmnXmlParser.parseBestEffort(this.xml)
+        this.model = result.model
+        if (result.isPartial) {
+          this._parseError = 'BPMN XML 解析不完整，部分内容可能无法显示'
+          this._parseWarnings = result.warnings
+        }
+      } catch (e) {
+        this._parseError = 'BPMN XML 解析失败: ' + e
+        this.model = GraphModel.createEmpty()
+      }
     }
     this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
     this._needFit = true
@@ -133,6 +146,20 @@ export struct FlowViewer {
         })
       }
       .position({ right: 14, bottom: 14 })
+
+      // 解析错误提示遮罩
+      if (this._parseError.length > 0) {
+        Column() {
+          Text(this._parseError)
+            .fontSize(14)
+            .fontColor('#E53935')
+            .textAlign(TextAlign.Center)
+            .maxLines(3)
+            .padding({ left: 16, right: 16 })
+        }
+        .width('100%')
+        .position({ top: 8 })
+      }
     }
     .width('100%')
     .height(this.canvasHeight)

@@ -41,7 +41,7 @@ export struct FlowViewer {
   private _lastRenderTime: number = 0
   @State _parseError: string = ''
   @State _parseWarnings: string[] = []
-  @State _breadcrumbText: string = ''
+  @State _breadcrumbItems: BreadcrumbEntry[] = []
   @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
   private _currentPlaneId: string = ''
@@ -141,6 +141,7 @@ export struct FlowViewer {
       // 面包屑导航（多平面时显示）
       if (this._showBreadcrumb) {
         Row() {
+          // Back button (navigates one level up)
           if (this._navigationStack.length > 0) {
             Button('\u25C0')
               .fontSize(12)
@@ -151,16 +152,31 @@ export struct FlowViewer {
               .onClick(() => { this.navigateBack() })
               .margin({ right: 6 })
           }
-          Text(this._breadcrumbText)
-            .fontSize(12)
-            .fontColor('#1890FF')
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .padding({ left: 10, right: 10 })
-            .height(28)
-            .backgroundColor('rgba(255,255,255,0.92)')
-            .border({ width: 1, color: '#E0E0E0', radius: 4 })
+          // Breadcrumb segments (clickable except current)
+          ForEach(this._breadcrumbItems, (item: BreadcrumbEntry, idx: number) => {
+            Row() {
+              if (idx < this._breadcrumbItems.length - 1) {
+                Text(item.label)
+                  .fontSize(12)
+                  .fontColor('#1890FF')
+                  .onClick(() => { this.navigateToBreadcrumb(idx) })
+              } else {
+                Text(item.label)
+                  .fontSize(12)
+                  .fontColor('#333')
+              }
+              if (idx < this._breadcrumbItems.length - 1) {
+                Text('  \u25B6  ')
+                  .fontSize(11)
+                  .fontColor('#999')
+              }
+            }
+          })
         }
+        .padding({ left: 10, right: 10 })
+        .height(28)
+        .backgroundColor('rgba(255,255,255,0.92)')
+        .border({ width: 1, color: '#E0E0E0', radius: 4 })
         .position({ top: 8, left: 8 })
       }
 
@@ -231,12 +247,8 @@ export struct FlowViewer {
   private _updateBreadcrumb(): void {
     if (this.planeHierarchy !== null) {
       let crumbs: BreadcrumbEntry[] = this.planeHierarchy.getBreadcrumbs(this._currentPlaneId)
-      let parts: string[] = []
-      for (let i: number = 0; i < crumbs.length; i++) {
-        parts.push(crumbs[i].label)
-      }
-      this._breadcrumbText = parts.join(' \u25B6 ')
-      this._showBreadcrumb = crumbs.length > 1 || this._navigationStack.length > 0
+      this._breadcrumbItems = crumbs
+      this._showBreadcrumb = crumbs.length > 1
     }
   }
 
@@ -250,6 +262,24 @@ export struct FlowViewer {
     this._highlightId = ''
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this.renderAll()
+  }
+
+  private navigateToBreadcrumb(index: number): void {
+    if (this.planeHierarchy === null || index >= this._breadcrumbItems.length - 1) {
+      return;
+    }
+    let targetId: string = this._breadcrumbItems[index].processId;
+    // Clear stack and rebuild navigation path
+    this._navigationStack = [];
+    for (let i: number = 0; i < index; i++) {
+      this._navigationStack.push(this._breadcrumbItems[i].processId);
+    }
+    this._currentPlaneId = targetId;
+    this._updateBreadcrumb();
+    this._needFit = true;
+    this._highlightId = '';
+    this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig);
+    this.renderAll();
   }
 
   private navigateBack(): void {

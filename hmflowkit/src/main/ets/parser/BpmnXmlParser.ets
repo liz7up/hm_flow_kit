@@ -718,72 +718,209 @@ export class BpmnXmlParser {
     return new PlaneHierarchy(planes, rootId);
   }
 
-  // post-parse fallback: scan XML for BPMNDiagram+BPMNPlane mapping
-  // 用简单字符串扫描，无需重新走 XML parser 状态机
+  // Post-parse: scan XML for diagram→plane mapping and per-diagram shape/edge routing.
+  // 完全独立的字符串扫描，不依赖 START_TAG 中的 attr 读取时序。
   private static _scanDiagramPlanes(xmlStr: string, collector: _Collector): void {
     let pos: number = 0;
     while (pos < xmlStr.length) {
-      let diagStart: number = xmlStr.indexOf('<BPMNDiagram', pos);
+      // Find BPMNDiagram opening tag
+      let diagStart: number = xmlStr.indexOf('<bpmndi:BPMNDiagram', pos);
       if (diagStart === -1) {
-        // try namespaced form
-        diagStart = xmlStr.indexOf('<bpmndi:BPMNDiagram', pos);
+        diagStart = xmlStr.indexOf('<BPMNDiagram', pos);
         if (diagStart === -1) {
           break;
         }
       }
-      // find diagram id attribute
+      // Find end of opening tag
       let diagTagEnd: number = xmlStr.indexOf('>', diagStart);
       if (diagTagEnd === -1) {
         break;
       }
+      // Extract diagram id
       let diagTag: string = xmlStr.substring(diagStart, diagTagEnd);
-      let dId: string = '';
-      let idIdx: number = diagTag.indexOf('id="');
-      if (idIdx === -1) {
-        idIdx = diagTag.indexOf("id='");
+      let dId: string = BpmnXmlParser._extractAttr(diagTag, 'id');
+      if (dId.length === 0) {
+        pos = diagTagEnd + 1;
+        continue;
       }
-      if (idIdx !== -1) {
-        let quote: string = diagTag.charAt(idIdx + 3);
-        let idStart: number = idIdx + 4;
-        let idEnd: number = diagTag.indexOf(quote, idStart);
-        if (idEnd !== -1) {
-          dId = diagTag.substring(idStart, idEnd);
-        }
+      // Find closing tag
+      let close1: number = xmlStr.indexOf('</bpmndi:BPMNDiagram>', diagTagEnd);
+      let close2: number = xmlStr.indexOf('</BPMNDiagram>', diagTagEnd);
+      let diagEnd: number = -1;
+      if (close1 !== -1 && close2 !== -1) {
+        diagEnd = close1 < close2 ? close1 : close2;
+      } else if (close1 !== -1) {
+        diagEnd = close1;
+      } else if (close2 !== -1) {
+        diagEnd = close2;
       }
-      // find BPMNPlane inside this diagram
-      let planeEnd: number = xmlStr.indexOf('</BPMNDiagram>', diagTagEnd);
-      if (planeEnd === -1) {
-        planeEnd = xmlStr.indexOf('</bpmndi:BPMNDiagram>', diagTagEnd);
-        if (planeEnd === -1) {
-          pos = diagTagEnd + 1;
-          continue;
-        }
+      if (diagEnd === -1) {
+        pos = diagTagEnd + 1;
+        continue;
       }
-      let planeSearch: string = xmlStr.substring(diagTagEnd, planeEnd);
-      let planeStart: number = planeSearch.indexOf('<BPMNPlane');
-      if (planeStart === -1) {
-        planeStart = planeSearch.indexOf('<bpmndi:BPMNPlane');
+      let diagContent: string = xmlStr.substring(diagTagEnd + 1, diagEnd);
+
+      // Find BPMNPlane → extract bpmnElement
+      let plIdx: number = diagContent.indexOf('<bpmndi:BPMNPlane');
+      if (plIdx === -1) {
+        plIdx = diagContent.indexOf('<BPMNPlane');
       }
-      if (planeStart !== -1) {
-        let planeTagEnd: number = planeSearch.indexOf('>', planeStart);
-        if (planeTagEnd !== -1) {
-          let planeTag: string = planeSearch.substring(planeStart, planeTagEnd);
-          let bpmnIdx: number = planeTag.indexOf('bpmnElement="');
-          if (bpmnIdx === -1) {
-            bpmnIdx = planeTag.indexOf("bpmnElement='");
+      if (plIdx !== -1) {
+        let plTagEnd: number = diagContent.indexOf('>', plIdx);
+        if (plTagEnd !== -1) {
+          let plTag: string = diagContent.substring(plIdx, plTagEnd);
+          let planeEl: string = BpmnXmlParser._extractAttr(plTag, 'bpmnElement');
+          if (planeEl.length > 0) {
+            collector.setDiagramPlane(dId, planeEl);
           }
-          if (bpmnIdx !== -1) {
-            let quote2: string = planeTag.charAt(bpmnIdx + 13);
-            let peStart: number = bpmnIdx + 14;
-            let peEnd: number = planeTag.indexOf(quote2, peStart);
-            if (peEnd !== -1 && dId.length > 0) {
-              let planeEl: string = planeTag.substring(peStart, peEnd);
-              collector.setDiagramPlane(dId, planeEl);
+        }
+      }
+
+      // Scan BPMNShape elements — route to this diagram
+      BpmnXmlParser._scanShapesToDiagram(diagContent, dId, collector);
+
+      // Scan BPMNEdge elements — route waypoints to this diagram
+      BpmnXmlParser._scanEdgesToDiagram(diagContent, dId, collector);
+
+      pos = diagEnd + 1;
+    }
+  }
+
+  // Extract attribute value from an XML tag string (handles both " and ')
+  private static _extractAttr(tagStr: string, attrName: string): string {
+    let doubleQ: number = tagStr.indexOf(attrName + '="');
+    if (doubleQ !== -1) {
+      let start: number = doubleQ + attrName.length + 2;
+      let end: number = tagStr.indexOf('"', start);
+      if (end !== -1) {
+        return tagStr.substring(start, end);
+      }
+    }
+    let singleQ: number = tagStr.indexOf(attrName + "='");
+    if (singleQ !== -1) {
+      let start: number = singleQ + attrName.length + 2;
+      let end: number = tagStr.indexOf("'", start);
+      if (end !== -1) {
+        return tagStr.substring(start, end);
+      }
+    }
+    return '';
+  }
+
+  // Find closing tag position for namespaced or plain element
+  private static _findCloseTag(content: string, tagName: string, start: number): number {
+    let c1: number = content.indexOf('</bpmndi:' + tagName + '>', start);
+    let c2: number = content.indexOf('</' + tagName + '>', start);
+    if (c1 === -1) {
+      return c2;
+    }
+    if (c2 === -1) {
+      return c1;
+    }
+    return c1 < c2 ? c1 : c2;
+  }
+
+  // Scan BPMNShape elements within a diagram's content and route to shapes map
+  private static _scanShapesToDiagram(content: string, dId: string,
+                                       collector: _Collector): void {
+    let sPos: number = 0;
+    while (sPos < content.length) {
+      let shapeStart: number = content.indexOf('<bpmndi:BPMNShape', sPos);
+      if (shapeStart === -1) {
+        shapeStart = content.indexOf('<BPMNShape', sPos);
+        if (shapeStart === -1) {
+          break;
+        }
+      }
+      // Find the end of the opening tag
+      let stagEnd: number = content.indexOf('>', shapeStart);
+      if (stagEnd === -1) {
+        break;
+      }
+      let stag: string = content.substring(shapeStart, stagEnd);
+      let elId: string = BpmnXmlParser._extractAttr(stag, 'bpmnElement');
+      if (elId.length > 0) {
+        // Find Bounds child for coordinates
+        let boundsStart: number = content.indexOf('<Bounds', stagEnd);
+        if (boundsStart === -1) {
+          boundsStart = content.indexOf('<omgdc:Bounds', stagEnd);
+          if (boundsStart === -1) {
+            boundsStart = content.indexOf('<dc:Bounds', stagEnd);
+          }
+        }
+        if (boundsStart !== -1) {
+          let btagEnd: number = content.indexOf('>', boundsStart);
+          if (btagEnd !== -1) {
+            let btag: string = content.substring(boundsStart, btagEnd);
+            let sx: number = Number(BpmnXmlParser._extractAttr(btag, 'x'));
+            let sy: number = Number(BpmnXmlParser._extractAttr(btag, 'y'));
+            let sw: number = Number(BpmnXmlParser._extractAttr(btag, 'width'));
+            let sh: number = Number(BpmnXmlParser._extractAttr(btag, 'height'));
+            collector.addDiagramShape(dId, elId, sx, sy, sw, sh);
+          }
+        }
+        // Capture isExpanded
+        let expStr: string = BpmnXmlParser._extractAttr(stag, 'isExpanded');
+        if (expStr.length > 0) {
+          collector.setExpanded(elId, expStr !== 'false');
+        }
+      }
+      // Find next shape or end of this shape
+      sPos = stagEnd + 1;
+    }
+  }
+
+  // Scan BPMNEdge elements within a diagram's content
+  private static _scanEdgesToDiagram(content: string, dId: string,
+                                      collector: _Collector): void {
+    let ePos: number = 0;
+    while (ePos < content.length) {
+      let edgeStart: number = content.indexOf('<bpmndi:BPMNEdge', ePos);
+      if (edgeStart === -1) {
+        edgeStart = content.indexOf('<BPMNEdge', ePos);
+        if (edgeStart === -1) {
+          break;
+        }
+      }
+      let etagEnd: number = content.indexOf('>', edgeStart);
+      if (etagEnd === -1) {
+        break;
+      }
+      let etag: string = content.substring(edgeStart, etagEnd);
+      let elId: string = BpmnXmlParser._extractAttr(etag, 'bpmnElement');
+      if (elId.length > 0) {
+        // Collect waypoints
+        let wps: Waypoint[] = [];
+        let wpPos: number = etagEnd;
+        let edgeClose: number = BpmnXmlParser._findCloseTag(content, 'BPMNEdge', etagEnd);
+        if (edgeClose === -1) {
+          edgeClose = content.length;
+        }
+        while (wpPos < edgeClose) {
+          let wpStart: number = content.indexOf('<waypoint', wpPos);
+          if (wpStart === -1) {
+            wpStart = content.indexOf('<omgdi:waypoint', wpPos);
+            if (wpStart === -1) {
+              wpStart = content.indexOf('<di:waypoint', wpPos);
             }
           }
+          if (wpStart === -1 || wpStart >= edgeClose) {
+            break;
+          }
+          let wptagEnd: number = content.indexOf('>', wpStart);
+          if (wptagEnd !== -1 && wptagEnd < edgeClose) {
+            let wptag: string = content.substring(wpStart, wptagEnd);
+            let wx: number = Number(BpmnXmlParser._extractAttr(wptag, 'x'));
+            let wy: number = Number(BpmnXmlParser._extractAttr(wptag, 'y'));
+            wps.push(new Waypoint(wx, wy));
+          }
+          wpPos = wpStart + 1;
+        }
+        if (wps.length > 0) {
+          collector.addDiagramWaypoints(dId, elId, wps);
         }
       }
-      pos = planeEnd + 1;
+      ePos = etagEnd + 1;
     }
   }
 

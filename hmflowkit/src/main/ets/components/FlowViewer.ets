@@ -249,6 +249,9 @@ export struct FlowViewer {
 
     this.ctx.setTransform(1, 0, 0, 1, 0, 0)
     this.ctx.clearRect(0, 0, w, h)
+    // 画布背景跟随主题色
+    this.ctx.fillStyle = this.renderConfig.fillColor
+    this.ctx.fillRect(0, 0, w, h)
 
     // Auto-fit: 首次渲染时自动缩放使所有节点和泳道可见
     if (this._needFit) {

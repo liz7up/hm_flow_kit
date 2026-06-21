@@ -7,6 +7,7 @@ import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
+import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
 export struct FlowViewer {
@@ -18,7 +19,7 @@ export struct FlowViewer {
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
   @Prop renderConfig: RenderConfig = new RenderConfig()
-  @StorageProp('currentColorMode') currentColorMode: number = 0
+  @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -38,14 +39,15 @@ export struct FlowViewer {
   private _lastRenderTime: number = 0
   @State _parseError: string = ''
   @State _parseWarnings: string[] = []
+  private _userConfig: boolean = false
 
   aboutToAppear(): void {
-    // 系统暗色主题 → 自动使用暗色预设（用户已传自定义 config 则跳过）
-    if (this.currentColorMode === 1 &&
-        this.renderConfig.textColor === '#000000' &&
-        this.renderConfig.fillColor === '#FFFFFF') {
-      this.renderConfig = RenderConfig.darkPreset()
+    // 检测用户是否传了自定义 config（非默认亮色值）
+    if (this.renderConfig.textColor !== '#000000' ||
+        this.renderConfig.fillColor !== '#FFFFFF') {
+      this._userConfig = true
     }
+    this.applyTheme()
     if (this.xml.length > 0) {
       try {
         let result: ParseResult = BpmnXmlParser.parseBestEffort(this.xml)
@@ -206,6 +208,37 @@ export struct FlowViewer {
       return new NodeRect(node.x, node.y, node.width, node.height)
     }
     return new NodeRect(0, 0, 60, 40)
+  }
+
+  // 系统主题切换时自动适配（用户已传自定义 config 则跳过）
+  onColorModeChange(): void {
+    if (!this._userConfig) {
+      this.applyTheme()
+      this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
+      this._needFit = true
+      if (this._canvasReady) {
+        this.renderAll()
+      }
+    }
+  }
+
+  private applyTheme(): void {
+    // 优先用 @StorageProp 值；若为 0 则回退读系统 context 配置
+    let isDark: boolean = this.currentColorMode === 1
+    if (!isDark) {
+      try {
+        let ctx: Context = getContext(this)
+        if (ctx.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
+          isDark = true
+        }
+      } catch (_e) {
+        // getContext 不可用时退回 @StorageProp 值
+      }
+    }
+    if (isDark) {
+      this.renderConfig = RenderConfig.darkPreset()
+    }
+    // 亮色模式保持默认 new RenderConfig()，不做任何事
   }
 
   // 外部 prop 变化时触发重绘（无需等待 Canvas onReady）

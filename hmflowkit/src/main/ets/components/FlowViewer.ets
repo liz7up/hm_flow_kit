@@ -7,6 +7,7 @@ import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
+import { PlaneHierarchy, BreadcrumbEntry } from '../model/PlaneHierarchy'
 import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
@@ -19,6 +20,7 @@ export struct FlowViewer {
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
   @Prop renderConfig: RenderConfig = new RenderConfig()
+  @Prop planeHierarchy: PlaneHierarchy | null = null
   @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
 
   onNodeClick?: (nodeId: string) => void
@@ -39,7 +41,11 @@ export struct FlowViewer {
   private _lastRenderTime: number = 0
   @State _parseError: string = ''
   @State _parseWarnings: string[] = []
+  @State _breadcrumbText: string = ''
+  @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
+  private _currentPlaneId: string = ''
+  private _navigationStack: string[] = []
 
   aboutToAppear(): void {
     // 检测用户是否传了自定义 config（非默认亮色值）
@@ -60,8 +66,21 @@ export struct FlowViewer {
         this._parseError = 'BPMN XML 解析失败: ' + e
         this.model = GraphModel.createEmpty()
       }
+      // 自动检测多平面
+      if (this.planeHierarchy === null && this._parseError.length === 0) {
+        try {
+          let hierarchy: PlaneHierarchy = BpmnXmlParser.parseHierarchy(this.xml)
+          if (hierarchy.getPlaneCount() > 1) {
+            this.planeHierarchy = hierarchy
+            this._currentPlaneId = hierarchy.getRootProcessId()
+            this._updateBreadcrumb()
+          }
+        } catch (e2) {
+          // 无多平面数据，保持单平面模式
+        }
+      }
     }
-    this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
+    this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this._needFit = true
     this._highlightId = ''
   }
@@ -119,6 +138,32 @@ export struct FlowViewer {
           )
         )
 
+      // 面包屑导航（多平面时显示）
+      if (this._showBreadcrumb) {
+        Row() {
+          if (this._navigationStack.length > 0) {
+            Button('\u25C0')
+              .fontSize(12)
+              .fontColor('#333')
+              .width(28).height(28)
+              .backgroundColor('#FFFFFF')
+              .border({ width: 1, color: '#D0D0D0', radius: 4 })
+              .onClick(() => { this.navigateBack() })
+              .margin({ right: 6 })
+          }
+          Text(this._breadcrumbText)
+            .fontSize(12)
+            .fontColor('#1890FF')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .padding({ left: 10, right: 10 })
+            .height(28)
+            .backgroundColor('rgba(255,255,255,0.92)')
+            .border({ width: 1, color: '#E0E0E0', radius: 4 })
+        }
+        .position({ top: 8, left: 8 })
+      }
+
       // 缩放控制按钮（触屏 & PC 通用）
       Column() {
         Button({ type: ButtonType.Circle }) {
@@ -173,10 +218,66 @@ export struct FlowViewer {
     .height(this.canvasHeight)
   }
 
+  private getActiveModel(): GraphModel {
+    if (this.planeHierarchy !== null && this._currentPlaneId.length > 0) {
+      let plane = this.planeHierarchy.getPlane(this._currentPlaneId)
+      if (plane !== null) {
+        return plane.model
+      }
+    }
+    return this.model
+  }
+
+  private _updateBreadcrumb(): void {
+    if (this.planeHierarchy !== null) {
+      let crumbs: BreadcrumbEntry[] = this.planeHierarchy.getBreadcrumbs(this._currentPlaneId)
+      let parts: string[] = []
+      for (let i: number = 0; i < crumbs.length; i++) {
+        parts.push(crumbs[i].label)
+      }
+      this._breadcrumbText = parts.join(' \u25B6 ')
+      this._showBreadcrumb = crumbs.length > 1 || this._navigationStack.length > 0
+    }
+  }
+
+  private navigateToPlane(processId: string): void {
+    if (this._currentPlaneId.length > 0) {
+      this._navigationStack.push(this._currentPlaneId)
+    }
+    this._currentPlaneId = processId
+    this._updateBreadcrumb()
+    this._needFit = true
+    this._highlightId = ''
+    this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
+    this.renderAll()
+  }
+
+  private navigateBack(): void {
+    if (this._navigationStack.length > 0) {
+      let prevId: string = this._navigationStack.pop()!
+      this._currentPlaneId = prevId
+      this._updateBreadcrumb()
+      this._needFit = true
+      this._highlightId = ''
+      this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
+      this.renderAll()
+    }
+  }
+
   handleClick(event: ClickEvent): void {
     if (!this._canvasReady) return
     let result: HitResult = this.hitTestManager.hitTest(event.x, event.y, this.canvasManager)
     if (result.type === HitType.NODE) {
+      // drill-down: collapsed subProcess with dedicated plane
+      let activeModel: GraphModel = this.getActiveModel()
+      let node: GraphNode | null = activeModel.getNode(result.nodeId)
+      if (node !== null && node.type === 'subProcess' &&
+          node.properties['isExpanded'] === 'false' &&
+          this.planeHierarchy !== null &&
+          this.planeHierarchy.hasPlane(node.id)) {
+        this.navigateToPlane(node.id)
+        return
+      }
       this._highlightId = result.nodeId
       this.renderAll()
       if (this.onNodeClick) {
@@ -203,7 +304,7 @@ export struct FlowViewer {
 
   getNodePosition(nodeId: string): NodeRect {
     let node: GraphNode | null
-    node = this.model.getNode(nodeId)
+    node = this.getActiveModel().getNode(nodeId)
     if (node !== null) {
       return new NodeRect(node.x, node.y, node.width, node.height)
     }
@@ -214,7 +315,7 @@ export struct FlowViewer {
   onColorModeChange(): void {
     if (!this._userConfig) {
       this.applyTheme()
-      this.hitTestManager.rebuild(this.model, this.canvasManager, this.renderConfig)
+      this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
       this._needFit = true
       if (this._canvasReady) {
         this.renderAll()
@@ -258,9 +359,9 @@ export struct FlowViewer {
     if (this._needFit) {
       this._needFit = false
       let allNodes: GraphNode[]
-      allNodes = this.model.getNodes()
+      allNodes = this.getActiveModel().getNodes()
       let allPools: Pool[]
-      allPools = this.model.getPools()
+      allPools = this.getActiveModel().getPools()
       let hasContent: boolean = false
       let minX: number = 0
       let minY: number = 0
@@ -333,7 +434,7 @@ export struct FlowViewer {
 
     // Pools & Lanes (background, before nodes and edges)
     let pools: Pool[]
-    pools = this.model.getPools()
+    pools = this.getActiveModel().getPools()
     if (pools.length > 0) {
       PoolLaneRenderer.render(this.ctx, pools, this.renderConfig, 0, 0, 1)
     }
@@ -343,8 +444,8 @@ export struct FlowViewer {
 
     // Collect nodes and edges as separate typed arrays, then render by priority
     // (avoiding ArkTS-forbidden object literal types)
-    let nodes: GraphNode[] = this.model.getNodes();
-    let edges: GraphEdge[] = this.model.getEdges();
+    let nodes: GraphNode[] = this.getActiveModel().getNodes();
+    let edges: GraphEdge[] = this.getActiveModel().getEdges();
 
     // Priority arrays (aligned with nodes/edges by index)
     let nodePris: number[] = [];
@@ -385,7 +486,7 @@ export struct FlowViewer {
       : this._highlightId
     if (activeHighlightId.length > 0) {
       let hlNode: GraphNode | null
-      hlNode = this.model.getNode(activeHighlightId)
+      hlNode = this.getActiveModel().getNode(activeHighlightId)
       if (hlNode !== null) {
         let hp: number = this.renderConfig.highlightPadding
         this.ctx.fillStyle = this.renderConfig.highlightColor

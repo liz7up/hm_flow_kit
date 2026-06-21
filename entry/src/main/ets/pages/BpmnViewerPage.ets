@@ -1,7 +1,8 @@
-import { BpmnXmlParser, FlowViewer, GraphModel } from 'hmflowkit'
+import { BpmnXmlParser, FlowViewer, GraphModel, PlaneHierarchy } from 'hmflowkit'
 import { resourceManager } from '@kit.LocalizationKit'
 import { util } from '@kit.ArkTS'
 import { router } from '@kit.ArkUI'
+import { fileIo } from '@kit.CoreFileKit'
 
 @Entry
 @Component
@@ -11,22 +12,53 @@ struct BpmnViewerPage {
   @State errorMsg: string = ''
   @State fileName: string = 'pizza-collaboration.bpmn'
   @State pageTitle: string = 'pizza-collaboration.bpmn'
+  @State fileUri: string = ''
+  @State planeHierarchy: PlaneHierarchy | null = null
 
   aboutToAppear(): void {
     let params = router.getParams() as Record<string, string>
-    if (params !== undefined && params['fileName'] !== undefined) {
-      this.fileName = params['fileName']
-      this.pageTitle = params['fileName']
+    if (params !== undefined) {
+      if (params['fileName'] !== undefined) {
+        this.fileName = params['fileName']
+        this.pageTitle = params['fileName']
+      }
+      if (params['fileUri'] !== undefined) {
+        this.fileUri = params['fileUri']
+        this.pageTitle = params['pageTitle'] || 'BPMN 文件'
+      }
     }
     this.loadBpmnFile()
   }
 
   async loadBpmnFile(): Promise<void> {
     try {
-      let context = getContext(this)
-      let rawData: Uint8Array = await context.resourceManager.getRawFileContent(this.fileName)
-      let decoder = new util.TextDecoder('utf-8')
-      let xmlStr: string = decoder.decodeToString(rawData)
+      let xmlStr: string
+      if (this.fileUri.length > 0) {
+        let file = fileIo.openSync(this.fileUri, fileIo.OpenMode.READ_ONLY)
+        let stat = fileIo.statSync(file.fd)
+        let buf = new ArrayBuffer(stat.size)
+        fileIo.readSync(file.fd, buf)
+        fileIo.closeSync(file)
+        let decoder = new util.TextDecoder('utf-8')
+        xmlStr = decoder.decodeToString(new Uint8Array(buf))
+      } else {
+        let context = getContext(this)
+        let rawData: Uint8Array = await context.resourceManager.getRawFileContent(this.fileName)
+        let decoder = new util.TextDecoder('utf-8')
+        xmlStr = decoder.decodeToString(rawData)
+      }
+      // 尝试多平面解析（drill-down 导航）
+      try {
+        let hierarchy: PlaneHierarchy = BpmnXmlParser.parseHierarchy(xmlStr)
+        if (hierarchy.getPlaneCount() > 1) {
+          this.planeHierarchy = hierarchy
+          this.model = hierarchy.getRootModel()
+          this.loading = false
+          return
+        }
+      } catch (e2) {
+        // 无多平面数据，降级到单平面解析
+      }
       this.model = BpmnXmlParser.parse(xmlStr)
       this.loading = false
     } catch (e) {
@@ -84,6 +116,7 @@ struct BpmnViewerPage {
       } else {
         FlowViewer({
           model: this.model,
+          planeHierarchy: this.planeHierarchy,
           showGrid: true,
           onNodeClick: (id: string) => { console.info('BPMN node clicked: ' + id) }
         })

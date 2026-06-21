@@ -141,42 +141,45 @@ export struct FlowViewer {
       // 面包屑导航（多平面时显示）
       if (this._showBreadcrumb) {
         Row() {
-          // Back button (navigates one level up)
+          // "Back" text hyperlink
           if (this._navigationStack.length > 0) {
-            Button('\u25C0')
-              .fontSize(12)
-              .fontColor('#333')
-              .width(28).height(28)
-              .backgroundColor('#FFFFFF')
-              .border({ width: 1, color: '#D0D0D0', radius: 4 })
+            Text('Back')
+              .fontSize(this.renderConfig.fontSize)
+              .fontColor(this.renderConfig.activeStrokeColor)
+              .fontFamily(this.renderConfig.fontFamily)
+              .decoration({ type: TextDecorationType.Underline })
               .onClick(() => { this.navigateBack() })
-              .margin({ right: 6 })
+            Text('  >  ')
+              .fontSize(this.renderConfig.fontSize)
+              .fontColor(this.renderConfig.textColor)
+              .fontFamily(this.renderConfig.fontFamily)
           }
           // Breadcrumb segments (clickable except current)
           ForEach(this._breadcrumbItems, (item: BreadcrumbEntry, idx: number) => {
             Row() {
               if (idx < this._breadcrumbItems.length - 1) {
                 Text(item.label)
-                  .fontSize(12)
-                  .fontColor('#1890FF')
+                  .fontSize(this.renderConfig.fontSize)
+                  .fontColor(this.renderConfig.activeStrokeColor)
+                  .fontFamily(this.renderConfig.fontFamily)
+                  .decoration({ type: TextDecorationType.Underline })
                   .onClick(() => { this.navigateToBreadcrumb(idx) })
               } else {
                 Text(item.label)
-                  .fontSize(12)
-                  .fontColor('#333')
+                  .fontSize(this.renderConfig.fontSize)
+                  .fontColor(this.renderConfig.textColor)
+                  .fontFamily(this.renderConfig.fontFamily)
               }
               if (idx < this._breadcrumbItems.length - 1) {
-                Text('  \u25B6  ')
-                  .fontSize(11)
-                  .fontColor('#999')
+                Text('  >  ')
+                  .fontSize(this.renderConfig.fontSize)
+                  .fontColor(this.renderConfig.textColor)
+                  .fontFamily(this.renderConfig.fontFamily)
               }
             }
           })
         }
-        .padding({ left: 10, right: 10 })
-        .height(28)
-        .backgroundColor('rgba(255,255,255,0.92)')
-        .border({ width: 1, color: '#E0E0E0', radius: 4 })
+        .padding({ left: 12, right: 12, top: 4, bottom: 4 })
         .position({ top: 8, left: 8 })
       }
 

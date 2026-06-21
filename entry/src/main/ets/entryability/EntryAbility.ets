@@ -1,7 +1,6 @@
-import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
-import { AppStorage } from '@kit.ArkUI';
 
 const DOMAIN = 0x0000;
 
@@ -12,7 +11,7 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', 'Ability onCreate, colorMode: %{public}d', this.context.config.colorMode);
   }
 
-  onConfigurationUpdate(newConfig: ConfigurationConstant.Configuration): void {
+  onConfigurationUpdate(newConfig: Configuration): void {
     // 系统主题切换时更新 AppStorage，FlowViewer 的 @StorageProp + @Watch 自动响应
     AppStorage.setOrCreate('currentColorMode', newConfig.colorMode);
     hilog.info(DOMAIN, 'testTag', 'Config updated, colorMode: %{public}d', newConfig.colorMode);

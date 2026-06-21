@@ -103,10 +103,10 @@ export class SubProcessDrawer {
       ctx.fillStyle = config.taskTextColor;
       ctx.font = Math.max(config.fontSizeMin, Math.round(config.fontSize * zoom)) + 'px ' + config.fontFamily;
       if (isExpanded) {
-        // expanded subProcess: label at top-left (bpmn-js convention)
-        ctx.textAlign = 'start';
-        ctx.textBaseline = 'top';
-        ctx.fillText(text, x + 5 * zoom, y + 4 * zoom);
+        // expanded subProcess: label centered near top (avoids rounded corners + internal elements)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w / 2, y + 14 * zoom);
       } else {
         // collapsed subProcess: label centered
         ctx.textAlign = 'center';

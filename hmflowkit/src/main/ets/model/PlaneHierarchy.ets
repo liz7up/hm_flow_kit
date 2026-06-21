@@ -94,8 +94,6 @@ export class PlaneHierarchy {
   }
 
   getPlaneCount(): number {
-    let count = 0
-    let keys = Object.keys(this._planes)
-    return keys.length
+    return Object.keys(this._planes).length
   }
 }

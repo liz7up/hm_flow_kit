@@ -261,6 +261,9 @@ class _Collector {
     e.loopChar = loopChar !== undefined ? loopChar : '';
     e.triggeredByEvent = triggeredByEvent !== undefined ? triggeredByEvent : '';
     e.parentId = parentId !== undefined ? parentId : '';
+    if (e.parentId.length > 0) {
+      this._nodeParentMap[id] = e.parentId;
+    }
     this._nodes.push(e);
   }
 

@@ -729,6 +729,12 @@ export class BpmnXmlParser {
       return;
     }
     let procContent: string = xmlStr.substring(procStart, procEnd);
+    // Extract process id for root-level subProcess parents
+    let pTagEnd: number = procContent.indexOf('>');
+    let processId: string = '';
+    if (pTagEnd !== -1) {
+      processId = BpmnXmlParser._extractAttr(procContent.substring(0, pTagEnd), 'id');
+    }
     let spStack: string[] = [];
     let scanPos: number = 0;
     while (scanPos < procContent.length) {
@@ -750,7 +756,8 @@ export class BpmnXmlParser {
           let sid: string = BpmnXmlParser._extractAttr(tag, 'id');
           if (sid.length > 0) {
             let parentId: string = spStack.length > 0
-              ? spStack[spStack.length - 1] : '';
+              ? spStack[spStack.length - 1]
+              : processId;
             collector.setNodeParent(sid, parentId);
             spStack.push(sid);
           }

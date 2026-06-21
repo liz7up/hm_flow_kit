@@ -1,6 +1,6 @@
 # hm-flow-kit — 项目覆盖场景与不足待办清单
 
-> 最后更新：2026-06-20
+> 最后更新：2026-06-21
 > 基于：对项目代码、spec 文档、README 声明和已实现功能的全面巡视
 
 ---
@@ -28,6 +28,7 @@
 | Phase 2 | Parser 错误恢复 + 类型默认尺寸 | parseBestEffort() / defaultNodeSize() | ✅ 完成 |
 | Phase 3 | BPMN 全覆盖（Kitchen Sink 验收） | NodeType 4→13，6 新 Drawer，10 事件图标，7 任务图标，3 SubProcess 边框，5 层 Z-order | ✅ 完成 |
 | Phase 4 | 风格统一 — RenderConfig design tokens | ~30 测量 token（cornerRadiusRatio, nodePadding, eventIconScale...），6 Drawer + Edge + HitTest + FlowViewer 去硬编码，textBaseline 统一 middle，layerPriorities 配置化绘制顺序 | ✅ 完成 |
+| Phase 5 | 黑白主题 + 暗色自动适配 | 默认全黑白配色；RenderConfig.darkPreset() 静态工厂；FlowViewer @StorageProp('currentColorMode') + @Watch 自动跟随系统主题；EntryAbility AppStorage 同步；_userConfig 标记保护用户自定义 | ✅ 完成 |
 | DevOps | build.sh daemon + flag 触发编译 | test_all.sh 合并进 build.sh Step 3，一次触发 HAR+HAP+Test 全部编译 | ✅ 完成 |
 | TODO-3.5 | 渲染修复 | 见下方 3.5 详情 | ✅ 完成 |
 |   | Gateway 内部标记（X / + / ○ / 五边形） | NodeRenderer 绘制 | ✅ |
@@ -258,8 +259,10 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 ### 6.4 主题系统
 
 - ✅ RenderConfig 已有 ~80 个样式/度量字段（含 Phase 4 design tokens），可完整控制颜色、线宽、间距、比例
-- ⚠️ 缺失一键切换预设主题（深色模式、品牌色）的便捷 API
-- ⚠️ 对标 bpmn.js 的 theming 能力，便捷性有差距
+- ✅ Phase 5：全黑白默认配色 + RenderConfig.darkPreset() 预设
+- ✅ FlowViewer 自动检测系统明暗主题（@StorageProp + @Watch），初始 + 运行时双向切换
+- ✅ 画布背景跟随主题变色
+- ⚠️ 用户自定义品牌色需手动构建 RenderConfig 传入
 
 ### 6.5 文件规模
 

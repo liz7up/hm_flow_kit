@@ -57,7 +57,6 @@ export class RenderConfig {
 
   // ═══ Edge ═══
   edgeLabelOffset: number = 12;
-  edgeLabelPadding: number = 3;
 
   // ═══ HitTest ═══
   edgeHitTolerance: number = 12;

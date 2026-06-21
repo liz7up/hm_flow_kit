@@ -221,11 +221,6 @@ export class EdgeRenderer {
         let tm: TextMetrics = ctx.measureText(label);
         let tw: number = tm.width;
         let th: number = fontSize;
-        let pad: number = config.edgeLabelPadding;
-        // Draw white background for readability
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.fillRect(lx - tw / 2 - pad, ly - th / 2 - pad, tw + pad * 2, th + pad * 2);
-        // Draw text
         ctx.fillStyle = config.edgeStrokeColor;
         ctx.fillText(label, lx, ly);
       }

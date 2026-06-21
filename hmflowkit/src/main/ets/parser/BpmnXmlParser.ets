@@ -718,6 +718,50 @@ export class BpmnXmlParser {
     return new PlaneHierarchy(planes, rootId);
   }
 
+  // Post-parse: scan process XML for subProcess nesting to build parent chain.
+  private static _scanSubProcessParents(xmlStr: string, collector: _Collector): void {
+    let procStart: number = xmlStr.indexOf('<process');
+    if (procStart === -1) {
+      return;
+    }
+    let procEnd: number = xmlStr.indexOf('</process>', procStart);
+    if (procEnd === -1) {
+      return;
+    }
+    let procContent: string = xmlStr.substring(procStart, procEnd);
+    let spStack: string[] = [];
+    let scanPos: number = 0;
+    while (scanPos < procContent.length) {
+      let openTag: number = procContent.indexOf('<subProcess', scanPos);
+      let closeTag: number = procContent.indexOf('</subProcess>', scanPos);
+      let openTx: number = procContent.indexOf('<transaction', scanPos);
+      let closeTx: number = procContent.indexOf('</transaction>', scanPos);
+      let nextPos: number = procContent.length;
+      let isOpen: boolean = false;
+      if (openTag !== -1 && openTag < nextPos) { nextPos = openTag; isOpen = true; }
+      if (closeTag !== -1 && closeTag < nextPos) { nextPos = closeTag; isOpen = false; }
+      if (openTx !== -1 && openTx < nextPos) { nextPos = openTx; isOpen = true; }
+      if (closeTx !== -1 && closeTx < nextPos) { nextPos = closeTx; isOpen = false; }
+      if (nextPos >= procContent.length) { break; }
+      if (isOpen) {
+        let tagEnd: number = procContent.indexOf('>', nextPos);
+        if (tagEnd !== -1) {
+          let tag: string = procContent.substring(nextPos, tagEnd);
+          let sid: string = BpmnXmlParser._extractAttr(tag, 'id');
+          if (sid.length > 0) {
+            let parentId: string = spStack.length > 0
+              ? spStack[spStack.length - 1] : '';
+            collector.setNodeParent(sid, parentId);
+            spStack.push(sid);
+          }
+        }
+      } else {
+        if (spStack.length > 0) { spStack.pop(); }
+      }
+      scanPos = nextPos + 1;
+    }
+  }
+
   // Post-parse: scan XML for diagram→plane mapping and per-diagram shape/edge routing.
   // 完全独立的字符串扫描，不依赖 START_TAG 中的 attr 读取时序。
   private static _scanDiagramPlanes(xmlStr: string, collector: _Collector): void {
@@ -1324,7 +1368,10 @@ export class BpmnXmlParser {
     for (let i: number = 0; i < collector.warnings.length; i++) {
       result.warnings.push(collector.warnings[i]);
     }
-    // 后处理：从 XML 字符串扫描补全 diagram→plane 映射
+    // 后处理：从 XML 补全 subProcess 父子关系（defense against START_TAG attr timing）
+    BpmnXmlParser._scanSubProcessParents(cleaned, collector);
+
+    // 后处理：从 XML 字符串扫描补全 diagram→plane 映射+shape/edge 路由
     // （防御 BPMNDiagram/BPMNPlane START_TAG 时的 attr 读取时序问题）
     BpmnXmlParser._scanDiagramPlanes(cleaned, collector);
 

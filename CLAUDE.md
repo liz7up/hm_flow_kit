@@ -116,10 +116,13 @@ hm-flow-kit/
 - 592 行，37 项测试全部通过 — 含 collaboration/laneSet/eventDefinition/messageFlow 解析 — 基于 @kit.ArkTS xml.XmlPullParser (parseXml 回调 API)
 - 支持命名空间前缀剥离、15+ 种节点类型映射、BPMNShape 坐标、BPMNEdge waypoints
 - ⚠️ 关键实现细节：tokenValueCallback 在 attributeValueCallback **之前**触发（与官方文档暗示顺序相反），所有业务逻辑必须在 END_TAG 中处理
-- ⚠️ ignoreNameSpace: true 不会剥离 getName() 返回的前缀，需手动 lastIndexOf(':')
+- ⚠️ ignoreNameSpace: true 实测不剥离 getName() 前缀（返回 "bpmndi:BPMNLabel"），需手动 localName() 做 lastIndexOf(':')
 - ⚠️ attributeValueCallback 遇到 `&` 会丢弃属性值 —— 用 `decodeXmlCharacterRefs()` 预处理 XML 字符串
 
 **Spec 06 — FlowViewer 组件 ✅ 已完成**
+- 支持 XML 直接输入（`xml` prop）：内部使用 `parseBestEffort()` 宽松解析，解析异常时显示红色错误提示 + 空画布，不崩溃
+- 支持预解析 model 输入（`model` prop）：调用方自行 try-catch，错误时传空 model 即可
+- `parseBestEffort()` 返回 `ParseResult { model, warnings, isPartial }`，部分成功时保留已解析的节点和边
 
 **Pool/Lane — 泳池/泳道 ✅ 已完成**
 - 891 行 GraphModel 含 Pool/Lane/PoolBounds 数据类 + 15 个新方法
@@ -399,8 +402,10 @@ hitTest(screenX: number, screenY: number, canvasManager: CanvasManager): HitResu
 
 ### BPMN Parser
 ```
-BpmnXmlParser.parse(xml: string): GraphModel  // 静态方法，基于 XmlPullParser parseXml()
+BpmnXmlParser.parse(xml: string): GraphModel        // 严格模式，遇错抛 Error
+BpmnXmlParser.parseBestEffort(xml: string): ParseResult  // 宽松模式，遇错返回部分结果 + 警告
 ```
+`ParseResult` 字段：`model: GraphModel`、`warnings: string[]`、`isPartial: boolean`
 元素覆盖：startEvent, endEvent, task, userTask, serviceTask, scriptTask, manualTask, sendTask, receiveTask, businessRuleTask, callActivity, subProcess, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, intermediateThrowEvent, intermediateCatchEvent, boundaryEvent, sequenceFlow
 注意：textAnnotation, dataObjectReference, dataStoreReference, group 有意丢弃（非核心视觉元素）
 - participant/lane 现已解析：`<collaboration>` → Pool，`<laneSet>`/`<lane>` → Lane（含嵌套 childLaneSet），`<flowNodeRef>` → node-to-lane 关联

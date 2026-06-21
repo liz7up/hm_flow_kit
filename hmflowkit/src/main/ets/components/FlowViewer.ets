@@ -3,7 +3,7 @@ import { EdgeRenderer, NodeRect } from '../renderer/EdgeRenderer'
 import { GridRenderer, GridType, GridConfig } from '../renderer/GridRenderer'
 import { CanvasManager, ViewportState } from '../renderer/CanvasManager'
 import { HitTestManager, HitType, HitResult } from '../renderer/HitTestManager'
-import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
+import { GraphModel, GraphNode, GraphEdge, Pool, NodeType } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
@@ -271,7 +271,7 @@ export struct FlowViewer {
       // drill-down: collapsed subProcess with dedicated plane
       let activeModel: GraphModel = this.getActiveModel()
       let node: GraphNode | null = activeModel.getNode(result.nodeId)
-      if (node !== null && node.type === 'subProcess' &&
+      if (node !== null && node.type === NodeType.SUB_PROCESS &&
           node.properties['isExpanded'] === 'false' &&
           this.planeHierarchy !== null &&
           this.planeHierarchy.hasPlane(node.id)) {

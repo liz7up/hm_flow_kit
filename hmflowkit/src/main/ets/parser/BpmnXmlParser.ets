@@ -244,6 +244,7 @@ class _Collector {
   private _diagramPlanes: Record<string, string> = {};
   private _isExpandedMap: Record<string, boolean> = {};
   private _nodeParentMap: Record<string, string> = {};
+  private _processName: string = 'Root';
 
   warnings: string[] = [];
 
@@ -327,6 +328,12 @@ class _Collector {
   setNodeParent(nodeId: string, parentId: string): void {
     if (parentId.length > 0) {
       this._nodeParentMap[nodeId] = parentId;
+    }
+  }
+
+  setProcessName(name: string): void {
+    if (name.length > 0) {
+      this._processName = name;
     }
   }
 
@@ -657,13 +664,16 @@ class _Collector {
       let dId: string = diagramIds[i];
       let procId: string = this._diagramPlanes[dId];
       let model: GraphModel = this.buildPerDiagram(dId, procId);
-      // 从 subProcess 节点取 label
+      // 从 subProcess 节点取 label；root 平面用 process name
       let label: string = procId;
       for (let j: number = 0; j < this._nodes.length; j++) {
         if (this._nodes[j].id === procId && this._nodes[j].label.length > 0) {
           label = this._nodes[j].label;
           break;
         }
+      }
+      if (label === procId && i === 0) {
+        label = this._processName;
       }
       // 向上查找最近有 diagram 的祖先
       let parentProcessId: string = '';
@@ -733,7 +743,14 @@ export class BpmnXmlParser {
     let pTagEnd: number = procContent.indexOf('>');
     let processId: string = '';
     if (pTagEnd !== -1) {
-      processId = BpmnXmlParser._extractAttr(procContent.substring(0, pTagEnd), 'id');
+      let pTag: string = procContent.substring(0, pTagEnd);
+      processId = BpmnXmlParser._extractAttr(pTag, 'id');
+      let pName: string = BpmnXmlParser._extractAttr(pTag, 'name');
+      if (pName.length === 0) {
+        // some tools use label attribute or no name
+        pName = 'Process';
+      }
+      collector.setProcessName(pName);
     }
     let spStack: string[] = [];
     let scanPos: number = 0;

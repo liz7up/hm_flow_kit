@@ -45,7 +45,6 @@ export struct FlowViewer {
   @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
   private _currentPlaneId: string = ''
-  private _navigationStack: string[] = []
 
   aboutToAppear(): void {
     // 检测用户是否传了自定义 config（非默认亮色值）
@@ -141,18 +140,6 @@ export struct FlowViewer {
       // 面包屑导航（多平面时显示）
       if (this._showBreadcrumb) {
         Row() {
-          // "Back" text hyperlink
-          if (this._navigationStack.length > 0) {
-            Text('Back')
-              .fontSize(this.renderConfig.fontSize)
-              .fontColor(this.renderConfig.activeStrokeColor)
-              .fontFamily(this.renderConfig.fontFamily)
-              .decoration({ type: TextDecorationType.Underline })
-              .onClick(() => { this.navigateBack() })
-            Text('  ')
-              .fontSize(this.renderConfig.fontSize)
-          }
-          // Breadcrumb segments (clickable except current)
           ForEach(this._breadcrumbItems, (item: BreadcrumbEntry, idx: number) => {
             Row() {
               if (idx < this._breadcrumbItems.length - 1) {
@@ -254,9 +241,6 @@ export struct FlowViewer {
   }
 
   private navigateToPlane(processId: string): void {
-    if (this._currentPlaneId.length > 0) {
-      this._navigationStack.push(this._currentPlaneId)
-    }
     this._currentPlaneId = processId
     this._updateBreadcrumb()
     this._needFit = true
@@ -269,30 +253,12 @@ export struct FlowViewer {
     if (this.planeHierarchy === null || index >= this._breadcrumbItems.length - 1) {
       return;
     }
-    let targetId: string = this._breadcrumbItems[index].processId;
-    // Clear stack and rebuild navigation path
-    this._navigationStack = [];
-    for (let i: number = 0; i < index; i++) {
-      this._navigationStack.push(this._breadcrumbItems[i].processId);
-    }
-    this._currentPlaneId = targetId;
+    this._currentPlaneId = this._breadcrumbItems[index].processId;
     this._updateBreadcrumb();
     this._needFit = true;
     this._highlightId = '';
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig);
     this.renderAll();
-  }
-
-  private navigateBack(): void {
-    if (this._navigationStack.length > 0) {
-      let prevId: string = this._navigationStack.pop()!
-      this._currentPlaneId = prevId
-      this._updateBreadcrumb()
-      this._needFit = true
-      this._highlightId = ''
-      this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
-      this.renderAll()
-    }
   }
 
   handleClick(event: ClickEvent): void {

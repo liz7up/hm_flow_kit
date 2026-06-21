@@ -79,14 +79,16 @@ export class SubProcessDrawer {
       ctx.stroke();
     }
 
-    // [+] expand marker — only <subProcess>, not <transaction>
-    if (node.properties['bpmnElement'] !== 'transaction') {
+    // [+] expand marker — only collapsed <subProcess>, not <transaction>
+    let isExpanded: boolean = node.properties['isExpanded'] !== 'false';
+    if (!isTx && !isExpanded) {
       let markerSize: number = config.subProcessExpandMarkerSize * zoom;
       let mx: number = x + w / 2;
       let my: number = y + h + markerSize / 2;
-      ctx.strokeStyle = config.textColor;
+      ctx.fillStyle = '#1890FF';
+      ctx.fillRect(mx - markerSize / 2, my - markerSize / 2, markerSize, markerSize);
+      ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 1.5 * zoom;
-      ctx.strokeRect(mx - markerSize / 2, my - markerSize / 2, markerSize, markerSize);
       ctx.beginPath();
       ctx.moveTo(mx - markerSize * 0.35, my);
       ctx.lineTo(mx + markerSize * 0.35, my);

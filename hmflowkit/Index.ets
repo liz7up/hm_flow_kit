@@ -34,6 +34,9 @@ export { SubProcessDrawer } from './src/main/ets/renderer/SubProcessDrawer'
 export { DataDrawer } from './src/main/ets/renderer/DataDrawer'
 export { AnnotationDrawer } from './src/main/ets/renderer/AnnotationDrawer'
 
+// ── Plane 层级 ──
+export { PlaneHierarchy, PlaneDefinition, BreadcrumbEntry } from './src/main/ets/model/PlaneHierarchy'
+
 // ── Parser 层 ──
 export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'
 

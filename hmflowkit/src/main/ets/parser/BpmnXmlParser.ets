@@ -4,12 +4,13 @@
  * 使用 parseXml() 回调 API，attributeValueCallback 收集属性，
  * tokenValueCallback 驱动状态机。不使用栈，用简单变量追踪状态。
  *
- * ignoreNameSpace: true 不影响 info.getName() 的返回值——
- * 仍需手动剥离命名空间前缀（lastIndexOf(':')）。
+ * ignoreNameSpace: true 实测不剥离 getName() 前缀（返回 "bpmndi:BPMNLabel"），
+ * 必须手动 localName() 做 lastIndexOf(':') 处理。
  */
 
 import { xml, util } from '@kit.ArkTS';
 import { GraphModel, GraphNode, GraphEdge, Waypoint, NodeType, EdgeStyle, Pool, Lane, PoolBounds } from '../model/GraphModel';
+import { PlaneHierarchy, PlaneDefinition } from '../model/PlaneHierarchy';
 
 // ===== 公开类型 =====
 
@@ -17,6 +18,7 @@ export class ParseResult {
   model: GraphModel = GraphModel.createEmpty()
   warnings: string[] = []
   isPartial: boolean = false
+  _planes: PlaneDefinition[] = []
 }
 
 // ===== 内部辅助类 =====
@@ -168,6 +170,7 @@ class _NodeEntry {
   isInterrupting: string = '';
   loopChar: string = '';
   triggeredByEvent: string = '';
+  parentId: string = '';
   constructor() {}
 }
 
@@ -235,11 +238,18 @@ class _Collector {
   private _laneIds: Record<string, boolean> = {};
   private _messageFlowIds: Record<string, boolean> = {};
 
+  // Multi-plane: per-diagram shape/waypoint maps + metadata
+  private _diagramShapes: Record<string, Record<string, _ShapeInfo>> = {};
+  private _diagramWaypoints: Record<string, Record<string, Waypoint[]>> = {};
+  private _diagramPlanes: Record<string, string> = {};
+  private _isExpandedMap: Record<string, boolean> = {};
+  private _nodeParentMap: Record<string, string> = {};
+
   warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string,
           cancelActivity?: string, loopChar?: string, triggeredByEvent?: string,
-          isInterrupting?: string): void {
+          isInterrupting?: string, parentId?: string): void {
     let e: _NodeEntry = new _NodeEntry();
     e.id = id;
     e.type = type;
@@ -250,6 +260,7 @@ class _Collector {
     e.isInterrupting = isInterrupting !== undefined ? isInterrupting : '';
     e.loopChar = loopChar !== undefined ? loopChar : '';
     e.triggeredByEvent = triggeredByEvent !== undefined ? triggeredByEvent : '';
+    e.parentId = parentId !== undefined ? parentId : '';
     this._nodes.push(e);
   }
 
@@ -274,6 +285,46 @@ class _Collector {
 
   setWaypoints(edgeId: string, wps: Waypoint[]): void {
     this._waypoints[edgeId] = wps;
+  }
+
+  // ── Multi-plane: per-diagram routing (shares ShapeInfo refs) ──
+
+  addDiagramShape(diagramId: string, elId: string, x: number, y: number,
+                  w: number, h: number): void {
+    let s: _ShapeInfo | undefined = this._shapes[elId];
+    if (s === undefined) {
+      s = new _ShapeInfo();
+      s.x = x;
+      s.y = y;
+      s.w = w;
+      s.h = h;
+      this._shapes[elId] = s;
+    }
+    if (this._diagramShapes[diagramId] === undefined) {
+      this._diagramShapes[diagramId] = {};
+    }
+    this._diagramShapes[diagramId][elId] = s;
+  }
+
+  addDiagramWaypoints(diagramId: string, elId: string, wps: Waypoint[]): void {
+    if (this._diagramWaypoints[diagramId] === undefined) {
+      this._diagramWaypoints[diagramId] = {};
+    }
+    this._diagramWaypoints[diagramId][elId] = wps;
+  }
+
+  setDiagramPlane(diagramId: string, planeElement: string): void {
+    this._diagramPlanes[diagramId] = planeElement;
+  }
+
+  setExpanded(elId: string, isExpanded: boolean): void {
+    this._isExpandedMap[elId] = isExpanded;
+  }
+
+  setNodeParent(nodeId: string, parentId: string): void {
+    if (parentId.length > 0) {
+      this._nodeParentMap[nodeId] = parentId;
+    }
   }
 
   // ── Pool/Lane 收集方法 ──
@@ -371,6 +422,10 @@ class _Collector {
       }
       if (nd.triggeredByEvent.length > 0) {
         props['triggeredByEvent'] = nd.triggeredByEvent;
+      }
+      let expVal: boolean | undefined = this._isExpandedMap[nd.id];
+      if (expVal !== undefined) {
+        props['isExpanded'] = expVal ? 'true' : 'false';
       }
       model = model.addNode(
         new GraphNode(nd.id, nd.type, x, y, w, h, nd.label, props));
@@ -473,6 +528,154 @@ class _Collector {
     }
     return result;
   }
+
+  // ── 平面构建（parseHierarchy 用）──
+
+  buildPerDiagram(diagramId: string, processId: string): GraphModel {
+    let model: GraphModel = GraphModel.createEmpty();
+    let shapes: Record<string, _ShapeInfo> | undefined = this._diagramShapes[diagramId];
+    let wpts: Record<string, Waypoint[]> | undefined = this._diagramWaypoints[diagramId];
+
+    // 追踪哪些节点属于此平面
+    let nodeIdsInPlane: Record<string, boolean> = {};
+
+    // 1. 构建节点
+    for (let i: number = 0; i < this._nodes.length; i++) {
+      let nd: _NodeEntry = this._nodes[i];
+      if (shapes === undefined) {
+        continue;
+      }
+      let shape: _ShapeInfo | undefined = shapes[nd.id];
+      if (shape === undefined) {
+        continue;
+      }
+      let props: Record<string, string> = {};
+      if (nd.tagName.length > 0) {
+        props['bpmnElement'] = nd.tagName;
+      }
+      if (nd.eventDefTag.length > 0) {
+        props['eventDefinition'] = nd.eventDefTag;
+      }
+      if (nd.cancelActivity.length > 0) {
+        props['cancelActivity'] = nd.cancelActivity;
+      }
+      if (nd.isInterrupting.length > 0) {
+        props['isInterrupting'] = nd.isInterrupting;
+      }
+      if (nd.loopChar.length > 0) {
+        props['loopCharacteristics'] = nd.loopChar;
+      }
+      if (nd.triggeredByEvent.length > 0) {
+        props['triggeredByEvent'] = nd.triggeredByEvent;
+      }
+      let expVal: boolean | undefined = this._isExpandedMap[nd.id];
+      if (expVal !== undefined) {
+        props['isExpanded'] = expVal ? 'true' : 'false';
+      }
+      model = model.addNode(
+        new GraphNode(nd.id, nd.type, shape.x, shape.y, shape.w, shape.h, nd.label, props));
+      nodeIdsInPlane[nd.id] = true;
+    }
+
+    // 2. 构建边（仅保留两端节点都在此平面的边）
+    for (let i: number = 0; i < this._edges.length; i++) {
+      let ed: _EdgeEntry = this._edges[i];
+      if (nodeIdsInPlane[ed.src] === undefined || nodeIdsInPlane[ed.tgt] === undefined) {
+        continue;
+      }
+      let wps: Waypoint[] | undefined = wpts !== undefined ? wpts[ed.id] : undefined;
+      if (wps === undefined) {
+        wps = [];
+        let sn: GraphNode | null = model.getNode(ed.src);
+        let tn: GraphNode | null = model.getNode(ed.tgt);
+        if (sn !== null && tn !== null) {
+          wps.push(new Waypoint(sn.x + sn.width / 2, sn.y + sn.height / 2));
+          wps.push(new Waypoint(tn.x + tn.width / 2, tn.y + tn.height / 2));
+        }
+      }
+      let props: Record<string, string> = {};
+      if (this._messageFlowIds[ed.id] === true) {
+        props['bpmnElement'] = 'messageFlow';
+      } else if (ed.bpmnElement.length > 0) {
+        props['bpmnElement'] = ed.bpmnElement;
+      }
+      model = model.addEdge(
+        new GraphEdge(ed.id, ed.src, ed.tgt, wps, EdgeStyle.POLYLINE, ed.label, props));
+    }
+
+    // 3. 仅在 root 平面构建 Pools（第一个 diagram）
+    let diagramIds: string[] = Object.keys(this._diagramPlanes);
+    if (diagramIds.length > 0) {
+      let rootDiagramId: string = diagramIds[0];
+      if (diagramId === rootDiagramId) {
+        let poolIds: string[] = Object.keys(this._participants);
+        for (let i: number = 0; i < poolIds.length; i++) {
+          let pid: string = poolIds[i];
+          let part: _ParticipantDef = this._participants[pid];
+          let pShape: _PoolShapeInfo | undefined = this._poolShapes[pid];
+          let x: number = 0;
+          let y: number = 0;
+          let w: number = 400;
+          let h: number = 200;
+          let isH: boolean = true;
+          if (pShape !== undefined) {
+            x = pShape.x;
+            y = pShape.y;
+            w = pShape.w;
+            h = pShape.h;
+            isH = pShape.isHorizontal;
+          }
+          let topLanes: Lane[] = this.buildLaneTree('');
+          topLanes = this.applyLaneShapes(topLanes);
+          model = model.addPool(new Pool(
+            pid, part.name, isH,
+            new PoolBounds(x, y, w, h),
+            topLanes
+          ));
+        }
+      }
+    }
+
+    return model;
+  }
+
+  buildAllPlanes(): PlaneDefinition[] {
+    let result: PlaneDefinition[] = [];
+    let diagramIds: string[] = Object.keys(this._diagramPlanes);
+    if (diagramIds.length === 0) {
+      return result;
+    }
+    // 哪些 processId 有专用 diagram
+    let hasDiagram: Record<string, boolean> = {};
+    for (let i: number = 0; i < diagramIds.length; i++) {
+      hasDiagram[this._diagramPlanes[diagramIds[i]]] = true;
+    }
+    for (let i: number = 0; i < diagramIds.length; i++) {
+      let dId: string = diagramIds[i];
+      let procId: string = this._diagramPlanes[dId];
+      let model: GraphModel = this.buildPerDiagram(dId, procId);
+      // 从 subProcess 节点取 label
+      let label: string = procId;
+      for (let j: number = 0; j < this._nodes.length; j++) {
+        if (this._nodes[j].id === procId && this._nodes[j].label.length > 0) {
+          label = this._nodes[j].label;
+          break;
+        }
+      }
+      // 向上查找最近有 diagram 的祖先
+      let parentProcessId: string = '';
+      let nodeParent: string | undefined = this._nodeParentMap[procId];
+      while (nodeParent !== undefined && nodeParent.length > 0) {
+        if (hasDiagram[nodeParent]) {
+          parentProcessId = nodeParent;
+          break;
+        }
+        nodeParent = this._nodeParentMap[nodeParent];
+      }
+      result.push(new PlaneDefinition(dId, procId, model, label, parentProcessId));
+    }
+    return result;
+  }
 }
 
 // ===== BPMN 解析器 =====
@@ -493,6 +696,23 @@ export class BpmnXmlParser {
   // 宽松模式：遇错返回部分结果 + 警告，不抛异常
   static parseBestEffort(xmlStr: string): ParseResult {
     return BpmnXmlParser._doParse(xmlStr);
+  }
+
+  // 多平面解析：返回 PlaneHierarchy（用于 drill-down 导航）
+  static parseHierarchy(xmlStr: string): PlaneHierarchy {
+    let result: ParseResult = BpmnXmlParser._doParse(xmlStr);
+    if (result.isPartial) {
+      let msg: string = result.warnings.length > 0
+        ? result.warnings[result.warnings.length - 1]
+        : 'Unknown parse error';
+      throw new Error('BPMN parseHierarchy failed: ' + msg);
+    }
+    let planes: PlaneDefinition[] = result._planes;
+    if (planes.length === 0) {
+      planes = [new PlaneDefinition('', 'root', result.model, 'Root', '')];
+    }
+    let rootId: string = planes.length > 0 ? planes[0].processId : 'root';
+    return new PlaneHierarchy(planes, rootId);
   }
 
   private static _doParse(xmlStr: string): ParseResult {
@@ -546,6 +766,12 @@ export class BpmnXmlParser {
 
     let waypointBuf: Waypoint[] = [];
 
+    // ── multi-plane tracking ──
+    let currentDiagramId: string = '';
+    let currentPlaneElement: string = '';
+    let subProcessStack: string[] = [];
+    let currentProcessId: string = '';
+
     // ── pending data association edges (text captured after END_TAG) ──
     let pendingMap: Record<number, _DataAssocEntry> = {};
     let pendingSeq: number = 0;
@@ -598,8 +824,20 @@ export class BpmnXmlParser {
 
         if (tag === 'process') {
           inProcess = true;
+          currentProcessId = currentAttrs['id'] || '';
+        } else if (tag === 'subProcess' || tag === 'transaction') {
+          let sid: string = currentAttrs['id'] || '';
+          if (sid.length > 0) {
+            subProcessStack.push(sid);
+          }
         } else if (tag === 'BPMNDiagram') {
           inDiagram = true;
+          currentDiagramId = currentAttrs['id'] || '';
+        } else if (tag === 'BPMNPlane') {
+          currentPlaneElement = currentAttrs['bpmnElement'] || '';
+          if (currentDiagramId.length > 0 && currentPlaneElement.length > 0) {
+            collector.setDiagramPlane(currentDiagramId, currentPlaneElement);
+          }
         } else if (tag === 'BPMNShape') {
           inShape = true;
           shapeX = 0; shapeY = 0; shapeW = 0; shapeH = 0;
@@ -696,6 +934,15 @@ export class BpmnXmlParser {
             } else {
               collector.setShape(elId, shapeX, shapeY, shapeW, shapeH);
             }
+            // per-diagram routing
+            if (currentDiagramId.length > 0) {
+              collector.addDiagramShape(currentDiagramId, elId, shapeX, shapeY, shapeW, shapeH);
+            }
+            // capture isExpanded
+            let expVal: string = currentAttrs['isExpanded'] || '';
+            if (expVal.length > 0) {
+              collector.setExpanded(elId, expVal !== 'false');
+            }
           }
         }
         else if (tag === 'BPMNEdge') {
@@ -703,6 +950,9 @@ export class BpmnXmlParser {
           let elId: string = currentAttrs['bpmnElement'] || '';
           if (elId.length > 0 && waypointBuf.length > 0) {
             collector.setWaypoints(elId, waypointBuf);
+            if (currentDiagramId.length > 0) {
+              collector.addDiagramWaypoints(currentDiagramId, elId, waypointBuf);
+            }
           }
         }
         else if (tag === 'BPMNLabel') {
@@ -794,18 +1044,27 @@ export class BpmnXmlParser {
             if (tag === 'textAnnotation') {
               inTextAnnotation = false;
             }
+            if (tag === 'subProcess' || tag === 'transaction') {
+              if (subProcessStack.length > 0) {
+                subProcessStack.pop();
+              }
+            }
             let nid: string = currentAttrs['id'] || '';
             if (nid.length > 0) {
               let nodeLabel: string = decodeXmlCharacterRefs(currentAttrs['name'] || '');
               if (tag === 'textAnnotation' && annotationText.length > 0) {
                 nodeLabel = annotationText.trim();
               }
+              let nodeParentId: string = subProcessStack.length > 0
+                ? subProcessStack[subProcessStack.length - 1]
+                : currentProcessId;
               collector.addNode(nid, mapNodeType(tag), nodeLabel, tag,
                 currentEventDefTag.length > 0 ? currentEventDefTag : undefined,
                 currentAttrs['cancelActivity'],
                 currentLoopChar.length > 0 ? currentLoopChar : undefined,
                 currentAttrs['triggeredByEvent'],
-                currentAttrs['isInterrupting']);
+                currentAttrs['isInterrupting'],
+                nodeParentId.length > 0 ? nodeParentId : undefined);
             }
             currentEventDefTag = '';
             currentLoopChar = '';
@@ -855,6 +1114,7 @@ export class BpmnXmlParser {
       result.warnings.push(collector.warnings[i]);
     }
     result.model = collector.build();
+    result._planes = collector.buildAllPlanes();
     return result;
   }
 }

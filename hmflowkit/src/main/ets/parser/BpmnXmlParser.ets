@@ -718,6 +718,75 @@ export class BpmnXmlParser {
     return new PlaneHierarchy(planes, rootId);
   }
 
+  // post-parse fallback: scan XML for BPMNDiagram+BPMNPlane mapping
+  // 用简单字符串扫描，无需重新走 XML parser 状态机
+  private static _scanDiagramPlanes(xmlStr: string, collector: _Collector): void {
+    let pos: number = 0;
+    while (pos < xmlStr.length) {
+      let diagStart: number = xmlStr.indexOf('<BPMNDiagram', pos);
+      if (diagStart === -1) {
+        // try namespaced form
+        diagStart = xmlStr.indexOf('<bpmndi:BPMNDiagram', pos);
+        if (diagStart === -1) {
+          break;
+        }
+      }
+      // find diagram id attribute
+      let diagTagEnd: number = xmlStr.indexOf('>', diagStart);
+      if (diagTagEnd === -1) {
+        break;
+      }
+      let diagTag: string = xmlStr.substring(diagStart, diagTagEnd);
+      let dId: string = '';
+      let idIdx: number = diagTag.indexOf('id="');
+      if (idIdx === -1) {
+        idIdx = diagTag.indexOf("id='");
+      }
+      if (idIdx !== -1) {
+        let quote: string = diagTag.charAt(idIdx + 3);
+        let idStart: number = idIdx + 4;
+        let idEnd: number = diagTag.indexOf(quote, idStart);
+        if (idEnd !== -1) {
+          dId = diagTag.substring(idStart, idEnd);
+        }
+      }
+      // find BPMNPlane inside this diagram
+      let planeEnd: number = xmlStr.indexOf('</BPMNDiagram>', diagTagEnd);
+      if (planeEnd === -1) {
+        planeEnd = xmlStr.indexOf('</bpmndi:BPMNDiagram>', diagTagEnd);
+        if (planeEnd === -1) {
+          pos = diagTagEnd + 1;
+          continue;
+        }
+      }
+      let planeSearch: string = xmlStr.substring(diagTagEnd, planeEnd);
+      let planeStart: number = planeSearch.indexOf('<BPMNPlane');
+      if (planeStart === -1) {
+        planeStart = planeSearch.indexOf('<bpmndi:BPMNPlane');
+      }
+      if (planeStart !== -1) {
+        let planeTagEnd: number = planeSearch.indexOf('>', planeStart);
+        if (planeTagEnd !== -1) {
+          let planeTag: string = planeSearch.substring(planeStart, planeTagEnd);
+          let bpmnIdx: number = planeTag.indexOf('bpmnElement="');
+          if (bpmnIdx === -1) {
+            bpmnIdx = planeTag.indexOf("bpmnElement='");
+          }
+          if (bpmnIdx !== -1) {
+            let quote2: string = planeTag.charAt(bpmnIdx + 13);
+            let peStart: number = bpmnIdx + 14;
+            let peEnd: number = planeTag.indexOf(quote2, peStart);
+            if (peEnd !== -1 && dId.length > 0) {
+              let planeEl: string = planeTag.substring(peStart, peEnd);
+              collector.setDiagramPlane(dId, planeEl);
+            }
+          }
+        }
+      }
+      pos = planeEnd + 1;
+    }
+  }
+
   private static _doParse(xmlStr: string): ParseResult {
     let result: ParseResult = new ParseResult();
     let cleaned: string = xmlStr;
@@ -835,11 +904,13 @@ export class BpmnXmlParser {
           }
         } else if (tag === 'BPMNDiagram') {
           inDiagram = true;
-          currentDiagramId = currentAttrs['id'] || '';
+          currentDiagramId = snapshot['id'] || '';
         } else if (tag === 'BPMNPlane') {
-          currentPlaneElement = currentAttrs['bpmnElement'] || '';
-          if (currentDiagramId.length > 0 && currentPlaneElement.length > 0) {
-            collector.setDiagramPlane(currentDiagramId, currentPlaneElement);
+          if (currentDiagramId.length > 0) {
+            let planeEl: string = snapshot['bpmnElement'] || '';
+            if (planeEl.length > 0) {
+              collector.setDiagramPlane(currentDiagramId, planeEl);
+            }
           }
         } else if (tag === 'BPMNShape') {
           inShape = true;
@@ -1116,6 +1187,10 @@ export class BpmnXmlParser {
     for (let i: number = 0; i < collector.warnings.length; i++) {
       result.warnings.push(collector.warnings[i]);
     }
+    // 后处理：从 XML 字符串扫描补全 diagram→plane 映射
+    // （防御 BPMNDiagram/BPMNPlane START_TAG 时的 attr 读取时序问题）
+    BpmnXmlParser._scanDiagramPlanes(cleaned, collector);
+
     result.model = collector.build();
     result._planes = collector.buildAllPlanes();
     return result;

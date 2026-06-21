@@ -20,7 +20,7 @@ export struct FlowViewer {
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
   @Prop renderConfig: RenderConfig = new RenderConfig()
-  @Prop planeHierarchy: PlaneHierarchy | null = null
+  @Prop @Watch('onPlaneHierarchyChange') planeHierarchy: PlaneHierarchy | null = null
   @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
 
   onNodeClick?: (nodeId: string) => void
@@ -309,6 +309,20 @@ export struct FlowViewer {
       return new NodeRect(node.x, node.y, node.width, node.height)
     }
     return new NodeRect(0, 0, 60, 40)
+  }
+
+  // 外部 planeHierarchy prop 变化（异步加载完成后设置）
+  onPlaneHierarchyChange(): void {
+    if (this.planeHierarchy !== null) {
+      this._currentPlaneId = this.planeHierarchy.getRootProcessId()
+      this._updateBreadcrumb()
+      this._needFit = true
+      this._highlightId = ''
+      this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
+      if (this._canvasReady) {
+        this.renderAll()
+      }
+    }
   }
 
   // 系统主题切换时自动适配（用户已传自定义 config 则跳过）

@@ -29,6 +29,7 @@
 | Phase 3 | BPMN 全覆盖（Kitchen Sink 验收） | NodeType 4→13，6 新 Drawer，10 事件图标，7 任务图标，3 SubProcess 边框，5 层 Z-order | ✅ 完成 |
 | Phase 4 | 风格统一 — RenderConfig design tokens | ~30 测量 token（cornerRadiusRatio, nodePadding, eventIconScale...），6 Drawer + Edge + HitTest + FlowViewer 去硬编码，textBaseline 统一 middle，layerPriorities 配置化绘制顺序 | ✅ 完成 |
 | Phase 5 | 黑白主题 + 暗色自动适配 | 默认全黑白配色；RenderConfig.darkPreset() 静态工厂；FlowViewer @StorageProp('currentColorMode') + @Watch 自动跟随系统主题；EntryAbility AppStorage 同步；_userConfig 标记保护用户自定义 | ✅ 完成 |
+| Phase 6 | 多平面钻取导航 | PlaneHierarchy(101行)；BpmnXmlParser.parseHierarchy() + post-scan 字符串扫描绕过回调时序陷阱；FlowViewer @Prop planeHierarchy + 面包屑可点击分段导航；expanded/collapsed 子流程分层 Z-order + 最小面积 HitTest；SubProcessDrawer expanded 居中靠上标签；BpmnViewerPage 自动适配多平面 | ✅ 完成 |
 | DevOps | build.sh daemon + flag 触发编译 | test_all.sh 合并进 build.sh Step 3，一次触发 HAR+HAP+Test 全部编译 | ✅ 完成 |
 | TODO-3.5 | 渲染修复 | 见下方 3.5 详情 | ✅ 完成 |
 |   | Gateway 内部标记（X / + / ○ / 五边形） | NodeRenderer 绘制 | ✅ |
@@ -89,11 +90,11 @@
   - `ConditionalFlow` / `DefaultFlow` — 条件流 / 默认流（视觉标记差异）
   - `DataAssociation` / `DataInputAssociation` / `DataOutputAssociation`
 
-**E. BPMNDiagram / Choreography**
+**E. BPMNDiagram / Choreography** ✅ 多平面钻取已完成
 
 - ✅ `Collaboration`（多参与者）已支持
+- ✅ 多 `BPMNDiagram` 解析 + 钻取导航（parseHierarchy / PlaneHierarchy / 面包屑）
 - 缺失：
-  - 顶层 `BPMNDiagram` 包装解析
   - `Choreography` 完全不支持
   - `Conversation` 完全不支持
 

@@ -13,15 +13,16 @@ ohpm install hmflowkit
 
 - 🎨 纯 ArkTS Canvas 2D 渲染，无 WebView
 - 📋 BPMN 2.0 XML 解析 — 兼容 bpmn.js 导出格式
-- 🔷 4 类 Gateway（Exclusive / Parallel / Inclusive / Event-Based）各具独立内部标记
-- ⭕ 5 种 EventDefinition 图标（Timer / Message / Error / Signal / Terminate）
-- 🏊 Pool/Lane 泳池泳道完整支持（含嵌套 Lane、横向/纵向标题栏）
-- 🔗 SequenceFlow 实线实心箭头 + MessageFlow 虚线空心箭头
-- 🎯 节点/连线/泳道命中检测（HitTest）
-- 📐 自动适配画布（auto-fit）+ 拖拽平移 + 双指缩放
+- 🔷 4 类 Gateway 内部标记 + 10 种 EventDefinition 图标 + 7 种 Task 类型图标
+- 🏊 Pool/Lane 泳池泳道 + 3 种 SubProcess 边框（单线/双线/虚线）
+- 🔗 SequenceFlow 实线 + MessageFlow 虚线 + Association 关联线
+- 🎯 节点/连线/泳道命中检测（HitTest），嵌套元素最小面积优先
+- 🌓 系统明暗主题自动适配 + RenderConfig 自定义配色
+- 🔲 多平面钻取导航：嵌套子流程展开/折叠 + 面包屑层级跳转
+- 📐 自动适配画布（auto-fit）+ 拖拽平移 + 双指缩放 + 浮动缩放按钮
 - 🖱️ 点击高亮选中 + 空白取消
-- 🎨 Phase 1 样式系统：按节点类型分色，Task 子类型不同边框色
-- 🏗️ 不可变数据模型 GraphModel（所有修改返回新实例）
+- 🏗️ 不可变数据模型 GraphModel + PlaneHierarchy 层级管理
+- 🧩 ~30 design token 可配置样式（RenderConfig）
 - 📦 120 项自动化单元测试
 - 💻 鸿蒙 PC + 移动端通用
 
@@ -52,15 +53,32 @@ FlowViewer({ model: model, canvasHeight: 600 })
 | highlightNodeId | string | '' | 外部控制高亮节点 |
 | readonly | boolean | true | 只读模式 |
 | onNodeClick | (nodeId: string) => void | — | 节点点击回调 |
+| renderConfig | RenderConfig | 默认配置 | 自定义渲染样式 |
+| planeHierarchy | PlaneHierarchy \| null | null | 多平面层级（启用钻取导航） |
+| onNodeClick | (nodeId: string) => void | — | 节点点击回调 |
 | onCanvasReady | () => void | — | 画布就绪回调 |
 
 ### BpmnXmlParser
 
 ```typescript
 BpmnXmlParser.parse(xml: string): GraphModel
+BpmnXmlParser.parseBestEffort(xml: string): ParseResult  // { model, warnings, isPartial }
+BpmnXmlParser.parseHierarchy(xml: string): PlaneHierarchy  // 多平面层级结构
 ```
 
-支持元素：startEvent, endEvent, userTask, serviceTask, manualTask, sendTask, receiveTask, scriptTask, businessRuleTask, task, callActivity, subProcess, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, intermediateThrowEvent, intermediateCatchEvent, boundaryEvent, sequenceFlow, messageFlow, collaboration, participant, laneSet, lane, flowNodeRef
+支持元素：startEvent, endEvent, userTask, serviceTask, manualTask, sendTask, receiveTask, scriptTask, businessRuleTask, task, callActivity, subProcess（含 transaction / eventSubProcess）, exclusiveGateway, parallelGateway, inclusiveGateway, eventBasedGateway, intermediateThrowEvent, intermediateCatchEvent, boundaryEvent, sequenceFlow, messageFlow, association, dataAssociation, dataObjectReference, dataStoreReference, textAnnotation, collaboration, participant, laneSet, lane, flowNodeRef, multiInstanceLoopCharacteristics
+
+### PlaneHierarchy
+
+多平面钻取导航模型。管理 BPMNDiagram → Process 层级关系。
+
+```typescript
+getPlaneCount(): number
+getRootProcessId(): string
+getChildren(planeId: string): PlaneDefinition[]
+getParent(planeId: string): PlaneDefinition | null
+getBreadcrumb(planeId: string): BreadcrumbEntry[]
+```
 
 ### GraphModel
 
@@ -107,8 +125,9 @@ static fromJSON(snapshot: GraphModelSnapshot): GraphModel
 ### 渲染器
 
 ```typescript
-// 节点渲染（自动识别 TASK / GATEWAY / START_EVENT / END_EVENT）
+// 节点渲染器 + 6 个按类型分发的 Drawer（可单独导出）
 NodeRenderer.render(ctx, node, config, offsetX, offsetY, zoom)
+TaskDrawer, GatewayDrawer, EventDrawer, SubProcessDrawer, DataDrawer, AnnotationDrawer
 
 // 连线渲染（自动区分 SequenceFlow / MessageFlow）
 EdgeRenderer.render(ctx, edge, getNodePosition, offsetX, offsetY, zoom, config)
@@ -148,21 +167,27 @@ hitTest(screenX, screenY, canvasManager): HitResult
 
 ### RenderConfig
 
-按类型分色的完整样式配置。所有字段均有默认值。
+按类型分色的完整样式配置。所有字段均有默认值。支持 `darkPreset()` 暗色主题。
 
 ```typescript
 new RenderConfig()
-// 节点通用：nodeWidth, nodeHeight, strokeColor, fillColor, cornerRadius, ...
+new RenderConfig.darkPreset()  // 暗色主题预设
+// 节点通用：nodeWidth, nodeHeight, strokeColor, fillColor, cornerRadiusRatio, textBaseline, ...
 // Task 分色：taskFillColor, taskStrokeColor, taskSubtypeStroke（7 种子类型）
 // Gateway ：gatewayFillColor, gatewayStrokeColor, gatewayMarkerColor
 // Event   ：eventStartFillColor, eventStartStrokeColor, eventEndFillColor, ...
 // Pool/Lane：poolFillColor, poolHeaderWidth, laneHeaderIndent, ...
 // 连线    ：edgeStrokeColor, arrowSize, messageFlowDashPattern, ...
 // 标记    ：gatewayMarkerColor, eventIconColor
+// 设计 token：~30 个可配置字段，layerPriorities（Z-order 映射）
 // 网格    ：gridSize, gridColor
 ```
 
 ## 协议
 
 Apache-2.0
+
+## 仓库
+
+https://github.com/liz7up/hm_flow_kit
 

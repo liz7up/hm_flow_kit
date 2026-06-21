@@ -7,6 +7,7 @@ import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
+import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
 export struct FlowViewer {
@@ -222,7 +223,7 @@ export struct FlowViewer {
   }
 
   private applyTheme(): void {
-    if (this.currentColorMode === 1) {
+    if (this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
       this.renderConfig = RenderConfig.darkPreset()
     } else {
       this.renderConfig = new RenderConfig()

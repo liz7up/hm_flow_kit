@@ -7,7 +7,6 @@ import { GraphModel, GraphNode, GraphEdge, Pool } from '../model/GraphModel'
 import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
-import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
 export struct FlowViewer {
@@ -223,19 +222,7 @@ export struct FlowViewer {
   }
 
   private applyTheme(): void {
-    // 优先用 @StorageProp 值；若为 0 则回退读系统 context 配置
-    let isDark: boolean = this.currentColorMode === 1
-    if (!isDark) {
-      try {
-        let ctx: Context = getContext(this)
-        if (ctx.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK) {
-          isDark = true
-        }
-      } catch (_e) {
-        // getContext 不可用时退回 @StorageProp 值
-      }
-    }
-    if (isDark) {
+    if (this.currentColorMode === 1) {
       this.renderConfig = RenderConfig.darkPreset()
     }
     // 亮色模式保持默认 new RenderConfig()，不做任何事

@@ -224,8 +224,9 @@ export struct FlowViewer {
   private applyTheme(): void {
     if (this.currentColorMode === 1) {
       this.renderConfig = RenderConfig.darkPreset()
+    } else {
+      this.renderConfig = new RenderConfig()
     }
-    // 亮色模式保持默认 new RenderConfig()，不做任何事
   }
 
   // 外部 prop 变化时触发重绘（无需等待 Canvas onReady）

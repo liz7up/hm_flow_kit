@@ -149,10 +149,8 @@ export struct FlowViewer {
               .fontFamily(this.renderConfig.fontFamily)
               .decoration({ type: TextDecorationType.Underline })
               .onClick(() => { this.navigateBack() })
-            Text('  >  ')
+            Text('  ')
               .fontSize(this.renderConfig.fontSize)
-              .fontColor(this.renderConfig.textColor)
-              .fontFamily(this.renderConfig.fontFamily)
           }
           // Breadcrumb segments (clickable except current)
           ForEach(this._breadcrumbItems, (item: BreadcrumbEntry, idx: number) => {

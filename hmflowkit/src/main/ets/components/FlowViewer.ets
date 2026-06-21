@@ -463,7 +463,19 @@ export struct FlowViewer {
     for (let i: number = 0; i < nodes.length; i++) {
       let n: GraphNode = nodes[i];
       let pri: number | undefined = this.renderConfig.layerPriorities[n.type as string];
-      nodePris.push(pri !== undefined ? pri : this.renderConfig.defaultLayerPriority);
+      if (pri === undefined) {
+        pri = this.renderConfig.defaultLayerPriority;
+      }
+      // Expanded subProcess = background container (layer 0)
+      // Collapsed subProcess = interactive (layer 4, on top)
+      if (n.type === NodeType.SUB_PROCESS) {
+        if (n.properties['isExpanded'] !== 'false') {
+          pri = 0;
+        } else {
+          pri = 4;
+        }
+      }
+      nodePris.push(pri);
     }
 
     let edgePris: number[] = [];

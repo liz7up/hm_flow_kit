@@ -352,14 +352,23 @@ export class HitTestManager {
     const cy: number = canvasPos.y
 
     // 优先级：节点 > 连线 > 画布背景
-    // 如果多个节点重叠，后构建的（通常在最上层）优先
+    // 多个节点重叠时，选面积最小的（最精确/最上层元素）
 
-    // 1. 检查节点命中（倒序遍历，顶层优先）
-    for (let i = this.nodeBoxes.length - 1; i >= 0; i--) {
+    // 1. 检查节点命中 — collect all, return smallest
+    let bestNodeId: string = ''
+    let bestNodeArea: number = -1
+    for (let i = 0; i < this.nodeBoxes.length; i++) {
       const box: NodeHitBox = this.nodeBoxes[i]
       if (box.contains(cx, cy)) {
-        return new HitResult(HitType.NODE, box.id, '', '', '', cx, cy)
+        let area: number = (box.right - box.left) * (box.bottom - box.top)
+        if (bestNodeArea === -1 || area < bestNodeArea) {
+          bestNodeArea = area
+          bestNodeId = box.id
+        }
       }
+    }
+    if (bestNodeId.length > 0) {
+      return new HitResult(HitType.NODE, bestNodeId, '', '', '', cx, cy)
     }
 
     // 2. 检查连线命中（距离检测）

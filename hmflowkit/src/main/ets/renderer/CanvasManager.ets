@@ -77,6 +77,21 @@ export class CanvasManager {
   private _offsetY: number = 0;
 
   /**
+   * 旋转步数（0=0°, 1=90°, 2=180°, 3=270°）
+   */
+  private _rotationTurns: number = 0;
+
+  /**
+   * 画布宽度（用于旋转中心计算）
+   */
+  private _canvasWidth: number = 0;
+
+  /**
+   * 画布高度（用于旋转中心计算）
+   */
+  private _canvasHeight: number = 0;
+
+  /**
    * 最小缩放值
    */
   private _minZoom: number;
@@ -129,6 +144,24 @@ export class CanvasManager {
   }
 
   /**
+   * 获取当前旋转步数（0=0°, 1=90°, 2=180°, 3=270°）
+   */
+  public get rotationTurns(): number {
+    return this._rotationTurns;
+  }
+
+  /**
+   * 设置画布尺寸（旋转中心计算需要）
+   *
+   * @param w - 画布宽度（屏幕像素）
+   * @param h - 画布高度（屏幕像素）
+   */
+  public setCanvasSize(w: number, h: number): void {
+    this._canvasWidth = w;
+    this._canvasHeight = h;
+  }
+
+  /**
    * 获取当前视口状态
    */
   public getViewport(): ViewportState {
@@ -138,24 +171,35 @@ export class CanvasManager {
   /**
    * 应用变换到 Canvas 上下文
    *
-   * 执行顺序：先平移后缩放
-   * 即 translate(offsetX, offsetY) → scale(zoom, zoom)
+   * 变换链（Canvas 2D 右乘）：T(offset) * S(zoom) * T(cx,cy) * R(angle) * T(-cx,-cy)
+   * 效果：先绕画布中心旋转 → 缩放 → 平移
+   * angle=0 时退化为 T(offset) * S(zoom)，与当前行为完全一致
    *
    * @param ctx - Canvas 渲染上下文
    */
   public applyTransform(ctx: CanvasRenderingContext2D): void {
+    let cx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 0;
+    let cy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 0;
+    let angle: number = this._rotationTurns * Math.PI / 2;
+
     ctx.setTransform(1.0, 0, 0, 1.0, 0, 0);
+    // 旋转绕画布中心（Canvas 2D 右乘，先追加的在后执行）
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.translate(-cx, -cy);
+    // zoom + pan
     ctx.translate(this._offsetX, this._offsetY);
     ctx.scale(this._zoom, this._zoom);
   }
 
   /**
-   * 重置视口（缩放 1.0，偏移归零）
+   * 重置视口（缩放 1.0，偏移归零，旋转归零）
    */
   public reset(): void {
     this._zoom = 1.0;
     this._offsetX = 0;
     this._offsetY = 0;
+    this._rotationTurns = 0;
   }
 
   /**
@@ -165,9 +209,9 @@ export class CanvasManager {
    * @param cy - 缩放中心 Y（屏幕坐标）
    * @param delta - 缩放方向（1: 放大, -1: 缩小, >0: 放大, <0: 缩小）
    *
-   * 实现参考 AntV X6 / 标准 Canvas 视口缩放算法：
-   * 1. 计算缩放前后的比例因子
-   * 2. 调整 offset 使得 (cx, cy) 在缩放后保持不变
+   * 旋转后 offset 位于旋转变换内侧，需将屏幕中心映射到旋转前空间：
+   *   u = R^{-1} * (center - canvasCenter) + canvasCenter
+   *   newOffset = u - (u - oldOffset) * newZoom / oldZoom
    */
   public zoomAt(cx: number, cy: number, delta: number): void {
     const oldZoom: number = this._zoom;
@@ -187,10 +231,19 @@ export class CanvasManager {
       return;
     }
 
-    // 调整 offset 使 (cx, cy) 在缩放后保持不变
-    // 公式：newOffset = cx - (cx - oldOffset) * (newZoom / oldZoom)
-    this._offsetX = cx - (cx - this._offsetX) * (newZoom / oldZoom);
-    this._offsetY = cy - (cy - this._offsetY) * (newZoom / oldZoom);
+    let angle: number = this._rotationTurns * Math.PI / 2;
+    let ccx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 0;
+    let ccy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 0;
+    // u = R^{-1} * (screenCenter - canvasCenter) + canvasCenter
+    let cos: number = Math.cos(angle);
+    let sin: number = Math.sin(angle);
+    let rx: number = cos * (cx - ccx) + sin * (cy - ccy);
+    let ry: number = -sin * (cx - ccx) + cos * (cy - ccy);
+    let ux: number = rx + ccx;
+    let uy: number = ry + ccy;
+
+    this._offsetX = ux - (ux - this._offsetX) * (newZoom / oldZoom);
+    this._offsetY = uy - (uy - this._offsetY) * (newZoom / oldZoom);
 
     this._zoom = newZoom;
   }
@@ -213,8 +266,18 @@ export class CanvasManager {
       return;
     }
 
-    this._offsetX = cx - (cx - this._offsetX) * (newZoom / oldZoom);
-    this._offsetY = cy - (cy - this._offsetY) * (newZoom / oldZoom);
+    let angle: number = this._rotationTurns * Math.PI / 2;
+    let ccx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 0;
+    let ccy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 0;
+    let cos: number = Math.cos(angle);
+    let sin: number = Math.sin(angle);
+    let rx: number = cos * (cx - ccx) + sin * (cy - ccy);
+    let ry: number = -sin * (cx - ccx) + cos * (cy - ccy);
+    let ux: number = rx + ccx;
+    let uy: number = ry + ccy;
+
+    this._offsetX = ux - (ux - this._offsetX) * (newZoom / oldZoom);
+    this._offsetY = uy - (uy - this._offsetY) * (newZoom / oldZoom);
 
     this._zoom = newZoom;
   }
@@ -222,38 +285,76 @@ export class CanvasManager {
   /**
    * 平移视口
    *
-   * @param dx - X 方向偏移量（屏幕像素）
-   * @param dy - Y 方向偏移量（屏幕像素）
+   * 屏幕空间位移需逆旋转为 offset 空间位移：
+   *   delta_screen = R(angle) * delta_offset
+   *   代入 delta_offset = R(-angle) * delta_screen
+   * rotation=0 时退化为 offset += (dx, dy)
+   *
+   * @param dx - X 方向位移（屏幕像素）
+   * @param dy - Y 方向位移（屏幕像素）
    */
   public pan(dx: number, dy: number): void {
-    this._offsetX += dx;
-    this._offsetY += dy;
+    let angle: number = this._rotationTurns * Math.PI / 2;
+    let cos: number = Math.cos(angle);
+    let sin: number = Math.sin(angle);
+    this._offsetX += dx * cos + dy * sin;
+    this._offsetY += -dx * sin + dy * cos;
   }
 
   /**
    * 屏幕坐标转换为画布坐标
+   *
+   * 变换链: screen = R * (zoom * canvas + offset - center) + center
+   * 逆推: v = R^{-1} * (screen - center) + center
+   *       canvas = (v - offset) / zoom
+   * angle=0 时 v = screen，退化为 p = (screen - offset) / zoom
    *
    * @param sx - 屏幕 X
    * @param sy - 屏幕 Y
    * @returns 画布坐标
    */
   public screenToCanvas(sx: number, sy: number): CanvasPoint {
-    const cx: number = (sx - this._offsetX) / this._zoom;
-    const cy: number = (sy - this._offsetY) / this._zoom;
-    return new CanvasPoint(cx, cy);
+    let angle: number = this._rotationTurns * Math.PI / 2;
+    let ccx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 0;
+    let ccy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 0;
+
+    // R^{-1} * (screen - center)
+    let cos: number = Math.cos(angle);
+    let sin: number = Math.sin(angle);
+    let rx: number = cos * (sx - ccx) + sin * (sy - ccy);
+    let ry: number = -sin * (sx - ccx) + cos * (sy - ccy);
+    // v = rotated + center
+    let vx: number = rx + ccx;
+    let vy: number = ry + ccy;
+    // canvas = (v - offset) / zoom
+    return new CanvasPoint((vx - this._offsetX) / this._zoom, (vy - this._offsetY) / this._zoom);
   }
 
   /**
    * 画布坐标转换为屏幕坐标
+   *
+   * 变换链: v = zoom * canvas + offset
+   *         screen = R * (v - center) + center
+   * angle=0 时退化为 screen = zoom * canvas + offset
    *
    * @param cx - 画布 X
    * @param cy - 画布 Y
    * @returns 屏幕坐标
    */
   public canvasToScreen(cx: number, cy: number): ScreenPoint {
-    const sx: number = cx * this._zoom + this._offsetX;
-    const sy: number = cy * this._zoom + this._offsetY;
-    return new ScreenPoint(sx, sy);
+    let angle: number = this._rotationTurns * Math.PI / 2;
+    let ccx: number = this._canvasWidth > 0 ? this._canvasWidth / 2 : 0;
+    let ccy: number = this._canvasHeight > 0 ? this._canvasHeight / 2 : 0;
+
+    // v = zoom * canvas + offset
+    let vx: number = this._zoom * cx + this._offsetX;
+    let vy: number = this._zoom * cy + this._offsetY;
+    // screen = R * (v - center) + center
+    let cos: number = Math.cos(angle);
+    let sin: number = Math.sin(angle);
+    let rx: number = cos * (vx - ccx) - sin * (vy - ccy);
+    let ry: number = sin * (vx - ccx) + cos * (vy - ccy);
+    return new ScreenPoint(rx + ccx, ry + ccy);
   }
 
   /**
@@ -284,6 +385,20 @@ export class CanvasManager {
     if (this._zoom > this._maxZoom) {
       this._zoom = this._maxZoom;
     }
+  }
+
+  /**
+   * 顺时针旋转 90°
+   */
+  public rotateClockwise(): void {
+    this._rotationTurns = (this._rotationTurns + 1) % 4;
+  }
+
+  /**
+   * 逆时针旋转 90°
+   */
+  public rotateCounterClockwise(): void {
+    this._rotationTurns = (this._rotationTurns + 3) % 4;
   }
 
   /**
@@ -326,6 +441,10 @@ export class CanvasManager {
       return;
     }
 
+    // 旋转 90°/270° 时 content 宽高视觉互换
+    let effW: number = (this._rotationTurns % 2 === 1) ? contentHeight : contentWidth;
+    let effH: number = (this._rotationTurns % 2 === 1) ? contentWidth : contentHeight;
+
     const availableWidth: number = canvasWidth - pad * 2;
     const availableHeight: number = canvasHeight - pad * 2;
 
@@ -333,16 +452,16 @@ export class CanvasManager {
       return;
     }
 
-    const scaleX: number = availableWidth / contentWidth;
-    const scaleY: number = availableHeight / contentHeight;
+    const scaleX: number = availableWidth / effW;
+    const scaleY: number = availableHeight / effH;
     let newZoom: number = Math.min(scaleX, scaleY);
 
     // 钳制到缩放范围
     newZoom = Math.max(this._minZoom, Math.min(this._maxZoom, newZoom));
 
     // 居中
-    const contentScreenWidth: number = contentWidth * newZoom;
-    const contentScreenHeight: number = contentHeight * newZoom;
+    const contentScreenWidth: number = effW * newZoom;
+    const contentScreenHeight: number = effH * newZoom;
 
     this._offsetX = (canvasWidth - contentScreenWidth) / 2;
     this._offsetY = (canvasHeight - contentScreenHeight) / 2;

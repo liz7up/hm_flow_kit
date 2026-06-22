@@ -1,6 +1,6 @@
 # hm-flow-kit — 项目覆盖场景与不足待办清单
 
-> 最后更新：2026-06-21
+> 最后更新：2026-06-22
 > 基于：对项目代码、spec 文档、README 声明和已实现功能的全面巡视
 
 ---
@@ -30,6 +30,7 @@
 | Phase 4 | 风格统一 — RenderConfig design tokens | ~30 测量 token（cornerRadiusRatio, nodePadding, eventIconScale...），6 Drawer + Edge + HitTest + FlowViewer 去硬编码，textBaseline 统一 middle，layerPriorities 配置化绘制顺序 | ✅ 完成 |
 | Phase 5 | 黑白主题 + 暗色自动适配 | 默认全黑白配色；RenderConfig.darkPreset() 静态工厂；FlowViewer @StorageProp('currentColorMode') + @Watch 自动跟随系统主题；EntryAbility AppStorage 同步；_userConfig 标记保护用户自定义 | ✅ 完成 |
 | Phase 6 | 多平面钻取导航 | PlaneHierarchy(101行)；BpmnXmlParser.parseHierarchy() + post-scan 字符串扫描绕过回调时序陷阱；FlowViewer @Prop planeHierarchy + 面包屑可点击分段导航；expanded/collapsed 子流程分层 Z-order + 最小面积 HitTest；SubProcessDrawer expanded 居中靠上标签；BpmnViewerPage 自动适配多平面 | ✅ 完成 |
+| Phase 7 | Canvas 旋转 | CanvasManager 新增 `_rotationTurns` 0/1/2/3 + `setCanvasSize()` + `rotateClockwise()` / `rotateCounterClockwise()`；修改 `applyTransform` / `screenToCanvas` / `canvasToScreen` / `pan` / `zoomAt` / `zoomTo` / `fitToView` / `reset`；FlowViewer 新增 ↻ 旋转按钮（+/- 上方）；旋转后自动 re-fit；关键设计：offset 位于旋转变换内侧，所有屏幕↔offset 空间转换必须过 R⁻¹ | ✅ 完成 |
 | DevOps | build.sh daemon + flag 触发编译 | test_all.sh 合并进 build.sh Step 3，一次触发 HAR+HAP+Test 全部编译 | ✅ 完成 |
 | TODO-3.5 | 渲染修复 | 见下方 3.5 详情 | ✅ 完成 |
 |   | Gateway 内部标记（X / + / ○ / 五边形） | NodeRenderer 绘制 | ✅ |

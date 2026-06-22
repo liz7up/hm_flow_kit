@@ -168,8 +168,29 @@ export struct FlowViewer {
         .position({ top: 8, left: 8 })
       }
 
-      // 缩放控制按钮（触屏 & PC 通用）
+      // 缩放 & 旋转控制按钮（触屏 & PC 通用）
       Column() {
+        // 旋转按钮
+        Button({ type: ButtonType.Circle }) {
+          Text('↻')
+            .fontSize(20)
+            .fontColor('#333')
+            .textAlign(TextAlign.Center)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.White)
+        .border({ width: 1, color: '#D0D0D0' })
+        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+        .margin({ bottom: 6 })
+        .onClick(() => {
+          this.canvasManager.rotateClockwise()
+          this._needFit = true
+          this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
+          this.renderAll()
+        })
+
+        // 放大按钮
         Button({ type: ButtonType.Circle }) {
           Text('+')
             .fontSize(22)
@@ -356,6 +377,11 @@ export struct FlowViewer {
     if (w <= 0) { w = 800 }
     if (h <= 0) { h = this.canvasHeight }
 
+    // 同步画布尺寸给 CanvasManager（旋转中心计算需要）
+    if (w > 0 && h > 0) {
+      this.canvasManager.setCanvasSize(w, h);
+    }
+
     let zoom: number = this.canvasManager.zoom
     let offsetX: number = this.canvasManager.offsetX
     let offsetY: number = this.canvasManager.offsetY
@@ -420,13 +446,19 @@ export struct FlowViewer {
       if (hasContent && w > 0 && h > 0) {
         let contentW: number = maxX - minX
         let contentH: number = maxY - minY
-        if (contentW > 0 && contentH > 0) {
+        let contentCX: number = (minX + maxX) / 2
+        let contentCY: number = (minY + maxY) / 2
+        // 旋转 90°/270° 时 visual 宽高互换
+        let effW: number = (this.canvasManager.rotationTurns % 2 === 1) ? contentH : contentW
+        let effH: number = (this.canvasManager.rotationTurns % 2 === 1) ? contentW : contentH
+        if (effW > 0 && effH > 0) {
           let pad: number = this.renderConfig.fitToViewPadding
-          let fitZoom: number = Math.min((w - pad * 2) / contentW, (h - pad * 2) / contentH)
+          let fitZoom: number = Math.min((w - pad * 2) / effW, (h - pad * 2) / effH)
           if (fitZoom < this.renderConfig.fitToViewMinZoom) { fitZoom = this.renderConfig.fitToViewMinZoom }
           if (fitZoom > this.renderConfig.fitToViewMaxZoom) { fitZoom = this.renderConfig.fitToViewMaxZoom }
-          let fitOX: number = (w - contentW * fitZoom) / 2 - minX * fitZoom
-          let fitOY: number = (h - contentH * fitZoom) / 2 - minY * fitZoom
+          // 内容中心点映射到视口中心
+          let fitOX: number = w / 2 - contentCX * fitZoom
+          let fitOY: number = h / 2 - contentCY * fitZoom
           this.canvasManager.setViewport(new ViewportState(fitZoom, fitOX, fitOY))
           zoom = fitZoom
           offsetX = fitOX

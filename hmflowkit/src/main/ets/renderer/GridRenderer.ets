@@ -111,6 +111,9 @@ export class GridRenderer {
   /**
    * 绘制点阵网格
    */
+  // 可见点数量超过此阈值时跳过渲染，避免绘制调用过多导致帧率崩溃
+  private static MAX_VISIBLE_DOTS: number = 5000;
+
   private static renderDotGrid(ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
@@ -119,6 +122,13 @@ export class GridRenderer {
     actualGridSize: number,
     majorInterval: number,
     config: GridConfig): void {
+    // 预估可见点数，超过阈值直接跳过（性能保护）
+    let estCols: number = Math.ceil((width + actualGridSize - startX) / actualGridSize);
+    let estRows: number = Math.ceil((height + actualGridSize - startY) / actualGridSize);
+    if (estCols * estRows > GridRenderer.MAX_VISIBLE_DOTS) {
+      return;
+    }
+
     for (let y: number = startY; y < height + actualGridSize; y += actualGridSize) {
       for (let x: number = startX; x < width + actualGridSize; x += actualGridSize) {
         const colIndex: number = Math.round((x - startX) / actualGridSize);

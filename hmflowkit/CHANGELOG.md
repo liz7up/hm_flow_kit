@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-06-22
+
+### Added — Canvas Rotation (Phase 7)
+
+- **Canvas rotation**: 0° / 90° / 180° / 270° clockwise rotate button in FlowViewer
+- Rotation transform applied via Canvas context, offset compensated through inverse rotation matrix R⁻¹
+- All screen↔canvas coordinate conversions (pan, zoomAt, zoomTo, hit test) corrected for rotation
+- Grid rendering, NodeRenderer, EdgeRenderer, PoolLaneRenderer all rotation-aware
+
+### Added — Grid Rendering Optimization
+
+- Dot grid auto-skips rendering when visible dots exceed 5,000 (prevents performance degradation at extreme zoom-out)
+
+### Fixed
+
+- **boundaryEvent**: corrected rendering and hit-test behavior
+- Repository URL updated: gitee → GitHub (`https://github.com/liz7up/hm_flow_kit`)
+
+### Changed
+
+- `oh-package.json5` version → `1.0.0`
+- README updated with Phase 7 features, README.md as primary documentation
+
+### Milestone
+
+- **Production-ready 1.0** — Published to OHPM central registry. 6 major phases, 120 tests, ~5,000 lines ArkTS. Zero third-party dependencies. Compatible with OpenHarmony 5.0+ / HarmonyOS 5.0+.
+
 ## [0.2.0] - 2026-06-20
 
 ### Added — BPMN Full Coverage (Phase 3)

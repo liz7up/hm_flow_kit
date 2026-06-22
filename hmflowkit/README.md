@@ -23,6 +23,7 @@ ohpm install hmflowkit
 - 🖱️ 点击高亮选中 + 空白取消
 - 🏗️ 不可变数据模型 GraphModel + PlaneHierarchy 层级管理
 - 🧩 ~30 design token 可配置样式（RenderConfig）
+- 🔄 画布四向旋转（0°/90°/180°/270°），旋转矩阵变换补偿
 - 📦 120 项自动化单元测试
 - 💻 鸿蒙 PC + 移动端通用
 
@@ -108,4 +109,6 @@ Apache-2.0
 ## 仓库
 
 https://github.com/liz7up/hm_flow_kit
+
+本项目为开源项目（Apache-2.0），欢迎提交 Issue 和 PR。
 

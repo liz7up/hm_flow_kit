@@ -164,7 +164,7 @@ hm-flow-kit/
 **已实现完整功能：**
 - BPMN XML 解析（含泳道）→ 渲染（含 Pool/Lane）→ 点击高亮 → 拖拽平移 + 双指缩放 → 自动缩放适配
 - Phase 1 样式系统：按 NodeType 分色 + Task 子类型边框色 + EdgeRenderer 读取 config
-- ✅ TODO-3.5 渲染修复：Event 文字移出圆圈显示在下方；Pool/Lane 标题改用 canvas rotate 横排；MessageFlow 虚线+空心箭头+路径中点 label 绘制；XML 字符引用预处理 + label 净化
+- ✅ TODO-3.5 渲染修复：Event 文字移出圆圈显示在下方；Pool/Lane 标题改用 canvas rotate 横排；MessageFlow 虚线+空心箭头+路径中点 label 绘制；XML 字符引用预处理 + label 净化；BoundaryEvent 双层圆（非中断 cancelActivity=false 虚线双圈 / 中断型实线双圈）
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

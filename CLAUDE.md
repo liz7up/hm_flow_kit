@@ -384,6 +384,7 @@ eventIconColor: string = '#333333'
 // ── 网格 ──
 gridSize: number = 20
 gridColor: string = '#E8E8E8'
+// ⚠️ 点阵性能：可见点数 > MAX_VISIBLE_DOTS(5000) 时跳过点阵渲染，避免缩放时帧率崩溃
 
 // ── HitTest ──
 edgeHitTolerance: number = 12

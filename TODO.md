@@ -70,12 +70,12 @@
 
 **A. 泳道 / Lane / Pool** ✅ 已完成
 
-**B. BoundaryEvent attachToRef 逻辑**
+**B. BoundaryEvent attachToRef 逻辑** ✅ 渲染已完成
 
-- 严重性：高
-- 当前状态：解析器支持 `boundaryEvent` 标签映射到 NodeType，但无 `attachedToRef` 属性解析
-- 渲染层无边界事件附着逻辑（应绘制在宿主 Activity 边缘）
-- 用户痛点：超时自动取消、错误回退等常见流程模式无法正确表达
+- 严重性：高 → ✅ 渲染已修复（2026-06-22）
+- 当前状态：解析器正确解析 `cancelActivity` 属性 + 8 种 EventDefinition 图标；渲染层完整绘制双层圆（非中断型虚线双圈/中断型实线双圈）
+- ⚠️ `attachedToRef` 属性未解析——但 BPMNShape 坐标已把边界事件放在宿主边角，视觉位置正确，无实际影响
+- 用户痛点已解决：超时取消/错误回退/消息中断/升级等流程模式可正确表达
 
 **C. IntermediateThrowEvent / IntermediateCatchEvent**
 
@@ -142,12 +142,11 @@
 5. XML 字符引用预处理 + label 净化
 6. Pinch 双指缩放 + 浮动 +/- 按钮
 
-### 3.6 PC 滚轮缩放
+### 3.6 PC 滚轮缩放 ✅ 无需实现
 
-- 现状：PC 端无滚轮缩放、无键盘快捷键缩放
-- 期望：`Ctrl+滚轮` 或纯滚轮缩放画布（对标 bpmn.io、LogicFlow）
-- 阻塞：HarmonyOS PC 端 ArkUI 的 `onMouse`/`onWheel` 事件 API 不稳定，建议等平台 API 成熟后再补
-- 预计 API：`onMouse((event: MouseEvent) => { event.button; event.action; })` 或组件级 `onWheel` 回调
+- 现状：鸿蒙系统自带 Ctrl+滚轮缩放画布，无需库层适配
+- 原预期：`Ctrl+滚轮` 或纯滚轮缩放画布（对标 bpmn.io、LogicFlow）
+- 结论：平台已原生支持，关闭此项
 
 ---
 
@@ -305,7 +304,7 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 | EndEvent (Compensation) | ❌ | ❌ | ❌ | |
 | IntermediateThrowEvent | ✅ | ✅ | ❌ | 含 EventDefinition 图标 |
 | IntermediateCatchEvent | ✅ | ✅ | ❌ | 含 EventDefinition 图标 |
-| BoundaryEvent | ⚠️ | ⚠️ | ❌ | 解析标签但不处理 attachedToRef |
+| BoundaryEvent | ✅ | ✅ | ❌ | 解析 cancelActivity + eventDef；渲染双层圆（虚线/实线）|
 | **Gateways** |||||
 | ExclusiveGateway | ✅ | ✅ | ❌ | 菱形 + X 标记 |
 | ParallelGateway | ✅ | ✅ | ❌ | 菱形 + + 标记 |
@@ -344,27 +343,27 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 
 ### 🔴 P0 — 立即修复（阻碍基本使用）
 
-1. **BoundaryEvent attachToRef** — 解析 `attachedToRef` 属性 + 渲染附着在宿主 Activity 边缘
-2. **Spec 04 交互编辑层** — DragController、ConnectController、SelectController
-3. **FlowDesigner 组件** — 用户可拖拽节点、连线编辑（依赖 Spec 04）
+（暂无——BoundaryEvent 已完成，交互编辑层已降级至 P2）
 
 ### 🟡 P2 — 中优先级（完善 BPMN 覆盖）
 
-4. 中间事件缺失的 EventDefinition 图标（Conditional / Escalation / Compensation / Link / Cancel / Multiple / ParallelMultiple）
-5. ConditionalFlow + DefaultFlow 视觉标记
-6. DataObject / DataStore（如确认非"有意丢弃"）
-7. 连线 Waypoint 曲线渲染（非直线）
-8. EventBasedGateway 专属五边形套圆标记
+1. **Spec 04 交互编辑层** — DragController、ConnectController、SelectController
+2. **FlowDesigner 组件** — 用户可拖拽节点、连线编辑（依赖 Spec 04）
+3. 中间事件缺失的 EventDefinition 图标（Conditional / Escalation / Compensation / Link / Cancel / Multiple / ParallelMultiple）
+4. ConditionalFlow + DefaultFlow 视觉标记
+5. DataObject / DataStore（如确认非"有意丢弃"）
+6. 连线 Waypoint 曲线渲染（非直线）
+7. EventBasedGateway 专属五边形套圆标记
 
 ### 🟢 P3 — 低优先级（体验优化）
 
-9. 主题系统（浅色/深色模式切换）
-10. 视口裁剪优化（viewport culling）
-11. 自定义节点类型注册机制（插件系统）
-12. 开发者调试面板（DevTools）
-13. CI/CD 自动化流水线
-14. NodeRenderer 策略模式拆分
-15. 运行时状态可视化（token-simulation）— 外部传入活跃节点/边状态，渲染层高亮活跃路径、灰色已完成路径，对标 bpmn-js-token-simulation
+8. 主题系统（浅色/深色模式切换）
+9. 视口裁剪优化（viewport culling）
+10. 自定义节点类型注册机制（插件系统）
+11. 开发者调试面板（DevTools）
+12. CI/CD 自动化流水线
+13. NodeRenderer 策略模式拆分
+14. 运行时状态可视化（token-simulation）— 外部传入活跃节点/边状态，渲染层高亮活跃路径、灰色已完成路径，对标 bpmn-js-token-simulation
 
 ### 🔵 P4 — 远期规划
 
@@ -373,7 +372,6 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 17. 性能基准测试套件
 18. API 文档自动生成
 19. ohpm 正式发布
-20. PC 滚轮缩放（等待鸿蒙 API 稳定）
 
 ---
 
@@ -398,7 +396,7 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 | 零依赖 | ❌ | ❌ | ❌ | ✅ |
 | ohpm 安装 | ❌ | ❌ | ❌ | ⚠️ 规划中 |
 
-**结论：** 当前唯一差异化优势是**鸿蒙原生** + **零依赖**。泳道、MessageFlow、EventDefinition 图标已补上关键短板。P0 优先攻克 BoundaryEvent + 交互编辑层。
+**结论：** 当前唯一差异化优势是**鸿蒙原生** + **零依赖**。泳道、MessageFlow、EventDefinition 图标、BoundaryEvent 已补上关键短板。P0 优先攻克交互编辑层。
 
 ---
 

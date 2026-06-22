@@ -72,15 +72,17 @@ export class EventDrawer {
       ctx.setLineDash([4 * zoom, 3 * zoom]);
     }
     ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Intermediate event: double ring (inner circle)
-    if (node.type === NodeType.INTERMEDIATE_EVENT) {
+    // Intermediate event / Boundary event: double ring (inner circle)
+    if (node.type === NodeType.INTERMEDIATE_EVENT || node.type === NodeType.BOUNDARY_EVENT) {
+      if (node.type === NodeType.BOUNDARY_EVENT && isDashed) {
+        ctx.setLineDash([4 * zoom, 3 * zoom]);
+      }
       ctx.beginPath();
       ctx.arc(cx, cy, r * config.eventInnerRingScale, 0, Math.PI * 2);
       ctx.lineWidth = 1.5 * zoom;
       ctx.stroke();
     }
+    ctx.setLineDash([]);
 
     // Event definition icon
     let evDef: string | undefined = node.properties['eventDefinition'];

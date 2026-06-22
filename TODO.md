@@ -51,6 +51,8 @@
 | Spec 05 | Dagre 自动布局 | 优先级调整 |
 | FlowDesigner | 可编辑流程设计器组件 | 依赖 Spec 04 |
 
+> FlowDesigner 实现后，`model` 入口将成为独立的数据路径：用户通过拖拽直接在内存中构建 GraphModel，无需 BPMN XML。届时流程为 `拖拽操作 → GraphModel → 渲染 → 导出 BPMN XML`，与当前的 `BPMN XML → 渲染` 互为补充。
+
 ---
 
 ## 二、声明 vs 实际的 Gap
@@ -362,6 +364,7 @@ nodeDrawers.set('exclusiveGateway', new GatewayDrawer())
 12. 开发者调试面板（DevTools）
 13. CI/CD 自动化流水线
 14. NodeRenderer 策略模式拆分
+15. 运行时状态可视化（token-simulation）— 外部传入活跃节点/边状态，渲染层高亮活跃路径、灰色已完成路径，对标 bpmn-js-token-simulation
 
 ### 🔵 P4 — 远期规划
 

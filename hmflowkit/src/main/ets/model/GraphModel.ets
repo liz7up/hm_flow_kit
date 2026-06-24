@@ -63,7 +63,7 @@ export class Waypoint {
 
 export class GraphNode {
   id: string;
-  type: NodeType;
+  type: string;
   x: number;
   y: number;
   width: number;
@@ -73,7 +73,7 @@ export class GraphNode {
 
   constructor(
     id: string,
-    type: NodeType,
+    type: string,
     x: number,
     y: number,
     width: number,

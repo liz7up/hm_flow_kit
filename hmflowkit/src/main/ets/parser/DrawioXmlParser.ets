@@ -334,31 +334,39 @@ export class DrawioXmlParser {
           let srcNode: GraphNode | undefined = nodeMap[cell.source];
           let tgtNode: GraphNode | undefined = nodeMap[cell.target];
           if (srcNode !== undefined && tgtNode !== undefined) {
-            let srcCx: number = srcNode.x + srcNode.width / 2;
-            let srcCy: number = srcNode.y + srcNode.height / 2;
-            let tgtCx: number = tgtNode.x + tgtNode.width / 2;
-            let tgtCy: number = tgtNode.y + tgtNode.height / 2;
+            try {
+              let srcCx: number = srcNode.x + srcNode.width / 2;
+              let srcCy: number = srcNode.y + srcNode.height / 2;
+              let tgtCx: number = tgtNode.x + tgtNode.width / 2;
+              let tgtCy: number = tgtNode.y + tgtNode.height / 2;
 
-            if (edgeStyle === EdgeStyle.STRAIGHT || edgeStyle === EdgeStyle.CURVED) {
-              // Straight/curved: source-edge to target-edge
-              let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
-              let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
-              waypoints.push(new Waypoint(srcP.x, srcP.y));
-              waypoints.push(new Waypoint(tgtP.x, tgtP.y));
-            } else {
-              // Orthogonal: route from source edge through right-angle bends to target edge
-              let isOrtho: boolean = s.properties['_edgeStyle'] === 'orthogonalEdgeStyle';
-              let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
-              let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
-              if (isOrtho) {
-                let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
-                for (let r: number = 0; r < route.length; r++) {
-                  waypoints.push(route[r]);
-                }
-              } else {
+              if (edgeStyle === EdgeStyle.STRAIGHT || edgeStyle === EdgeStyle.CURVED) {
+                let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
+                let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
                 waypoints.push(new Waypoint(srcP.x, srcP.y));
                 waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+              } else {
+                let isOrtho: boolean = s.properties['_edgeStyle'] === 'orthogonalEdgeStyle';
+                let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
+                let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
+                if (isOrtho) {
+                  let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
+                  for (let r: number = 0; r < route.length; r++) {
+                    waypoints.push(route[r]);
+                  }
+                } else {
+                  waypoints.push(new Waypoint(srcP.x, srcP.y));
+                  waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+                }
               }
+            } catch (e) {
+              // Fallback to center-to-center if perimeter computation fails
+              let srcCx: number = srcNode.x + srcNode.width / 2;
+              let srcCy: number = srcNode.y + srcNode.height / 2;
+              let tgtCx: number = tgtNode.x + tgtNode.width / 2;
+              let tgtCy: number = tgtNode.y + tgtNode.height / 2;
+              waypoints.push(new Waypoint(srcCx, srcCy));
+              waypoints.push(new Waypoint(tgtCx, tgtCy));
             }
           }
         }

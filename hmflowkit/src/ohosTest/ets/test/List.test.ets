@@ -4,6 +4,7 @@ import canvasManagerTest from './CanvasManager.test';
 import hitTestManagerTest from './HitTestManager.test';
 import renderConfigTest from './RenderConfig.test';
 import bpmnFullCoverageTest from './BpmnFullCoverage.test';
+import drawioStyleParserTest from './DrawioStyleParser.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -12,4 +13,5 @@ export default function testsuite() {
   hitTestManagerTest();
   renderConfigTest();
   bpmnFullCoverageTest();
+  drawioStyleParserTest();
 }

@@ -39,6 +39,7 @@ export { PlaneHierarchy, PlaneDefinition, BreadcrumbEntry } from './src/main/ets
 
 // ── Parser 层 ──
 export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'
+export { DrawioXmlParser, DrawioParseResult, DiagramInfo } from './src/main/ets/parser/DrawioXmlParser'
 
 // ── UI 组件层 ──
 export { FlowViewer } from './src/main/ets/components/FlowViewer'

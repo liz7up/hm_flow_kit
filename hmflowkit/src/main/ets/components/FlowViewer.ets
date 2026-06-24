@@ -8,12 +8,15 @@ import { RenderConfig } from '../renderer/RenderConfig'
 import { PoolLaneRenderer } from '../renderer/PoolLaneRenderer'
 import { BpmnXmlParser, ParseResult } from '../parser/BpmnXmlParser'
 import { PlaneHierarchy, BreadcrumbEntry } from '../model/PlaneHierarchy'
+import { DrawioNodeDrawer } from '../renderer/DrawioNodeDrawer'
+import { DrawioXmlParser, DrawioParseResult } from '../parser/DrawioXmlParser'
 import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
 export struct FlowViewer {
   @Prop model: GraphModel = GraphModel.createEmpty()
   @Prop xml: string = ''
+  @Prop drawioXml: string = ''
   @Prop canvasHeight: number = 600
   @Prop showGrid: boolean = true
   @Prop gridType: GridType = GridType.DOT
@@ -77,6 +80,19 @@ export struct FlowViewer {
         } catch (e2) {
           // 无多平面数据，保持单平面模式
         }
+      }
+    }
+    if (this.drawioXml.length > 0) {
+      try {
+        DrawioNodeDrawer.init()
+        let result: DrawioParseResult = DrawioXmlParser.parse(this.drawioXml)
+        this.model = result.model
+        if (result.warnings.length > 0) {
+          this._parseWarnings = result.warnings
+        }
+      } catch (e) {
+        this._parseError = 'Drawio XML 解析失败: ' + e
+        this.model = GraphModel.createEmpty()
       }
     }
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)

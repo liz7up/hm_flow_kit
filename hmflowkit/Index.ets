@@ -20,7 +20,7 @@ export {
 } from './src/main/ets/model/GraphModel'
 
 // ── Renderer 层 ──
-export { NodeRenderer } from './src/main/ets/renderer/NodeRenderer'
+export { NodeRenderer, INodeDrawer } from './src/main/ets/renderer/NodeRenderer'
 export { EdgeRenderer, NodeRect } from './src/main/ets/renderer/EdgeRenderer'
 export { GridRenderer, GridType, GridConfig } from './src/main/ets/renderer/GridRenderer'
 export { CanvasManager, ViewportState, CanvasPoint, ScreenPoint } from './src/main/ets/renderer/CanvasManager'
@@ -33,6 +33,7 @@ export { EventDrawer } from './src/main/ets/renderer/EventDrawer'
 export { SubProcessDrawer } from './src/main/ets/renderer/SubProcessDrawer'
 export { DataDrawer } from './src/main/ets/renderer/DataDrawer'
 export { AnnotationDrawer } from './src/main/ets/renderer/AnnotationDrawer'
+export { DrawioNodeDrawer } from './src/main/ets/renderer/DrawioNodeDrawer'
 
 // ── Plane 层级 ──
 export { PlaneHierarchy, PlaneDefinition, BreadcrumbEntry } from './src/main/ets/model/PlaneHierarchy'
@@ -40,6 +41,7 @@ export { PlaneHierarchy, PlaneDefinition, BreadcrumbEntry } from './src/main/ets
 // ── Parser 层 ──
 export { BpmnXmlParser, ParseResult } from './src/main/ets/parser/BpmnXmlParser'
 export { DrawioXmlParser, DrawioParseResult, DiagramInfo } from './src/main/ets/parser/DrawioXmlParser'
+export { DrawioStyleParser, DrawioStyle } from './src/main/ets/parser/DrawioStyleParser'
 
 // ── UI 组件层 ──
 export { FlowViewer } from './src/main/ets/components/FlowViewer'

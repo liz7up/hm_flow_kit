@@ -270,135 +270,99 @@ export class DrawioXmlParser {
     let model: GraphModel = GraphModel.createEmpty();
     let nodeMap: Record<string, GraphNode> = {};
 
-    // Assumes mxCell order: vertices before edges. drawio tooling guarantees this.
+    // Pass 1: build all vertices first (edges may appear before their source/target in XML)
     for (let i: number = 0; i < diagram.cells.length; i++) {
       let cell: _CellData = diagram.cells[i];
+      if (!cell.vertex) continue;
 
-      if (cell.vertex) {
-        // Parse style to get shape type and properties
-        let s: DrawioStyle = DrawioStyleParser.parse(cell.style);
-        let label: string = DrawioXmlParser.stripHtml(cell.value);
+      let s: DrawioStyle = DrawioStyleParser.parse(cell.style);
+      let label: string = DrawioXmlParser.stripHtml(cell.value);
 
-        // Resolve relative position: if relative AND parent is a real node (not root), offset
-        let absX: number = cell.x;
-        let absY: number = cell.y;
-        if (cell.relative && cell.parent !== '1' && cell.parent !== '0') {
-          let parentNode: GraphNode | undefined = nodeMap[cell.parent];
-          if (parentNode !== undefined) {
-            absX = parentNode.x + cell.x;
-            absY = parentNode.y + cell.y;
-          }
+      let absX: number = cell.x;
+      let absY: number = cell.y;
+      if (cell.relative && cell.parent !== '1' && cell.parent !== '0') {
+        let parentNode: GraphNode | undefined = nodeMap[cell.parent];
+        if (parentNode !== undefined) {
+          absX = parentNode.x + cell.x;
+          absY = parentNode.y + cell.y;
         }
-
-        // Merge drawio style properties into node properties (with _ prefix)
-        let props: Record<string, string> = {};
-        let propKeys: string[] = Object.keys(s.properties);
-        for (let k: number = 0; k < propKeys.length; k++) {
-          let pk: string = propKeys[k];
-          props[pk] = s.properties[pk];
-        }
-
-        let node: GraphNode = new GraphNode(
-          cell.id,
-          s.shapeType,
-          absX,
-          absY,
-          cell.width > 0 ? cell.width : 120,
-          cell.height > 0 ? cell.height : 60,
-          label,
-          props
-        );
-        model = model.addNode(node);
-        nodeMap[cell.id] = node;
-
-      } else if (cell.edge) {
-        let s: DrawioStyle = DrawioStyleParser.parse(cell.style);
-        let label: string = DrawioXmlParser.stripHtml(cell.value);
-
-        // Determine edge style
-        let edgeStyle: EdgeStyle = EdgeStyle.STRAIGHT;
-        if (s.properties['_curved'] === '1') {
-          edgeStyle = EdgeStyle.CURVED;
-        } else if (s.properties['_edgeStyle'] === 'orthogonalEdgeStyle' || cell.points.length > 0) {
-          edgeStyle = EdgeStyle.POLYLINE;
-        }
-        console.log('[drawio] edge ' + cell.id + ' src=' + cell.source + ' tgt=' + cell.target +
-          ' _edgeStyle="' + s.properties['_edgeStyle'] + '" edgeStyle=' + edgeStyle +
-          ' waypoints=' + cell.points.length);
-
-        // Build waypoints from parsed Array points
-        let waypoints: Waypoint[] = [];
-        for (let p: number = 0; p < cell.points.length; p++) {
-          waypoints.push(new Waypoint(cell.points[p].x, cell.points[p].y));
-        }
-
-        // If no explicit waypoints but source/target exist, compute perimeter-to-perimeter path
-        if (waypoints.length === 0 && cell.source.length > 0 && cell.target.length > 0) {
-          let srcNode: GraphNode | undefined = nodeMap[cell.source];
-          let tgtNode: GraphNode | undefined = nodeMap[cell.target];
-          console.log('[drawio] waypoint block: srcFound=' + (srcNode !== undefined) +
-            ' tgtFound=' + (tgtNode !== undefined));
-          if (srcNode !== undefined && tgtNode !== undefined) {
-            try {
-              let srcCx: number = srcNode.x + srcNode.width / 2;
-              let srcCy: number = srcNode.y + srcNode.height / 2;
-              let tgtCx: number = tgtNode.x + tgtNode.width / 2;
-              let tgtCy: number = tgtNode.y + tgtNode.height / 2;
-
-              if (edgeStyle === EdgeStyle.STRAIGHT || edgeStyle === EdgeStyle.CURVED) {
-                let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
-                let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
-                waypoints.push(new Waypoint(srcP.x, srcP.y));
-                waypoints.push(new Waypoint(tgtP.x, tgtP.y));
-                console.log('[drawio] straight: src(' + srcCx + ',' + srcCy + ')->tgt(' +
-                  tgtCx + ',' + tgtCy + ') perim: ' + srcP.x + ',' + srcP.y + ' -> ' +
-                  tgtP.x + ',' + tgtP.y);
-              } else {
-                let isOrtho: boolean = s.properties['_edgeStyle'] === 'orthogonalEdgeStyle';
-                console.log('[drawio] polyline branch isOrtho=' + isOrtho);
-                let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
-                let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
-                if (isOrtho) {
-                  let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
-                  for (let r: number = 0; r < route.length; r++) {
-                    waypoints.push(route[r]);
-                  }
-                  console.log('[drawio] ortho route: ' + route.length + ' points');
-                } else {
-                  waypoints.push(new Waypoint(srcP.x, srcP.y));
-                  waypoints.push(new Waypoint(tgtP.x, tgtP.y));
-                  console.log('[drawio] polyline (non-ortho): ' + srcP.x + ',' + srcP.y +
-                    ' -> ' + tgtP.x + ',' + tgtP.y);
-                }
-              }
-            } catch (e) {
-              console.log('[drawio] ERROR in perimeter: ' + e);
-              let srcCx: number = srcNode.x + srcNode.width / 2;
-              let srcCy: number = srcNode.y + srcNode.height / 2;
-              let tgtCx: number = tgtNode.x + tgtNode.width / 2;
-              let tgtCy: number = tgtNode.y + tgtNode.height / 2;
-              waypoints.push(new Waypoint(srcCx, srcCy));
-              waypoints.push(new Waypoint(tgtCx, tgtCy));
-            }
-          }
-        }
-
-        // Merge style properties into edge properties
-        let edgeProps: Record<string, string> = {};
-        let eKeys: string[] = Object.keys(s.properties);
-        for (let k: number = 0; k < eKeys.length; k++) {
-          let ek: string = eKeys[k];
-          edgeProps[ek] = s.properties[ek];
-        }
-
-        let edge: GraphEdge = new GraphEdge(
-          cell.id, cell.source, cell.target,
-          waypoints, edgeStyle, label, edgeProps
-        );
-        model = model.addEdge(edge);
-        console.log('[drawio] final edge ' + cell.id + ': ' + waypoints.length +
-          ' waypoints, style=' + edgeStyle);
       }
+
+      let props: Record<string, string> = {};
+      let propKeys: string[] = Object.keys(s.properties);
+      for (let k: number = 0; k < propKeys.length; k++) {
+        let pk: string = propKeys[k];
+        props[pk] = s.properties[pk];
+      }
+
+      let node: GraphNode = new GraphNode(
+        cell.id, s.shapeType,
+        absX, absY,
+        cell.width > 0 ? cell.width : 120,
+        cell.height > 0 ? cell.height : 60,
+        label, props
+      );
+      model = model.addNode(node);
+      nodeMap[cell.id] = node;
+    }
+
+    // Pass 2: build edges (all vertices now in nodeMap)
+    for (let i: number = 0; i < diagram.cells.length; i++) {
+      let cell: _CellData = diagram.cells[i];
+      if (!cell.edge) continue;
+
+      let s: DrawioStyle = DrawioStyleParser.parse(cell.style);
+      let label: string = DrawioXmlParser.stripHtml(cell.value);
+
+      let edgeStyle: EdgeStyle = EdgeStyle.STRAIGHT;
+      if (s.properties['_curved'] === '1') {
+        edgeStyle = EdgeStyle.CURVED;
+      } else if (s.properties['_edgeStyle'] === 'orthogonalEdgeStyle' || cell.points.length > 0) {
+        edgeStyle = EdgeStyle.POLYLINE;
+      }
+
+      let waypoints: Waypoint[] = [];
+      for (let p: number = 0; p < cell.points.length; p++) {
+        waypoints.push(new Waypoint(cell.points[p].x, cell.points[p].y));
+      }
+
+      if (waypoints.length === 0 && cell.source.length > 0 && cell.target.length > 0) {
+        let srcNode: GraphNode | undefined = nodeMap[cell.source];
+        let tgtNode: GraphNode | undefined = nodeMap[cell.target];
+        if (srcNode !== undefined && tgtNode !== undefined) {
+          let srcCx: number = srcNode.x + srcNode.width / 2;
+          let srcCy: number = srcNode.y + srcNode.height / 2;
+          let tgtCx: number = tgtNode.x + tgtNode.width / 2;
+          let tgtCy: number = tgtNode.y + tgtNode.height / 2;
+
+          let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
+          let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
+
+          if (edgeStyle === EdgeStyle.POLYLINE &&
+              s.properties['_edgeStyle'] === 'orthogonalEdgeStyle') {
+            let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
+            for (let r: number = 0; r < route.length; r++) {
+              waypoints.push(route[r]);
+            }
+          } else {
+            waypoints.push(new Waypoint(srcP.x, srcP.y));
+            waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+          }
+        }
+      }
+
+      let edgeProps: Record<string, string> = {};
+      let eKeys: string[] = Object.keys(s.properties);
+      for (let k: number = 0; k < eKeys.length; k++) {
+        let ek: string = eKeys[k];
+        edgeProps[ek] = s.properties[ek];
+      }
+
+      let edge: GraphEdge = new GraphEdge(
+        cell.id, cell.source, cell.target,
+        waypoints, edgeStyle, label, edgeProps
+      );
+      model = model.addEdge(edge);
     }
 
     return model;

@@ -48,6 +48,28 @@ export default function drawioStyleParserTest(): void {
       expect(s.properties['_arcSize']).assertEqual('20');
     });
 
+    // ─── mxgraph namespace shapes ──────────────────────────────────────
+
+    it('should detect mxgraph.flowchart.start_2 as ellipse', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse('shape=mxgraph.flowchart.start_2;');
+      expect(s.shapeType).assertEqual('drawio.ellipse');
+    });
+
+    it('should detect mxgraph.flowchart.end_1 as ellipse', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse('shape=mxgraph.flowchart.end_1;');
+      expect(s.shapeType).assertEqual('drawio.ellipse');
+    });
+
+    it('should detect mxgraph.bpmn.shape gateway as rhombus', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse('shape=mxgraph.bpmn.shape;background=gateway;');
+      expect(s.shapeType).assertEqual('drawio.rhombus');
+    });
+
+    it('should detect mxgraph.flowchart.or as rhombus', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse('shape=mxgraph.flowchart.or;');
+      expect(s.shapeType).assertEqual('drawio.rhombus');
+    });
+
     it('should default to rect for unknown shape', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('whiteSpace=wrap;html=1;');
       expect(s.shapeType).assertEqual('drawio.rect');

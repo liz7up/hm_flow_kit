@@ -322,6 +322,9 @@ export class DrawioXmlParser {
         } else if (s.properties['_edgeStyle'] === 'orthogonalEdgeStyle' || cell.points.length > 0) {
           edgeStyle = EdgeStyle.POLYLINE;
         }
+        console.log('[drawio] edge ' + cell.id + ' src=' + cell.source + ' tgt=' + cell.target +
+          ' _edgeStyle="' + s.properties['_edgeStyle'] + '" edgeStyle=' + edgeStyle +
+          ' waypoints=' + cell.points.length);
 
         // Build waypoints from parsed Array points
         let waypoints: Waypoint[] = [];
@@ -333,6 +336,8 @@ export class DrawioXmlParser {
         if (waypoints.length === 0 && cell.source.length > 0 && cell.target.length > 0) {
           let srcNode: GraphNode | undefined = nodeMap[cell.source];
           let tgtNode: GraphNode | undefined = nodeMap[cell.target];
+          console.log('[drawio] waypoint block: srcFound=' + (srcNode !== undefined) +
+            ' tgtFound=' + (tgtNode !== undefined));
           if (srcNode !== undefined && tgtNode !== undefined) {
             try {
               let srcCx: number = srcNode.x + srcNode.width / 2;
@@ -345,8 +350,12 @@ export class DrawioXmlParser {
                 let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
                 waypoints.push(new Waypoint(srcP.x, srcP.y));
                 waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+                console.log('[drawio] straight: src(' + srcCx + ',' + srcCy + ')->tgt(' +
+                  tgtCx + ',' + tgtCy + ') perim: ' + srcP.x + ',' + srcP.y + ' -> ' +
+                  tgtP.x + ',' + tgtP.y);
               } else {
                 let isOrtho: boolean = s.properties['_edgeStyle'] === 'orthogonalEdgeStyle';
+                console.log('[drawio] polyline branch isOrtho=' + isOrtho);
                 let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
                 let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
                 if (isOrtho) {
@@ -354,13 +363,16 @@ export class DrawioXmlParser {
                   for (let r: number = 0; r < route.length; r++) {
                     waypoints.push(route[r]);
                   }
+                  console.log('[drawio] ortho route: ' + route.length + ' points');
                 } else {
                   waypoints.push(new Waypoint(srcP.x, srcP.y));
                   waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+                  console.log('[drawio] polyline (non-ortho): ' + srcP.x + ',' + srcP.y +
+                    ' -> ' + tgtP.x + ',' + tgtP.y);
                 }
               }
             } catch (e) {
-              // Fallback to center-to-center if perimeter computation fails
+              console.log('[drawio] ERROR in perimeter: ' + e);
               let srcCx: number = srcNode.x + srcNode.width / 2;
               let srcCy: number = srcNode.y + srcNode.height / 2;
               let tgtCx: number = tgtNode.x + tgtNode.width / 2;
@@ -384,6 +396,8 @@ export class DrawioXmlParser {
           waypoints, edgeStyle, label, edgeProps
         );
         model = model.addEdge(edge);
+        console.log('[drawio] final edge ' + cell.id + ': ' + waypoints.length +
+          ' waypoints, style=' + edgeStyle);
       }
     }
 

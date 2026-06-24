@@ -261,6 +261,7 @@ export class DrawioXmlParser {
     let model: GraphModel = GraphModel.createEmpty();
     let nodeMap: Record<string, GraphNode> = {};
 
+    // Assumes mxCell order: vertices before edges. drawio tooling guarantees this.
     for (let i: number = 0; i < diagram.cells.length; i++) {
       let cell: _CellData = diagram.cells[i];
 
@@ -380,9 +381,10 @@ export class DrawioXmlParser {
     result = result.replace(/<[^>]+>/g, '');
 
     // Decode common HTML entities
+    // &amp; must be decoded BEFORE lt/gt to handle double-encoded entities (&amp;lt;)
+    result = result.replace(/&amp;/g, '&');
     result = result.replace(/&lt;/g, '<');
     result = result.replace(/&gt;/g, '>');
-    result = result.replace(/&amp;/g, '&');
     result = result.replace(/&nbsp;/g, ' ');
     result = result.replace(/&quot;/g, '"');
 

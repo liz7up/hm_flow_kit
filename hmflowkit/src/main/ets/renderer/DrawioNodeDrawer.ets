@@ -34,7 +34,6 @@ export class DrawioNodeDrawer {
     NodeRenderer.register('drawio.parallelogram', wrapper);
     NodeRenderer.register('drawio.text', wrapper);
     NodeRenderer.register('drawio.swimlane', wrapper);
-    NodeRenderer.register('drawio.unknown', wrapper);
   }
 
   render(
@@ -191,7 +190,7 @@ export class DrawioNodeDrawer {
     ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig,
     x: number, y: number, w: number, h: number, zoom: number
   ): void {
-    let isHorizontal: boolean = node.properties['horizontal'] !== '0';
+    let isHorizontal: boolean = node.properties['_horizontal'] !== '0';
     let headerSize: number = config.poolHeaderWidth * zoom;
 
     // Container fill + stroke

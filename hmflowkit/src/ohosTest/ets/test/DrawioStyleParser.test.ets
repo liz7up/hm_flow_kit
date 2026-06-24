@@ -132,19 +132,24 @@ export default function drawioStyleParserTest(): void {
 
     // ─── Default values ────────────────────────────────────────────────
 
-    it('should provide default _fillColor when absent', 0, () => {
+    it('should NOT provide _fillColor default — renderer fallback to config', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('rounded=1;');
-      expect(s.properties['_fillColor']).assertEqual('#FFFFFF');
+      expect(s.properties['_fillColor']).assertEqual(undefined);
     });
 
-    it('should provide default _strokeColor when absent', 0, () => {
+    it('should NOT provide _strokeColor default — renderer fallback to config', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('rounded=1;');
-      expect(s.properties['_strokeColor']).assertEqual('#000000');
+      expect(s.properties['_strokeColor']).assertEqual(undefined);
     });
 
-    it('should provide default _fontColor when absent', 0, () => {
+    it('should NOT provide _fontColor default — renderer fallback to config', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('rounded=1;');
-      expect(s.properties['_fontColor']).assertEqual('#000000');
+      expect(s.properties['_fontColor']).assertEqual(undefined);
+    });
+
+    it('should provide default _fontSize when absent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse('rounded=1;');
+      expect(s.properties['_fontSize']).assertEqual('12');
     });
 
     // ─── Edge cases ────────────────────────────────────────────────────

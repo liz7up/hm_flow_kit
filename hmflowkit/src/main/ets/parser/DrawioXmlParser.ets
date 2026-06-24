@@ -59,6 +59,15 @@ class _ParseState {
   pendingY: number = 0;
 }
 
+class _Point {
+  x: number;
+  y: number;
+  constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+}
+
 class _DiagramData {
   name: string = '';
   id: string = '';
@@ -320,17 +329,37 @@ export class DrawioXmlParser {
           waypoints.push(new Waypoint(cell.points[p].x, cell.points[p].y));
         }
 
-        // If no explicit waypoints but source/target exist, compute midpoint positions
+        // If no explicit waypoints but source/target exist, compute perimeter-to-perimeter path
         if (waypoints.length === 0 && cell.source.length > 0 && cell.target.length > 0) {
           let srcNode: GraphNode | undefined = nodeMap[cell.source];
           let tgtNode: GraphNode | undefined = nodeMap[cell.target];
           if (srcNode !== undefined && tgtNode !== undefined) {
-            waypoints.push(new Waypoint(
-              srcNode.x + srcNode.width / 2, srcNode.y + srcNode.height / 2
-            ));
-            waypoints.push(new Waypoint(
-              tgtNode.x + tgtNode.width / 2, tgtNode.y + tgtNode.height / 2
-            ));
+            let srcCx: number = srcNode.x + srcNode.width / 2;
+            let srcCy: number = srcNode.y + srcNode.height / 2;
+            let tgtCx: number = tgtNode.x + tgtNode.width / 2;
+            let tgtCy: number = tgtNode.y + tgtNode.height / 2;
+
+            if (edgeStyle === EdgeStyle.STRAIGHT || edgeStyle === EdgeStyle.CURVED) {
+              // Straight/curved: source-edge to target-edge
+              let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
+              let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
+              waypoints.push(new Waypoint(srcP.x, srcP.y));
+              waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+            } else {
+              // Orthogonal: route from source edge through right-angle bends to target edge
+              let isOrtho: boolean = s.properties['_edgeStyle'] === 'orthogonalEdgeStyle';
+              let srcP = DrawioXmlParser._perimeterPoint(srcNode, tgtCx, tgtCy);
+              let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, srcCx, srcCy);
+              if (isOrtho) {
+                let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
+                for (let r: number = 0; r < route.length; r++) {
+                  waypoints.push(route[r]);
+                }
+              } else {
+                waypoints.push(new Waypoint(srcP.x, srcP.y));
+                waypoints.push(new Waypoint(tgtP.x, tgtP.y));
+              }
+            }
           }
         }
 
@@ -351,6 +380,99 @@ export class DrawioXmlParser {
     }
 
     return model;
+  }
+
+  // ── Perimeter / routing helpers ──────────────────────────────────────────
+
+  /**
+   * Compute the point on a node's perimeter in the direction toward (targetX, targetY).
+   */
+  private static _perimeterPoint(node: GraphNode, targetX: number, targetY: number): _Point {
+    let cx: number = node.x + node.width / 2;
+    let cy: number = node.y + node.height / 2;
+    let dx: number = targetX - cx;
+    let dy: number = targetY - cy;
+
+    if (dx === 0 && dy === 0) {
+      return new _Point(cx, cy);
+    }
+
+    if (node.type === 'drawio.ellipse') {
+      return DrawioXmlParser._perimeterEllipse(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    } else if (node.type === 'drawio.rhombus') {
+      return DrawioXmlParser._perimeterRhombus(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    } else {
+      // Rectangle (default) — also used for triangle, parallelogram, swimlane, text
+      return DrawioXmlParser._perimeterRect(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    }
+  }
+
+  private static _perimeterRect(cx: number, cy: number, hw: number, hh: number,
+                                 dx: number, dy: number): _Point {
+    if (dx === 0) {
+      return new _Point(cx, cy + (dy > 0 ? hh : -hh));
+    }
+    if (dy === 0) {
+      return new _Point(cx + (dx > 0 ? hw : -hw), cy);
+    }
+    let scaleX: number = hw / Math.abs(dx);
+    let scaleY: number = hh / Math.abs(dy);
+    let scale: number = scaleX < scaleY ? scaleX : scaleY;
+    return new _Point(cx + dx * scale, cy + dy * scale);
+  }
+
+  private static _perimeterEllipse(cx: number, cy: number, rx: number, ry: number,
+                                    dx: number, dy: number): _Point {
+    let angle: number = Math.atan2(dy, dx);
+    return new _Point(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
+  }
+
+  private static _perimeterRhombus(cx: number, cy: number, hw: number, hh: number,
+                                    dx: number, dy: number): _Point {
+    // Diamond equation: |x-cx|/hw + |y-cy|/hh = 1
+    // Ray from center: t = 1 / (|dx|/hw + |dy|/hh)
+    if (dx === 0 && dy === 0) {
+      return new _Point(cx, cy);
+    }
+    let t: number = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
+    return new _Point(cx + dx * t, cy + dy * t);
+  }
+
+  /**
+   * Build a simple orthogonal route from src point on source perimeter
+   * to tgt point on target perimeter.
+   * Strategy: route out the nearest side of each shape, through 1-3 segments.
+   */
+  private static _orthogonalRoute(src: _Point, tgt: _Point,
+                                   srcNode: GraphNode, tgtNode: GraphNode): Waypoint[] {
+    let result: Waypoint[] = [];
+    result.push(new Waypoint(src.x, src.y));
+
+    // Determine preferred routing axis based on relative position
+    let srcCx: number = srcNode.x + srcNode.width / 2;
+    let srcCy: number = srcNode.y + srcNode.height / 2;
+    let tgtCx: number = tgtNode.x + tgtNode.width / 2;
+    let tgtCy: number = tgtNode.y + tgtNode.height / 2;
+
+    let dx: number = tgtCx - srcCx;
+    let dy: number = tgtCy - srcCy;
+
+    // 3-segment orthogonal: route along the dominant axis first, then cross
+    // Use 60/40 split: first go 60% along dominant axis, then cross, then finish
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal dominant: exit right/left, then vertical, then enter
+      let midX: number = src.x + dx * 0.5;
+      result.push(new Waypoint(midX, src.y));
+      result.push(new Waypoint(midX, tgt.y));
+    } else {
+      // Vertical dominant: exit top/bottom, then horizontal, then enter
+      let midY: number = src.y + dy * 0.5;
+      result.push(new Waypoint(src.x, midY));
+      result.push(new Waypoint(tgt.x, midY));
+    }
+
+    result.push(new Waypoint(tgt.x, tgt.y));
+    return result;
   }
 
   // ── HTML stripping ──────────────────────────────────────────────────────────

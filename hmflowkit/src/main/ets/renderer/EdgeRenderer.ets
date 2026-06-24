@@ -6,7 +6,7 @@
  * hm-flow-kit: Edge renderer — renders polyline edges with arrowheads on Canvas 2D.
  */
 
-import { GraphEdge } from '../model/GraphModel';
+import { GraphEdge, EdgeStyle } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
 
 export class NodeRect {
@@ -105,11 +105,43 @@ export class EdgeRenderer {
       edge.properties['bpmnElement'] === 'dataOutputAssociation';
     let isArrowless: boolean =
       edge.properties['bpmnElement'] === 'association';
+    let edgeColor: string = edge.properties['_strokeColor'] || config.edgeStrokeColor;
 
-    // Draw the polyline
-    {
+    // ── Draw edge path (polyline or bezier) ──
+    if (edge.style === EdgeStyle.CURVED && edge.properties['_curved'] === '1') {
+      // ── Bezier curve for drawio curved edges ──
+      let isDashedEdge: boolean = edge.properties['_dashed'] === '1';
+      if (isDashedEdge) {
+        let dpStr: string = edge.properties['_dashPattern'] || '6 4';
+        let dp: number[] = [];
+        let dpParts: string[] = dpStr.split(' ');
+        for (let i: number = 0; i < dpParts.length; i++) {
+          dp.push(parseInt(dpParts[i]) * zoom);
+        }
+        ctx.setLineDash(dp);
+      }
+      ctx.strokeStyle = edgeColor;
+      ctx.lineWidth = config.edgeStrokeWidth;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i: number = 1; i < points.length; i++) {
+        let cpx: number = points[i - 1][0];
+        let cpy: number = points[i - 1][1];
+        let endX: number = (points[i - 1][0] + points[i][0]) / 2;
+        let endY: number = (points[i - 1][1] + points[i][1]) / 2;
+        ctx.quadraticCurveTo(cpx, cpy, endX, endY);
+      }
+      // Final segment to last point
+      if (points.length >= 2) {
+        let last: number[] = points[points.length - 1];
+        ctx.lineTo(last[0], last[1]);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      // ── Standard polyline ──
       let isMessageFlow: boolean = edge.properties['bpmnElement'] === 'messageFlow';
-      ctx.strokeStyle = isMessageFlow ? config.messageFlowStrokeColor : config.edgeStrokeColor;
+      ctx.strokeStyle = isMessageFlow ? config.messageFlowStrokeColor : edgeColor;
       ctx.lineWidth = isMessageFlow ? config.messageFlowStrokeWidth : config.edgeStrokeWidth;
       if (isMessageFlow) {
         let src: number[] = config.messageFlowDashPattern;
@@ -159,7 +191,7 @@ export class EdgeRenderer {
           ctx.stroke();
         } else {
           // Filled arrowhead
-          ctx.fillStyle = config.edgeStrokeColor;
+          ctx.fillStyle = edgeColor;
           ctx.beginPath();
           ctx.moveTo(last[0], last[1]);
           ctx.lineTo(
@@ -173,6 +205,34 @@ export class EdgeRenderer {
           ctx.closePath();
           ctx.fill();
         }
+      }
+    }
+
+    // ── Start arrow (drawio) ──
+    let startArrow: string = edge.properties['_startArrow'] || '';
+    if (startArrow.length > 0 && points.length >= 2) {
+      let first: number[] = points[0];
+      let next: number[] = points[1];
+      let segDx: number = next[0] - first[0];
+      let segDy: number = next[1] - first[1];
+      let segLen: number = Math.sqrt(segDx * segDx + segDy * segDy);
+      if (segLen > 0.1) {
+        let angle: number = Math.atan2(-segDy, -segDx);
+        let arrowLen: number = config.arrowSize;
+        let arrowAngle: number = Math.PI / 6;
+        ctx.fillStyle = edgeColor;
+        ctx.beginPath();
+        ctx.moveTo(first[0], first[1]);
+        ctx.lineTo(
+          first[0] + arrowLen * Math.cos(angle - arrowAngle),
+          first[1] + arrowLen * Math.sin(angle - arrowAngle)
+        );
+        ctx.lineTo(
+          first[0] + arrowLen * Math.cos(angle + arrowAngle),
+          first[1] + arrowLen * Math.sin(angle + arrowAngle)
+        );
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
@@ -221,7 +281,7 @@ export class EdgeRenderer {
         let tm: TextMetrics = ctx.measureText(label);
         let tw: number = tm.width;
         let th: number = fontSize;
-        ctx.fillStyle = config.edgeStrokeColor;
+        ctx.fillStyle = edgeColor;
         ctx.fillText(label, lx, ly);
       }
     }

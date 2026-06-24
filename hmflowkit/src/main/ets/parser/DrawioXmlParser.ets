@@ -434,25 +434,23 @@ export class DrawioXmlParser {
     let result: Waypoint[] = [];
     result.push(new Waypoint(src.x, src.y));
 
-    // Determine preferred routing axis based on relative position
+    // Use midpoint between actual perimeter points (not center-distance offset),
+    // so the last segment always points toward the target entry point.
+    let midX: number = (src.x + tgt.x) / 2;
+    let midY: number = (src.y + tgt.y) / 2;
+
+    // Route along dominant axis first
     let srcCx: number = srcNode.x + srcNode.width / 2;
     let srcCy: number = srcNode.y + srcNode.height / 2;
     let tgtCx: number = tgtNode.x + tgtNode.width / 2;
     let tgtCy: number = tgtNode.y + tgtNode.height / 2;
-
     let dx: number = tgtCx - srcCx;
     let dy: number = tgtCy - srcCy;
 
-    // 3-segment orthogonal: route along the dominant axis first, then cross
-    // Use 60/40 split: first go 60% along dominant axis, then cross, then finish
     if (Math.abs(dx) > Math.abs(dy)) {
-      // Horizontal dominant: exit right/left, then vertical, then enter
-      let midX: number = src.x + dx * 0.5;
       result.push(new Waypoint(midX, src.y));
       result.push(new Waypoint(midX, tgt.y));
     } else {
-      // Vertical dominant: exit top/bottom, then horizontal, then enter
-      let midY: number = src.y + dy * 0.5;
       result.push(new Waypoint(src.x, midY));
       result.push(new Waypoint(tgt.x, midY));
     }

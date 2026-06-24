@@ -60,9 +60,16 @@ export default function drawioStyleParserTest(): void {
       expect(s.shapeType).assertEqual('drawio.ellipse');
     });
 
-    it('should detect mxgraph.bpmn.shape gateway as rhombus', 0, () => {
+    it('should detect mxgraph.bpmn.shape gateway → reuse BPMN GatewayDrawer', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('shape=mxgraph.bpmn.shape;background=gateway;');
-      expect(s.shapeType).assertEqual('drawio.rhombus');
+      expect(s.shapeType).assertEqual('gateway');
+    });
+
+    it('should map drawio gateway symbol to BPMN bpmnElement', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.shape;background=gateway;symbol=parallelGw;');
+      expect(s.shapeType).assertEqual('gateway');
+      expect(s.properties['bpmnElement']).assertEqual('parallelGateway');
     });
 
     it('should detect mxgraph.flowchart.or as rhombus', 0, () => {

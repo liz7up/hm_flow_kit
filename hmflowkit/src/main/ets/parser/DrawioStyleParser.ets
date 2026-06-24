@@ -27,6 +27,15 @@ export class DrawioStyleParser {
     '_endArrow': '', '_startArrow': '', '_edgeStyle': '', '_curved': '0', '_rounded': '0', '_horizontal': '1'
   };
 
+  // Maps drawio BPMN gateway symbols to BPMN element names (reuses GatewayDrawer)
+  private static _gatewaySymbolMap: Record<string, string> = {
+    'parallelGw': 'parallelGateway',
+    'exclusiveGw': 'exclusiveGateway',
+    'inclusiveGw': 'inclusiveGateway',
+    'complexGw': 'complexGateway',
+    'eventGw': 'eventBasedGateway'
+  };
+
   static parse(style: string): DrawioStyle {
     let raw: Record<string, string> = {};
     if (style.length > 0) {
@@ -65,7 +74,8 @@ export class DrawioStyleParser {
                raw['shape'] === 'mxgraph.flowchart.end_2') {
       shapeType = 'drawio.ellipse';
     } else if (raw['shape'] === 'mxgraph.bpmn.shape' && raw['background'] === 'gateway') {
-      shapeType = 'drawio.rhombus';
+      // Reuse BPMN's GatewayDrawer: diamond + marker (X/+/O/...)
+      shapeType = 'gateway';
     } else if (raw['shape'] === 'mxgraph.flowchart.or' ||
                raw['shape'] === 'mxgraph.flowchart.decision') {
       shapeType = 'drawio.rhombus';
@@ -73,6 +83,18 @@ export class DrawioStyleParser {
     // rect is the fallback for everything else (including rounded=1, arcSize)
 
     let props: Record<string, string> = DrawioStyleParser._withDefaults(raw);
+
+    // Map drawio BPMN gateway symbol → BPMN element name (reuses GatewayDrawer markers)
+    if (shapeType === 'gateway') {
+      let symbol: string | undefined = raw['symbol'];
+      if (symbol !== undefined) {
+        let bpmnTag: string | undefined = DrawioStyleParser._gatewaySymbolMap[symbol];
+        if (bpmnTag !== undefined) {
+          props['bpmnElement'] = bpmnTag;
+        }
+      }
+    }
+
     return new DrawioStyle(shapeType, props);
   }
 

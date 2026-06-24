@@ -41,8 +41,10 @@ export class DrawioNodeDrawer {
     x: number, y: number, w: number, h: number, zoom: number
   ): void {
     let shape: string = this._extractShape(node.type);
-    let fill: string = node.properties['_fillColor'] || config.fillColor;
-    let stroke: string = node.properties['_strokeColor'] || config.strokeColor;
+    let fill: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_fillColor'], config.fillColor);
+    let stroke: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_strokeColor'], config.strokeColor);
     let strokeWidth: number = config.strokeWidth * zoom;
     let dashed: boolean = node.properties['_dashed'] === '1';
     let opacity: number = parseInt(node.properties['_opacity'] || '100') / 100;
@@ -109,14 +111,15 @@ export class DrawioNodeDrawer {
   ): void {
     let rounded: boolean = node.properties['_rounded'] === '1';
     let arcSize: number = parseInt(node.properties['_arcSize'] || '0');
+    let noFill: boolean = ctx.fillStyle === 'none';
+    let noStroke: boolean = ctx.strokeStyle === 'none';
 
     if (rounded || arcSize > 0) {
       let r: number;
       if (arcSize > 0) {
-        // arcSize in drawio is relative: 0-100 (percentage of half-min-dim)
         r = Math.min(w, h) * arcSize / 200;
       } else {
-        r = Math.min(w, h) * 0.133; // default corner radius ratio
+        r = Math.min(w, h) * 0.133;
       }
       r = Math.max(0, Math.min(r, w / 2, h / 2));
       ctx.beginPath();
@@ -130,11 +133,11 @@ export class DrawioNodeDrawer {
       ctx.lineTo(x, y + r);
       ctx.arcTo(x, y, x + r, y, r);
       ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      if (!noFill) ctx.fill();
+      if (!noStroke) ctx.stroke();
     } else {
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeRect(x, y, w, h);
+      if (!noFill) ctx.fillRect(x, y, w, h);
+      if (!noStroke) ctx.strokeRect(x, y, w, h);
     }
   }
 
@@ -143,8 +146,8 @@ export class DrawioNodeDrawer {
   ): void {
     ctx.beginPath();
     ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.fillStyle !== 'none') ctx.fill();
+    if (ctx.strokeStyle !== 'none') ctx.stroke();
   }
 
   private _drawRhombus(
@@ -156,8 +159,8 @@ export class DrawioNodeDrawer {
     ctx.lineTo(x + w / 2, y + h);
     ctx.lineTo(x, y + h / 2);
     ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.fillStyle !== 'none') ctx.fill();
+    if (ctx.strokeStyle !== 'none') ctx.stroke();
   }
 
   private _drawTriangle(
@@ -168,8 +171,8 @@ export class DrawioNodeDrawer {
     ctx.lineTo(x + w, y + h);
     ctx.lineTo(x, y + h);
     ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.fillStyle !== 'none') ctx.fill();
+    if (ctx.strokeStyle !== 'none') ctx.stroke();
   }
 
   private _drawParallelogram(
@@ -182,8 +185,8 @@ export class DrawioNodeDrawer {
     ctx.lineTo(x + w - skew, y + h);
     ctx.lineTo(x, y + h);
     ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.fillStyle !== 'none') ctx.fill();
+    if (ctx.strokeStyle !== 'none') ctx.stroke();
   }
 
   private _drawSwimlane(
@@ -194,27 +197,39 @@ export class DrawioNodeDrawer {
     let headerSize: number = config.poolHeaderWidth * zoom;
 
     // Container fill + stroke
-    ctx.fillStyle = node.properties['_fillColor'] || config.poolFillColor;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeStyle = node.properties['_strokeColor'] || config.poolStrokeColor;
-    ctx.lineWidth = config.poolStrokeWidth * zoom;
-    ctx.strokeRect(x, y, w, h);
+    let containerFill: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_fillColor'], config.poolFillColor);
+    if (containerFill !== 'none') {
+      ctx.fillStyle = containerFill;
+      ctx.fillRect(x, y, w, h);
+    }
+    let containerStroke: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_strokeColor'], config.poolStrokeColor);
+    if (containerStroke !== 'none') {
+      ctx.strokeStyle = containerStroke;
+      ctx.lineWidth = config.poolStrokeWidth * zoom;
+      ctx.strokeRect(x, y, w, h);
+    }
 
     // Header background
-    ctx.fillStyle = node.properties['_swimlaneFillColor'] || config.poolHeaderFillColor;
-    if (isHorizontal) {
-      ctx.fillRect(x, y, headerSize, h);
-    } else {
-      ctx.fillRect(x, y, w, headerSize);
+    let hdrFill: string = node.properties['_swimlaneFillColor'] || config.poolHeaderFillColor;
+    if (hdrFill !== 'none') {
+      ctx.fillStyle = hdrFill;
+      if (isHorizontal) {
+        ctx.fillRect(x, y, headerSize, h);
+      } else {
+        ctx.fillRect(x, y, w, headerSize);
+      }
     }
 
     // Header text
     let label: string = node.label;
     if (label.length > 0) {
-      let fontColor: string = node.properties['_fontColor'] || config.poolHeaderTextColor;
+      let fontColor: string = DrawioNodeDrawer._resolveColor(
+        node.properties['_fontColor'], config.poolHeaderTextColor);
+      ctx.fillStyle = fontColor;
       let fontSize: number = parseInt(node.properties['_fontSize'] || '12');
       let scaledFontSize: number = Math.max(10, Math.round(fontSize * zoom));
-      ctx.fillStyle = fontColor;
       ctx.font = scaledFontSize + 'px ' + config.fontFamily;
 
       if (isHorizontal) {
@@ -244,7 +259,8 @@ export class DrawioNodeDrawer {
       return;
     }
 
-    let fontColor: string = node.properties['_fontColor'] || config.textColor;
+    let fontColor: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_fontColor'], config.textColor);
     let fontSizeStr: string | undefined = node.properties['_fontSize'];
     let fontSize: number = fontSizeStr !== undefined ? parseInt(fontSizeStr) : config.fontSize;
     let scaledFontSize: number = Math.max(9, Math.round(fontSize * zoom));
@@ -304,6 +320,13 @@ export class DrawioNodeDrawer {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────
+
+  private static _resolveColor(fileColor: string | undefined, configColor: string): string {
+    if (fileColor === undefined || fileColor.length === 0) {
+      return configColor;  // not in file → use theme-aware config default
+    }
+    return fileColor;  // explicit file color (including 'none' for transparent)
+  }
 
   private _extractShape(type: string): string {
     if (type.startsWith('drawio.')) {

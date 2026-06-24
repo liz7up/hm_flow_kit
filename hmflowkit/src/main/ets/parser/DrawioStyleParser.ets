@@ -59,6 +59,16 @@ export class DrawioStyleParser {
       shapeType = 'drawio.triangle';
     } else if (raw['shape'] === 'parallelogram') {
       shapeType = 'drawio.parallelogram';
+    } else if (raw['shape'] === 'mxgraph.flowchart.start_1' ||
+               raw['shape'] === 'mxgraph.flowchart.start_2' ||
+               raw['shape'] === 'mxgraph.flowchart.end_1' ||
+               raw['shape'] === 'mxgraph.flowchart.end_2') {
+      shapeType = 'drawio.ellipse';
+    } else if (raw['shape'] === 'mxgraph.bpmn.shape' && raw['background'] === 'gateway') {
+      shapeType = 'drawio.rhombus';
+    } else if (raw['shape'] === 'mxgraph.flowchart.or' ||
+               raw['shape'] === 'mxgraph.flowchart.decision') {
+      shapeType = 'drawio.rhombus';
     }
     // rect is the fallback for everything else (including rounded=1, arcSize)
 

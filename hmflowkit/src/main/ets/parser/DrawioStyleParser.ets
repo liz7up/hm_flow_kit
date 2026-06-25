@@ -102,9 +102,13 @@ export class DrawioStyleParser {
       shapeType = DrawioStyleParser._outlineToEvent[outline] || 'startEvent';
     } else if (shape === 'mxgraph.bpmn.gateway2') {
       if (raw['gwType'] !== undefined) {
-        shapeType = 'gateway';  // data-based gateway
+        shapeType = 'gateway';  // data-based gateway (exclusive/parallel/complex)
+      } else if (raw['outline'] === 'standard' || raw['outline'] === 'catching') {
+        // Basic event-based gateway (pentagon marker). Other variants
+        // (boundInt, eventInt, eventNonint, throwing, end) fall back to rhombus.
+        shapeType = 'eventBasedGateway';
       } else {
-        shapeType = 'eventBasedGateway';  // event-based gateway (no gwType, has outline+symbol)
+        shapeType = 'drawio.rhombus';  // unrecognized gateway variant → basic diamond
       }
     } else if (shape === 'mxgraph.bpmn.task2') {
       let st: string = raw['bpmnShapeType'] || '';

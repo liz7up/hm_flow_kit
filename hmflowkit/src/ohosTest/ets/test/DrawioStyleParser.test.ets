@@ -200,6 +200,12 @@ export default function drawioStyleParserTest(): void {
       expect(s.properties['eventDefinition']).assertEqual('timerEventDefinition');
     });
 
+    it('should fallback unclassified gateway variants to rhombus', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;outline=boundInt;symbol=error;');
+      expect(s.shapeType).assertEqual('drawio.rhombus');
+    });
+
     // ─── BPMN 2.0 tasks (shape=mxgraph.bpmn.task2) ─────────────────────
 
     it('should detect mxgraph.bpmn.task2 as task', 0, () => {

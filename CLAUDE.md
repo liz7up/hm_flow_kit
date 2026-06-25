@@ -26,24 +26,31 @@ hm-flow-kit/
 │   │   ├── model/
 │   │   │   ├── GraphModel.ets            # 图数据模型（唯一数据源）
 │   │   │   └── PlaneHierarchy.ets        # 多平面层级管理（钻取导航）
+│   │   ├── adapter/
+│   │   │   └── ShapeConfig.ets             # 跨格式形状配置（PerimeterKind 注册表）
 │   │   ├── parser/
-│   │   │   └── BpmnXmlParser.ets         # BPMN 2.0 XML 解析器（v2, XmlPullParser）
+│   │   │   ├── BpmnXmlParser.ets           # BPMN 2.0 XML 解析器（v2, XmlPullParser）
+│   │   │   ├── DrawioXmlParser.ets         # drawio mxGraph XML 解析器
+│   │   │   └── DrawioStyleParser.ets       # drawio style 字符串 → shapeType + properties
 │   │   ├── renderer/
-│   │   │   ├── NodeRenderer.ets          # 节点渲染器
-│   │   │   ├── EdgeRenderer.ets          # 连线渲染器
-│   │   │   ├── GridRenderer.ets          # 背景网格渲染器
-│   │   │   ├── CanvasManager.ets         # 画布管理（缩放、平移、fitToView）
-│   │   │   ├── HitTestManager.ets        # 命中检测
-	│   │   │   ├── PoolLaneRenderer.ets      # 泳池/泳道渲染器
-│   │   │   └── RenderConfig.ets          # 渲染配置
-│   │   ├── ohosTest/ets/test/            # 单元测试（Hypium 框架）
-│   │   │   ├── GraphModel.test.ets        #   44 项
-│   │   │   ├── BpmnXmlParser.test.ets     #   28 项
-│   │   │   ├── CanvasManager.test.ets     #   17 项
-│   │   │   ├── HitTestManager.test.ets    #   13 项
-│   │   │   └── RenderConfig.test.ets      #    3 项
+│   │   │   ├── NodeRenderer.ets            # 节点渲染器（registry 模式）
+│   │   │   ├── EdgeRenderer.ets            # 连线渲染器
+│   │   │   ├── GridRenderer.ets            # 背景网格渲染器
+│   │   │   ├── CanvasManager.ets           # 画布管理（缩放、平移、fitToView）
+│   │   │   ├── HitTestManager.ets          # 命中检测
+│   │   │   ├── PoolLaneRenderer.ets        # 泳池/泳道渲染器
+│   │   │   ├── DrawioNodeDrawer.ets        # drawio 基础形状渲染器
+│   │   │   └── RenderConfig.ets            # 渲染配置
+│   │   ├── ohosTest/ets/test/              # 单元测试（Hypium 框架）
+│   │   │   ├── GraphModel.test.ets         #   44 项
+│   │   │   ├── BpmnXmlParser.test.ets      #   37 项
+│   │   │   ├── CanvasManager.test.ets      #   17 项
+│   │   │   ├── HitTestManager.test.ets     #   13 项
+│   │   │   ├── RenderConfig.test.ets       #    5 项
+│   │   │   ├── DrawioStyleParser.test.ets  #   47 项
+│   │   │   └── DrawioXmlParser.test.ets    #   19 项
 │   │   └── components/
-│   │       └── FlowViewer.ets            # 只读流程查看器（支持 XML 直接输入）
+│   │       └── FlowViewer.ets              # 只读流程查看器（BPMN + drawio 双模式）
 │   ├── Index.ets                         # 公开 API 导出入口
 │   └── oh-package.json5                 # 库的包配置
 ├── test_all.sh                           # 单元测试编译验证脚本
@@ -149,7 +156,7 @@ hm-flow-kit/
 - PanGesture 拖拽平移 + PinchGesture 双指缩放 + 浮动 +/- 缩放按钮（Stack 覆盖层）
 - 全屏覆盖层支持
 
-**当前总验收：120/120 自动化单元测试编译通过**
+**当前总验收：186/186 自动化单元测试编译通过**
 
 ### 自动化测试
 
@@ -157,7 +164,7 @@ hm-flow-kit/
 |------|------|
 | 框架 | @ohos/hypium (describe/it/expect) |
 | 位置 | `hmflowkit/src/ohosTest/ets/test/` |
-| 覆盖 | GraphModel(44) BpmnXmlParser(37) CanvasManager(17) HitTestManager(13) RenderConfig(5) |
+| 覆盖 | GraphModel(44) BpmnXmlParser(37) CanvasManager(17) HitTestManager(13) RenderConfig(5) DrawioStyleParser(47) DrawioXmlParser(19) |
 | 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
 | 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
@@ -165,6 +172,18 @@ hm-flow-kit/
 - BPMN XML 解析（含泳道）→ 渲染（含 Pool/Lane）→ 点击高亮 → 拖拽平移 + 双指缩放 → 自动缩放适配
 - Phase 1 样式系统：按 NodeType 分色 + Task 子类型边框色 + EdgeRenderer 读取 config
 - ✅ TODO-3.5 渲染修复：Event 文字移出圆圈显示在下方；Pool/Lane 标题改用 canvas rotate 横排；MessageFlow 虚线+空心箭头+路径中点 label 绘制；XML 字符引用预处理 + label 净化；BoundaryEvent 双层圆（非中断 cancelActivity=false 虚线双圈 / 中断型实线双圈）
+
+**Drawio 文件浏览支持 ✅ 已完成**
+- `DrawioXmlParser.ets`（~500 行）— mxGraph XML → GraphModel，含 HTML 净化、两趟构建、perimeter 路由
+- `DrawioStyleParser.ets`（~240 行）— style 字符串解析，形状检测 + 属性映射
+- `DrawioNodeDrawer.ets`（~340 行）— 基础几何形状渲染 + 降级策略
+- `ShapeConfig.ets`（~70 行）— 跨格式配置层：PerimeterKind 注册表，未来接 Visio/UML 只需加映射
+- `EdgeRenderer.ets` 扩展：bezier 曲线 + `_endArrow`/`_startArrow` 支持 + per-edge 颜色
+- `GraphNode.type: string` — 从 NodeType enum 放宽，registry 注册表模式（`NodeRenderer.register()`）
+- **BPMN 2.0 drawio 形状全映射**：Events（8 种 outline→startEvent/endEvent/intermediateEvent/boundaryEvent）、Gateways（data+event-based，新旧两种格式）、Tasks（8 种 taskMarker）、SubProcess/CallActivity、DataObject/DataStore、Annotation、Swimlane/Pool
+- `FlowViewer` 新增 `@Prop drawioXml: string` prop + Demo 页面文件选择器
+- 测试：DrawioStyleParser(47 项) + DrawioXmlParser(19 项)，总 186 项编译通过
+- ⚠️ drawio `<Array as="points">` 只是中间路由点，不连形状边界——parser 自动补 source/target perimeter
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

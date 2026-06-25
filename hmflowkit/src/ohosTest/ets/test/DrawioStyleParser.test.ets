@@ -115,6 +115,48 @@ export default function drawioStyleParserTest(): void {
       expect(s.shapeType).assertEqual('boundaryEvent');
     });
 
+    it('should set eventDefinition from symbol for message event', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=standard;symbol=message;');
+      expect(s.properties['eventDefinition']).assertEqual('messageEventDefinition');
+    });
+
+    it('should set eventDefinition from symbol for timer event', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=catching;symbol=timer;');
+      expect(s.properties['eventDefinition']).assertEqual('timerEventDefinition');
+    });
+
+    it('should set bpmnElement for intermediate throw event', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=throwing;symbol=message;');
+      expect(s.properties['bpmnElement']).assertEqual('intermediateThrowEvent');
+    });
+
+    it('should set bpmnElement for intermediate catch event', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=catching;symbol=timer;');
+      expect(s.properties['bpmnElement']).assertEqual('intermediateCatchEvent');
+    });
+
+    it('should set isInterrupting false for non-interrupting event', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=eventInt;symbol=timer;');
+      expect(s.properties['isInterrupting']).assertEqual('false');
+    });
+
+    it('should set cancelActivity false for non-interrupting boundary', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=boundNonint;symbol=timer;');
+      expect(s.properties['cancelActivity']).assertEqual('false');
+    });
+
+    it('should skip eventDefinition for general symbol', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=standard;symbol=general;');
+      expect(s.properties['eventDefinition']).assertEqual(undefined);
+    });
+
     // ─── BPMN 2.0 gateways (shape=mxgraph.bpmn.gateway2) ───────────────
 
     it('should detect mxgraph.bpmn.gateway2 exclusive as gateway', 0, () => {

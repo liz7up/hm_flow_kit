@@ -60,6 +60,21 @@ export class DrawioStyleParser {
     'boundNonint': 'boundaryEvent'
   };
 
+  // Maps drawio event symbols to BPMN eventDefinition (reuses EventDrawer icons)
+  private static _eventSymbolMap: Record<string, string> = {
+    'message': 'messageEventDefinition',
+    'timer': 'timerEventDefinition',
+    'error': 'errorEventDefinition',
+    'signal': 'signalEventDefinition',
+    'escalation': 'escalationEventDefinition',
+    'cancel': 'cancelEventDefinition',
+    'compensation': 'compensateEventDefinition',
+    'conditional': 'conditionalEventDefinition',
+    'link': 'linkEventDefinition',
+    'terminate': 'terminateEventDefinition',
+    'terminate2': 'terminateEventDefinition'
+  };
+
   static parse(style: string): DrawioStyle {
     let raw: Record<string, string> = {};
     if (style.length > 0) {
@@ -161,7 +176,40 @@ export class DrawioStyleParser {
       }
     }
 
+    if (shapeType === 'startEvent') {
+      props['bpmnElement'] = 'startEvent';
+      DrawioStyleParser._setEventProps(props, raw);
+    } else if (shapeType === 'endEvent') {
+      props['bpmnElement'] = 'endEvent';
+      DrawioStyleParser._setEventProps(props, raw);
+    } else if (shapeType === 'intermediateEvent') {
+      let outline: string = raw['outline'] || 'catching';
+      props['bpmnElement'] = (outline === 'throwing') ? 'intermediateThrowEvent' :
+        'intermediateCatchEvent';
+      DrawioStyleParser._setEventProps(props, raw);
+      if (outline === 'eventInt' || outline === 'eventNonint') {
+        props['isInterrupting'] = 'false';
+      }
+    } else if (shapeType === 'boundaryEvent') {
+      props['bpmnElement'] = 'boundaryEvent';
+      DrawioStyleParser._setEventProps(props, raw);
+      if (raw['outline'] === 'boundNonint') {
+        props['cancelActivity'] = 'false';  // dashed border
+      }
+    }
+
     return new DrawioStyle(shapeType, props);
+  }
+
+  private static _setEventProps(props: Record<string, string>,
+                                 raw: Record<string, string>): void {
+    let symbol: string | undefined = raw['symbol'];
+    if (symbol !== undefined && symbol !== 'general') {
+      let evDef: string | undefined = DrawioStyleParser._eventSymbolMap[symbol];
+      if (evDef !== undefined) {
+        props['eventDefinition'] = evDef;
+      }
+    }
   }
 
   private static _withDefaults(raw: Record<string, string>): Record<string, string> {

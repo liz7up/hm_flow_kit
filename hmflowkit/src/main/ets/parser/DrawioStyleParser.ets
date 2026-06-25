@@ -27,13 +27,37 @@ export class DrawioStyleParser {
     '_endArrow': '', '_startArrow': '', '_edgeStyle': '', '_curved': '0', '_rounded': '0', '_horizontal': '1'
   };
 
-  // Maps drawio BPMN gateway symbols to BPMN element names (reuses GatewayDrawer)
+  // Maps drawio BPMN symbols to BPMN element names (reuses BPMN drawers)
   private static _gatewaySymbolMap: Record<string, string> = {
     'parallelGw': 'parallelGateway',
     'exclusiveGw': 'exclusiveGateway',
     'inclusiveGw': 'inclusiveGateway',
     'complexGw': 'complexGateway',
     'eventGw': 'eventBasedGateway'
+  };
+
+  private static _gwTypeMap: Record<string, string> = {
+    'exclusive': 'exclusiveGateway',
+    'parallel': 'parallelGateway',
+    'inclusive': 'inclusiveGateway',
+    'complex': 'complexGateway'
+  };
+
+  private static _taskMarkerMap: Record<string, string> = {
+    'user': 'userTask', 'service': 'serviceTask', 'script': 'scriptTask',
+    'manual': 'manualTask', 'businessRule': 'businessRuleTask',
+    'send': 'sendTask', 'receive': 'receiveTask'
+  };
+
+  private static _outlineToEvent: Record<string, string> = {
+    'standard': 'startEvent',
+    'end': 'endEvent',
+    'throwing': 'intermediateEvent',
+    'catching': 'intermediateEvent',
+    'eventInt': 'intermediateEvent',
+    'eventNonint': 'intermediateEvent',
+    'boundInt': 'boundaryEvent',
+    'boundNonint': 'boundaryEvent'
   };
 
   static parse(style: string): DrawioStyle {
@@ -45,7 +69,7 @@ export class DrawioStyleParser {
         if (part.length === 0) continue;
         let eqIdx: number = part.indexOf('=');
         if (eqIdx === -1) {
-          raw[part] = '1';  // key-only entry — e.g. 'ellipse', 'rounded'
+          raw[part] = '1';
         } else {
           let key: string = part.substring(0, eqIdx);
           let value: string = part.substring(eqIdx + 1);
@@ -56,7 +80,34 @@ export class DrawioStyleParser {
 
     // ── Shape detection (priority order) ──
     let shapeType: string = 'drawio.rect';
-    if (raw['swimlane'] !== undefined) {
+    let shape: string | undefined = raw['shape'];
+
+    if (shape === 'mxgraph.bpmn.event') {
+      let outline: string = raw['outline'] || 'standard';
+      shapeType = DrawioStyleParser._outlineToEvent[outline] || 'startEvent';
+    } else if (shape === 'mxgraph.bpmn.gateway2') {
+      let gt: string = raw['gwType'] || 'exclusive';
+      shapeType = (gt === 'complex' || gt === 'inclusive') ? 'gateway' : 'gateway';
+    } else if (shape === 'mxgraph.bpmn.task2') {
+      let st: string = raw['bpmnShapeType'] || '';
+      if (st === 'subprocess' || st === 'transaction') shapeType = 'subProcess';
+      else if (st === 'call') shapeType = 'callActivity';
+      else shapeType = 'task';
+    } else if (shape === 'mxgraph.bpmn.shape' && raw['background'] === 'gateway') {
+      shapeType = 'gateway';
+    } else if (shape === 'mxgraph.bpmn.task') {
+      shapeType = 'task';
+    } else if (shape === 'mxgraph.bpmn.callActivity') {
+      shapeType = 'callActivity';
+    } else if (shape === 'mxgraph.bpmn.subProcess') {
+      shapeType = 'subProcess';
+    } else if (shape === 'mxgraph.bpmn.swimlane') {
+      shapeType = 'drawio.swimlane';
+    } else if (shape === 'mxgraph.bpmn.data2') {
+      shapeType = 'dataObject';
+    } else if (shape === 'mxgraph.flowchart.annotation_2') {
+      shapeType = 'textAnnotation';
+    } else if (raw['swimlane'] !== undefined) {
       shapeType = 'drawio.swimlane';
     } else if (raw['text'] !== undefined) {
       shapeType = 'drawio.text';
@@ -66,32 +117,47 @@ export class DrawioStyleParser {
       shapeType = 'drawio.rhombus';
     } else if (raw['triangle'] !== undefined) {
       shapeType = 'drawio.triangle';
-    } else if (raw['shape'] === 'parallelogram') {
+    } else if (shape === 'parallelogram') {
       shapeType = 'drawio.parallelogram';
-    } else if (raw['shape'] === 'mxgraph.flowchart.start_1' ||
-               raw['shape'] === 'mxgraph.flowchart.start_2' ||
-               raw['shape'] === 'mxgraph.flowchart.end_1' ||
-               raw['shape'] === 'mxgraph.flowchart.end_2') {
+    } else if (shape === 'mxgraph.flowchart.start_1' ||
+               shape === 'mxgraph.flowchart.start_2' ||
+               shape === 'mxgraph.flowchart.end_1' ||
+               shape === 'mxgraph.flowchart.end_2') {
       shapeType = 'drawio.ellipse';
-    } else if (raw['shape'] === 'mxgraph.bpmn.shape' && raw['background'] === 'gateway') {
-      // Reuse BPMN's GatewayDrawer: diamond + marker (X/+/O/...)
-      shapeType = 'gateway';
-    } else if (raw['shape'] === 'mxgraph.flowchart.or' ||
-               raw['shape'] === 'mxgraph.flowchart.decision') {
+    } else if (shape === 'mxgraph.flowchart.or' ||
+               shape === 'mxgraph.flowchart.decision') {
       shapeType = 'drawio.rhombus';
+    } else if (raw['shape'] === 'datastore' || shape === 'datastore') {
+      shapeType = 'dataStore';
     }
-    // rect is the fallback for everything else (including rounded=1, arcSize)
+    // rect is the fallback for everything else
 
     let props: Record<string, string> = DrawioStyleParser._withDefaults(raw);
 
-    // Map drawio BPMN gateway symbol → BPMN element name (reuses GatewayDrawer markers)
+    // ── Set bpmnElement for BPMN-reused types ──
+
     if (shapeType === 'gateway') {
-      let symbol: string | undefined = raw['symbol'];
-      if (symbol !== undefined) {
-        let bpmnTag: string | undefined = DrawioStyleParser._gatewaySymbolMap[symbol];
-        if (bpmnTag !== undefined) {
-          props['bpmnElement'] = bpmnTag;
+      // New format: gwType
+      let gt: string | undefined = raw['gwType'];
+      if (gt !== undefined) {
+        let tag: string | undefined = DrawioStyleParser._gwTypeMap[gt];
+        if (tag !== undefined) props['bpmnElement'] = tag;
+      }
+      // Old format: symbol (fallback)
+      if (props['bpmnElement'] === undefined) {
+        let sym: string | undefined = raw['symbol'];
+        if (sym !== undefined) {
+          let tag: string | undefined = DrawioStyleParser._gatewaySymbolMap[sym];
+          if (tag !== undefined) props['bpmnElement'] = tag;
         }
+      }
+    }
+
+    if (shapeType === 'task') {
+      let tm: string | undefined = raw['taskMarker'];
+      if (tm !== undefined) {
+        let tag: string | undefined = DrawioStyleParser._taskMarkerMap[tm];
+        if (tag !== undefined) props['bpmnElement'] = tag;
       }
     }
 

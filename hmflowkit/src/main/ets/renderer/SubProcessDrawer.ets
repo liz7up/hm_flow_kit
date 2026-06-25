@@ -1,5 +1,8 @@
 import { GraphNode } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { PathRenderer } from './PathRenderer';
+import { ShapeConfig } from '../adapter/ShapeConfig';
 
 // 净化 label 中的非 ASCII 字符，替换为 ASCII 对应字符，确保 canvas 可渲染
 function sanitizeLabel(text: string): string {
@@ -31,52 +34,30 @@ export class SubProcessDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    let r: number = Math.min(w, h) * config.cornerRadiusRatio * zoom;
-
-    // Rounded rect path
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y, x + w, y + r, r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
-    ctx.closePath();
-
-    ctx.fillStyle = config.taskFillColor;
-    ctx.fill();
-    ctx.strokeStyle = config.taskStrokeColor;
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
     let isTx: boolean = node.properties['bpmnElement'] === 'transaction';
-    // Event subProcess → dashed; Transaction → double-line
+
+    // Event subProcess → dashed; Transaction → double-line; else → solid
     if (node.properties['triggeredByEvent'] === 'true') {
-      ctx.lineWidth = config.strokeWidth * zoom;
       ctx.setLineDash([config.subProcessDashPattern[0] * zoom, config.subProcessDashPattern[1] * zoom]);
-      ctx.stroke();
+      PathRenderer.render(ctx, shapeDef, x, y, w, h,
+        config.taskFillColor, config.taskStrokeColor,
+        config.strokeWidth * zoom);
       ctx.setLineDash([]);
     } else if (isTx) {
       // Double border: outer + inner
-      ctx.lineWidth = config.strokeWidth * zoom * 1.5;
-      ctx.stroke();
+      PathRenderer.render(ctx, shapeDef, x, y, w, h,
+        config.taskFillColor, config.taskStrokeColor,
+        config.strokeWidth * zoom * 1.5);
       let inset: number = config.subProcessInset * zoom;
-      ctx.beginPath();
-      ctx.moveTo(x + r + inset, y + inset);
-      ctx.lineTo(x + w - r - inset, y + inset);
-      ctx.arcTo(x + w - inset, y + inset, x + w - inset, y + r + inset, r - inset);
-      ctx.lineTo(x + w - inset, y + h - r - inset);
-      ctx.arcTo(x + w - inset, y + h - inset, x + w - r - inset, y + h - inset, r - inset);
-      ctx.lineTo(x + r + inset, y + h - inset);
-      ctx.arcTo(x + inset, y + h - inset, x + inset, y + h - r - inset, r - inset);
-      ctx.lineTo(x + inset, y + r + inset);
-      ctx.arcTo(x + inset, y + inset, x + r + inset, y + inset, r - inset);
-      ctx.closePath();
-      ctx.lineWidth = config.strokeWidth * zoom;
-      ctx.stroke();
+      PathRenderer.render(ctx, shapeDef,
+        x + inset, y + inset, w - inset * 2, h - inset * 2,
+        'none', config.taskStrokeColor,
+        config.strokeWidth * zoom);
     } else {
-      ctx.lineWidth = config.strokeWidth * zoom;
-      ctx.stroke();
+      PathRenderer.render(ctx, shapeDef, x, y, w, h,
+        config.taskFillColor, config.taskStrokeColor,
+        config.strokeWidth * zoom);
     }
 
     // [+] expand marker — only collapsed <subProcess>, not <transaction>

@@ -579,11 +579,33 @@ export class DrawioXmlParser {
     if (ShapeConfig.shapeCount() > 0) {
       return; // already initialized
     }
-    ShapeConfig.registerShape('bpmn.task2', ShapeRenderKind.POLYLINE,
-      PerimeterKind.RECT, TASK_PERIMETER, 0.133);
-    ShapeConfig.registerShape('bpmn.event', ShapeRenderKind.NATIVE_ELLIPSE,
-      PerimeterKind.ELLIPSE, EVENT_PERIMETER);
-    ShapeConfig.registerShape('bpmn.gateway2', ShapeRenderKind.NATIVE_RHOMBUS,
-      PerimeterKind.RHOMBUS, GATEWAY_PERIMETER);
+    // Register all BPMN/drawio node types with their perimeter paths.
+    // Keys match node.type values (parsed BPMN names and drawio.* prefixes).
+
+    // RECT — tasks, subProcess, callActivity, data, annotation, swimlane, generic drawio
+    let rectTypes: string[] = ['task', 'callActivity', 'subProcess',
+      'dataObject', 'dataStore', 'textAnnotation',
+      'drawio.rect', 'drawio.roundedRect', 'drawio.triangle',
+      'drawio.parallelogram', 'drawio.text', 'drawio.swimlane', 'drawio.unknown'];
+    for (let i: number = 0; i < rectTypes.length; i++) {
+      ShapeConfig.registerShape(rectTypes[i], ShapeRenderKind.POLYLINE,
+        PerimeterKind.RECT, TASK_PERIMETER, 0.133);
+    }
+
+    // ELLIPSE — BPMN events, drawio ellipse
+    let ellipseTypes: string[] = ['startEvent', 'endEvent', 'intermediateEvent',
+      'boundaryEvent', 'drawio.ellipse'];
+    for (let i: number = 0; i < ellipseTypes.length; i++) {
+      ShapeConfig.registerShape(ellipseTypes[i], ShapeRenderKind.NATIVE_ELLIPSE,
+        PerimeterKind.ELLIPSE, EVENT_PERIMETER);
+    }
+
+    // RHOMBUS — gateways
+    let rhombusTypes: string[] = ['gateway', 'eventBasedGateway', 'complexGateway',
+      'drawio.rhombus'];
+    for (let i: number = 0; i < rhombusTypes.length; i++) {
+      ShapeConfig.registerShape(rhombusTypes[i], ShapeRenderKind.NATIVE_RHOMBUS,
+        PerimeterKind.RHOMBUS, GATEWAY_PERIMETER);
+    }
   }
 }

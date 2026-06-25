@@ -7,6 +7,7 @@ import bpmnFullCoverageTest from './BpmnFullCoverage.test';
 import drawioStyleParserTest from './DrawioStyleParser.test';
 import drawioXmlParserTest from './DrawioXmlParser.test';
 import shapeDefinitionTest from './ShapeDefinition.test';
+import perimeterRouterTest from './PerimeterRouter.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -18,4 +19,5 @@ export default function testsuite() {
   drawioStyleParserTest();
   drawioXmlParserTest();
   shapeDefinitionTest();
+  perimeterRouterTest();
 }

@@ -96,25 +96,27 @@ export class PathRenderer {
     }
 
     if (crAbs > 0) {
-      // Rounded corners: use arcTo between consecutive segments
-      ctx.moveTo((cxArr[0] + cxArr[pts.length - 1]) / 2 + (crAbs > 0 ? crAbs * 0.01 : 0),
-                  (cyArr[0] + cyArr[pts.length - 1]) / 2);
-
+      // Rounded corners: lineTo midpoint entering corner, arcTo around vertex toward exit midpoint
       for (let i: number = 0; i < pts.length; i++) {
-        let i0: number = (i - 1 + pts.length) % pts.length;
-        let i1: number = i;
-        let i2: number = (i + 1) % pts.length;
+        let iPrev: number = (i - 1 + pts.length) % pts.length;
+        let iCurr: number = i;
+        let iNext: number = (i + 1) % pts.length;
+
+        // Entry: midpoint of previous edge, entering this corner
+        let entryX: number = (cxArr[iPrev] + cxArr[iCurr]) / 2;
+        let entryY: number = (cyArr[iPrev] + cyArr[iCurr]) / 2;
+        // Corner: the vertex itself
+        let cornerX: number = cxArr[iCurr];
+        let cornerY: number = cyArr[iCurr];
+        // Exit: midpoint of next edge, leaving this corner
+        let exitX: number = (cxArr[iCurr] + cxArr[iNext]) / 2;
+        let exitY: number = (cyArr[iCurr] + cyArr[iNext]) / 2;
+
         if (i === 0) {
-          ctx.moveTo(
-            (cxArr[i0] + cxArr[i1]) / 2,
-            (cyArr[i0] + cyArr[i1]) / 2
-          );
+          ctx.moveTo(entryX, entryY);
         }
-        ctx.lineTo(
-          (cxArr[i1] + cxArr[i2]) / 2,
-          (cyArr[i1] + cyArr[i2]) / 2
-        );
-        ctx.arcTo(cxArr[i2], cyArr[i2], cxArr[i2], cyArr[i2], crAbs);
+        ctx.lineTo(entryX, entryY);
+        ctx.arcTo(cornerX, cornerY, exitX, exitY, crAbs);
       }
     } else {
       // Sharp corners: straight lineTo

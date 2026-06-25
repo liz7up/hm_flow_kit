@@ -35,6 +35,9 @@ export { DataDrawer } from './src/main/ets/renderer/DataDrawer'
 export { AnnotationDrawer } from './src/main/ets/renderer/AnnotationDrawer'
 export { DrawioNodeDrawer } from './src/main/ets/renderer/DrawioNodeDrawer'
 
+// ── Adapter 层（跨格式配置）──
+export { ShapeConfig, PerimeterKind } from './src/main/ets/adapter/ShapeConfig'
+
 // ── Plane 层级 ──
 export { PlaneHierarchy, PlaneDefinition, BreadcrumbEntry } from './src/main/ets/model/PlaneHierarchy'
 

@@ -327,6 +327,27 @@ export class DrawioXmlParser {
         waypoints.push(new Waypoint(cell.points[p].x, cell.points[p].y));
       }
 
+      // If explicit waypoints exist, prepend source perimeter and append target
+      // perimeter so the edge connects to shape borders (drawio waypoints are
+      // intermediate routing points only).
+      if (waypoints.length > 0 && cell.source.length > 0 && cell.target.length > 0) {
+        let srcNode: GraphNode | undefined = nodeMap[cell.source];
+        let tgtNode: GraphNode | undefined = nodeMap[cell.target];
+        if (srcNode !== undefined && tgtNode !== undefined) {
+          let wp0: Waypoint = waypoints[0];
+          let wpN: Waypoint = waypoints[waypoints.length - 1];
+          let srcP = DrawioXmlParser._perimeterPoint(srcNode, wp0.x, wp0.y);
+          let tgtP = DrawioXmlParser._perimeterPoint(tgtNode, wpN.x, wpN.y);
+          let full: Waypoint[] = [];
+          full.push(new Waypoint(srcP.x, srcP.y));
+          for (let p: number = 0; p < waypoints.length; p++) {
+            full.push(waypoints[p]);
+          }
+          full.push(new Waypoint(tgtP.x, tgtP.y));
+          waypoints = full;
+        }
+      }
+
       if (waypoints.length === 0 && cell.source.length > 0 && cell.target.length > 0) {
         let srcNode: GraphNode | undefined = nodeMap[cell.source];
         let tgtNode: GraphNode | undefined = nodeMap[cell.target];

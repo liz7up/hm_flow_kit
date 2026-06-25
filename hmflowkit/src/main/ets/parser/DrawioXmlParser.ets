@@ -340,7 +340,9 @@ export class DrawioXmlParser {
 
           if (edgeStyle === EdgeStyle.POLYLINE &&
               s.properties['_edgeStyle'] === 'orthogonalEdgeStyle') {
-            let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(srcP, tgtP, srcNode, tgtNode);
+            let oSrc = DrawioXmlParser._cardinalPerimeter(srcNode, tgtCx, tgtCy);
+            let oTgt = DrawioXmlParser._cardinalPerimeter(tgtNode, srcCx, srcCy);
+            let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(oSrc, oTgt, srcNode, tgtNode);
             for (let r: number = 0; r < route.length; r++) {
               waypoints.push(route[r]);
             }
@@ -431,6 +433,59 @@ export class DrawioXmlParser {
     }
     let t: number = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
     return new _Point(cx + dx * t, cy + dy * t);
+  }
+
+  /**
+   * Compute a perimeter point snapped to a cardinal side (left/right/top/bottom),
+   * based on which direction the target center lies from the node center.
+   * Used for orthogonal routing to get clean right-angle exits.
+   */
+  private static _cardinalPerimeter(node: GraphNode, targetCx: number,
+                                     targetCy: number): _Point {
+    let cx: number = node.x + node.width / 2;
+    let cy: number = node.y + node.height / 2;
+    let dx: number = targetCx - cx;
+    let dy: number = targetCy - cy;
+
+    // Check if this is a rhombus/diamond type
+    let isRhombus: boolean = node.type === 'drawio.rhombus' ||
+      node.type === 'gateway' || node.type === 'eventBasedGateway' ||
+      node.type === 'complexGateway';
+    let isEllipse: boolean = node.type === 'drawio.ellipse' ||
+      node.type === 'startEvent' || node.type === 'endEvent' ||
+      node.type === 'intermediateEvent' || node.type === 'boundaryEvent';
+
+    let hw: number = node.width / 2;
+    let hh: number = node.height / 2;
+
+    if (isRhombus || isEllipse) {
+      // For diamond and circle, snap to cardinal vertex (if closer) or pure side point
+      if (Math.abs(dx) > Math.abs(dy)) {
+        return new _Point(cx + (dx > 0 ? hw : -hw), cy);
+      } else {
+        return new _Point(cx, cy + (dy > 0 ? hh : -hh));
+      }
+    }
+
+    // Rectangle: snap to nearest side center
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Exit left or right side, at the y-level of the target
+      let sideX: number = dx > 0 ? node.x + node.width : node.x;
+      let clampedY: number = cy + dy * Math.min(1, hh / Math.abs(dy));
+      if (Math.abs(dy) < 0.01) clampedY = cy;
+      // Clamp Y to stay on the side
+      if (clampedY < node.y) clampedY = node.y;
+      if (clampedY > node.y + node.height) clampedY = node.y + node.height;
+      return new _Point(sideX, clampedY);
+    } else {
+      // Exit top or bottom side, at the x-level of the target
+      let sideY: number = dy > 0 ? node.y + node.height : node.y;
+      let clampedX: number = cx + dx * Math.min(1, hw / Math.abs(dx));
+      if (Math.abs(dx) < 0.01) clampedX = cx;
+      if (clampedX < node.x) clampedX = node.x;
+      if (clampedX > node.x + node.width) clampedX = node.x + node.width;
+      return new _Point(clampedX, sideY);
+    }
   }
 
   /**

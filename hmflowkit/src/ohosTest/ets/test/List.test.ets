@@ -6,6 +6,7 @@ import renderConfigTest from './RenderConfig.test';
 import bpmnFullCoverageTest from './BpmnFullCoverage.test';
 import drawioStyleParserTest from './DrawioStyleParser.test';
 import drawioXmlParserTest from './DrawioXmlParser.test';
+import shapeDefinitionTest from './ShapeDefinition.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -16,4 +17,5 @@ export default function testsuite() {
   bpmnFullCoverageTest();
   drawioStyleParserTest();
   drawioXmlParserTest();
+  shapeDefinitionTest();
 }

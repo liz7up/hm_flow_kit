@@ -1,5 +1,8 @@
 import { GraphNode, NodeType } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { PathRenderer } from './PathRenderer';
+import { ShapeConfig } from '../adapter/ShapeConfig';
 
 // 净化 label 中的非 ASCII 字符，替换为 ASCII 对应字符，确保 canvas 可渲染
 function sanitizeLabel(text: string): string {
@@ -31,47 +34,34 @@ export class TaskDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    // Rounded rect path
-    let r: number = Math.min(w, h) * config.cornerRadiusRatio * zoom;
-    let left: number = x;
-    let top: number = y;
-    let right: number = x + w;
-    let bottom: number = y + h;
-    ctx.beginPath();
-    ctx.moveTo(left + r, top);
-    ctx.lineTo(right - r, top);
-    ctx.arcTo(right, top, right, top + r, r);
-    ctx.lineTo(right, bottom - r);
-    ctx.arcTo(right, bottom, right - r, bottom, r);
-    ctx.lineTo(left + r, bottom);
-    ctx.arcTo(left, bottom, left, bottom - r, r);
-    ctx.lineTo(left, top + r);
-    ctx.arcTo(left, top, left + r, top, r);
-
-    // Color selection by subtype
-    let subtype: string | undefined = node.properties['bpmnElement'];
-    let fill: string = config.taskFillColor;
-    let stroke: string = config.taskStrokeColor;
+    // Outline via PathRenderer
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
+    let subFill: string = config.taskFillColor;
+    let subStroke: string = config.taskStrokeColor;
     let textColor: string = config.taskTextColor;
-    let lineW: number = config.strokeWidth;
+    let subtype: string | undefined = node.properties['bpmnElement'];
 
     if (subtype !== undefined) {
       let c: string | undefined = config.taskSubtypeStroke[subtype];
       if (c !== undefined) {
-        stroke = c;
+        subStroke = c;
       }
     }
 
-    // callActivity thick border + bottom [+] marker
-    if (node.type === NodeType.CALL_ACTIVITY) {
-      lineW = config.strokeWidth * config.callActivityBorderRatio;
+    // Transaction double-line border uses no fill, thick stroke
+    let bpmnShapeType: string | undefined = node.properties['bpmnShapeType'];
+    if (bpmnShapeType === 'transaction') {
+      PathRenderer.render(ctx, shapeDef, x, y, w, h, 'none', subStroke,
+        config.strokeWidth * zoom * 1.8);
+      // Inner border
+      let inset: number = config.subProcessInset * zoom;
+      PathRenderer.render(ctx, shapeDef,
+        x + inset, y + inset, w - inset * 2, h - inset * 2,
+        'none', subStroke, config.strokeWidth * zoom);
+    } else {
+      PathRenderer.render(ctx, shapeDef, x, y, w, h, subFill, subStroke,
+        config.strokeWidth * zoom);
     }
-
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineW * zoom;
-    ctx.stroke();
 
     // loopCharacteristics marker
     let loopChar: string | undefined = node.properties['loopCharacteristics'];
@@ -81,7 +71,7 @@ export class TaskDrawer {
 
     // Task subtype icon (top-left)
     if (subtype !== undefined && subtype.length > 0) {
-      let iconColor: string = stroke !== config.taskStrokeColor ? stroke : config.taskTextColor;
+      let iconColor: string = subStroke !== config.taskStrokeColor ? subStroke : config.taskTextColor;
       TaskDrawer.drawSubtypeIcon(ctx, subtype, x, y, w, h, iconColor, zoom, config);
     }
 
@@ -90,7 +80,7 @@ export class TaskDrawer {
       let cx: number = x + w / 2;
       let cy: number = y + h - config.callActivityMarkerOffset * zoom;
       let s: number = config.callActivityMarkerSize * zoom;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = subStroke;
       ctx.lineWidth = Math.max(1, 1.5 * zoom);
       ctx.strokeRect(cx - s * 1.2, cy - s * 1.2, s * 2.4, s * 2.4);
       ctx.beginPath();

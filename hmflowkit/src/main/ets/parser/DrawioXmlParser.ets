@@ -583,7 +583,7 @@ export class DrawioXmlParser {
     // Keys match node.type values (parsed BPMN names and drawio.* prefixes).
 
     // RECT — tasks, subProcess, callActivity, data, annotation, swimlane, generic drawio
-    let rectTypes: string[] = ['task', 'callActivity', 'subProcess',
+    let rectTypes: string[] = ['task', 'bpmn.task2', 'callActivity', 'subProcess',
       'dataObject', 'dataStore', 'textAnnotation',
       'drawio.rect', 'drawio.roundedRect', 'drawio.triangle',
       'drawio.parallelogram', 'drawio.text', 'drawio.swimlane', 'drawio.unknown'];

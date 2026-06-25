@@ -27,17 +27,27 @@ struct Index {
     }
   }
 
-  async loadDrawio(): Promise<void> {
+  async openDrawioFile(): Promise<void> {
     try {
-      let context = getContext(this)
-      let rawData: Uint8Array = await context.resourceManager.getRawFileContent('di-test.drawio')
-      let decoder = new util.TextDecoder('utf-8')
-      this.drawioXml = decoder.decodeToString(rawData)
-      this.showDrawio = true
-      this.parseError = ''
+      let options = new picker.DocumentSelectOptions()
+      options.maxSelectNumber = 1
+      options.fileSuffixFilters = ['.drawio', '.xml']
+      let docPicker = new picker.DocumentViewPicker()
+      let uris = await docPicker.select(options)
+      if (uris.length > 0) {
+        let uri = uris[0]
+        let file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY)
+        let stat = fileIo.statSync(file.fd)
+        let buf = new ArrayBuffer(stat.size)
+        fileIo.readSync(file.fd, buf)
+        fileIo.closeSync(file)
+        let decoder = new util.TextDecoder('utf-8')
+        this.drawioXml = decoder.decodeToString(new Uint8Array(buf))
+        this.showDrawio = true
+        this.parseError = ''
+      }
     } catch (e) {
-      this.parseError = 'Drawio 文件加载失败: ' + e
-      this.showDrawio = false
+      // user cancelled or picker error
     }
   }
 
@@ -84,9 +94,9 @@ struct Index {
         Button('打开任意bpmn文件')
           .fontSize(14)
           .onClick(() => { this.openBpmnFile() })
-        Button('Drawio Demo')
+        Button('打开drawio文件')
           .fontSize(14)
-          .onClick(() => { this.loadDrawio() })
+          .onClick(() => { this.openDrawioFile() })
       }
       .justifyContent(FlexAlign.SpaceEvenly)
       .width('100%')

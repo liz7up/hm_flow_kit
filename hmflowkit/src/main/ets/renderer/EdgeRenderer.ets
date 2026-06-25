@@ -104,7 +104,12 @@ export class EdgeRenderer {
       edge.properties['bpmnElement'] === 'dataInputAssociation' ||
       edge.properties['bpmnElement'] === 'dataOutputAssociation';
     let isArrowless: boolean =
-      edge.properties['bpmnElement'] === 'association';
+      edge.properties['bpmnElement'] === 'association' ||
+      edge.properties['_endArrow'] === 'none';  // drawio explicit no-arrow
+    let hasStartArrow: boolean =
+      edge.properties['_startArrow'] !== undefined &&
+      edge.properties['_startArrow'] !== '' &&
+      edge.properties['_startArrow'] !== 'none';
     let edgeColor: string = edge.properties['_strokeColor'] || config.edgeStrokeColor;
 
     // ── Draw edge path (polyline or bezier) ──
@@ -209,8 +214,7 @@ export class EdgeRenderer {
     }
 
     // ── Start arrow (drawio) ──
-    let startArrow: string = edge.properties['_startArrow'] || '';
-    if (startArrow.length > 0 && points.length >= 2) {
+    if (hasStartArrow && points.length >= 2) {
       let first: number[] = points[0];
       let next: number[] = points[1];
       let segDx: number = next[0] - first[0];

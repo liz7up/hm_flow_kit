@@ -366,6 +366,35 @@ export class DrawioXmlParser {
         cell.id, cell.source, cell.target,
         waypoints, edgeStyle, label, edgeProps
       );
+
+      // ── Debug: edge routing summary ──
+      if (waypoints.length > 0) {
+        let srcInfo: string = nodeMap[cell.source] !== undefined ?
+          nodeMap[cell.source].type + '@(' + nodeMap[cell.source].x + ',' +
+          nodeMap[cell.source].y + ' ' + nodeMap[cell.source].width + 'x' +
+          nodeMap[cell.source].height + ')' : '?';
+        let tgtInfo: string = nodeMap[cell.target] !== undefined ?
+          nodeMap[cell.target].type + '@(' + nodeMap[cell.target].x + ',' +
+          nodeMap[cell.target].y + ' ' + nodeMap[cell.target].width + 'x' +
+          nodeMap[cell.target].height + ')' : '?';
+        let wpStr: string = '';
+        for (let w: number = 0; w < waypoints.length; w++) {
+          if (w > 0) wpStr = wpStr + ' → ';
+          wpStr = wpStr + '(' + Math.round(waypoints[w].x) + ',' +
+            Math.round(waypoints[w].y) + ')';
+        }
+        console.log('[edge] ' + cell.id + ' ' + srcInfo + ' → ' + tgtInfo +
+          ' style=' + edgeStyle + ' route=' + wpStr);
+      } else {
+        let srcId: string = cell.source || '?';
+        let tgtId: string = cell.target || '?';
+        let srcFound: boolean = nodeMap[cell.source] !== undefined;
+        let tgtFound: boolean = nodeMap[cell.target] !== undefined;
+        console.log('[edge] ' + cell.id + ' src=' + srcId + ' tgt=' + tgtId +
+          ' srcFound=' + srcFound + ' tgtFound=' + tgtFound +
+          ' style=' + edgeStyle + ' waypoints=0 (MISSING)');
+      }
+
       model = model.addEdge(edge);
     }
 

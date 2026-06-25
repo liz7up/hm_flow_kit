@@ -101,8 +101,11 @@ export class DrawioStyleParser {
       let outline: string = raw['outline'] || 'standard';
       shapeType = DrawioStyleParser._outlineToEvent[outline] || 'startEvent';
     } else if (shape === 'mxgraph.bpmn.gateway2') {
-      let gt: string = raw['gwType'] || 'exclusive';
-      shapeType = (gt === 'complex' || gt === 'inclusive') ? 'gateway' : 'gateway';
+      if (raw['gwType'] !== undefined) {
+        shapeType = 'gateway';  // data-based gateway
+      } else {
+        shapeType = 'eventBasedGateway';  // event-based gateway (no gwType, has outline+symbol)
+      }
     } else if (shape === 'mxgraph.bpmn.task2') {
       let st: string = raw['bpmnShapeType'] || '';
       if (st === 'subprocess' || st === 'transaction') shapeType = 'subProcess';
@@ -152,13 +155,11 @@ export class DrawioStyleParser {
     // ── Set bpmnElement for BPMN-reused types ──
 
     if (shapeType === 'gateway') {
-      // New format: gwType
       let gt: string | undefined = raw['gwType'];
       if (gt !== undefined) {
         let tag: string | undefined = DrawioStyleParser._gwTypeMap[gt];
         if (tag !== undefined) props['bpmnElement'] = tag;
       }
-      // Old format: symbol (fallback)
       if (props['bpmnElement'] === undefined) {
         let sym: string | undefined = raw['symbol'];
         if (sym !== undefined) {
@@ -166,6 +167,12 @@ export class DrawioStyleParser {
           if (tag !== undefined) props['bpmnElement'] = tag;
         }
       }
+    }
+
+    if (shapeType === 'eventBasedGateway') {
+      props['bpmnElement'] = 'eventBasedGateway';
+      // Set event icon from symbol (reuses EventDrawer icon rendering via GatewayDrawer)
+      DrawioStyleParser._setEventProps(props, raw);
     }
 
     if (shapeType === 'task') {

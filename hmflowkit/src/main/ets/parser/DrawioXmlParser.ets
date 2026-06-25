@@ -383,14 +383,23 @@ export class DrawioXmlParser {
       return new _Point(cx, cy);
     }
 
-    if (node.type === 'drawio.ellipse') {
+    let t: string = node.type;
+
+    // Ellipse / circle perimeter
+    if (t === 'drawio.ellipse' ||
+        t === 'startEvent' || t === 'endEvent' ||
+        t === 'intermediateEvent' || t === 'boundaryEvent') {
       return DrawioXmlParser._perimeterEllipse(cx, cy, node.width / 2, node.height / 2, dx, dy);
-    } else if (node.type === 'drawio.rhombus') {
-      return DrawioXmlParser._perimeterRhombus(cx, cy, node.width / 2, node.height / 2, dx, dy);
-    } else {
-      // Rectangle (default) — also used for triangle, parallelogram, swimlane, text
-      return DrawioXmlParser._perimeterRect(cx, cy, node.width / 2, node.height / 2, dx, dy);
     }
+
+    // Rhombus / diamond perimeter
+    if (t === 'drawio.rhombus' ||
+        t === 'gateway' || t === 'eventBasedGateway' || t === 'complexGateway') {
+      return DrawioXmlParser._perimeterRhombus(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    }
+
+    // Rectangle (default) — task, callActivity, subProcess, data*, swimlane, text, etc.
+    return DrawioXmlParser._perimeterRect(cx, cy, node.width / 2, node.height / 2, dx, dy);
   }
 
   private static _perimeterRect(cx: number, cy: number, hw: number, hh: number,

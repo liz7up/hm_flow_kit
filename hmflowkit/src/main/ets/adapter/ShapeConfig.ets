@@ -6,6 +6,8 @@
  * can call getPerimeterType() / getEdgeDefaults() without knowing the source format.
  */
 
+import { ShapeDefinition, ShapeRenderKind, PerimeterPoint } from './ShapeDefinition';
+
 // ─── Internal perimeter categories ──────────────────────────────────────────
 
 export enum PerimeterKind {
@@ -44,6 +46,25 @@ const _perimeterMap: Record<string, PerimeterKind> = {
   'drawio.unknown':      PerimeterKind.RECT,
 };
 
+// ── Shape definition registry ─────────────────────────────────────────────
+
+const _shapeDefMap: Record<string, ShapeDefinition> = {};
+let _shapeDefCount: number = 0;
+let _shapeDefDefault: ShapeDefinition;
+
+function _buildDefaultShapeDef(): ShapeDefinition {
+  let defaultPath: PerimeterPoint[] = [
+    { xFraction: 0, yFraction: 0 },
+    { xFraction: 1, yFraction: 0 },
+    { xFraction: 1, yFraction: 1 },
+    { xFraction: 0, yFraction: 1 },
+  ];
+  return new ShapeDefinition('_default', ShapeRenderKind.POLYLINE,
+    PerimeterKind.RECT, defaultPath, 0);
+}
+
+_shapeDefDefault = _buildDefaultShapeDef();
+
 export class ShapeConfig {
   /**
    * Returns the perimeter algorithm category for any internal node type.
@@ -62,5 +83,43 @@ export class ShapeConfig {
     // drawio uses endArrow=none; BPMN uses association element tag.
     // Both are handled in EdgeRenderer via union check.
     return true;
+  }
+
+  /**
+   * Register a shape definition. Later calls with the same shapeId overwrite.
+   */
+  static registerShape(
+    shapeId: string,
+    renderKind: ShapeRenderKind,
+    perimeterKind: PerimeterKind,
+    perimeterPath: PerimeterPoint[],
+    cornerRadiusRatio: number = 0
+  ): void {
+    if (_shapeDefMap[shapeId] === undefined) {
+      _shapeDefCount++;
+    }
+    _shapeDefMap[shapeId] = new ShapeDefinition(
+      shapeId, renderKind, perimeterKind,
+      perimeterPath, cornerRadiusRatio
+    );
+  }
+
+  /**
+   * Get a shape definition by id. Never returns null — unknown ids
+   * fall back to a default RECT definition.
+   */
+  static getShapeDefinition(shapeId: string): ShapeDefinition {
+    let d: ShapeDefinition | undefined = _shapeDefMap[shapeId];
+    if (d !== undefined) {
+      return d;
+    }
+    return _shapeDefDefault;
+  }
+
+  /**
+   * Returns the number of registered shape definitions (excluding default).
+   */
+  static shapeCount(): number {
+    return _shapeDefCount;
   }
 }

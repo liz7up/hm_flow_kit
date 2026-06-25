@@ -7,7 +7,7 @@ import {
   EVENT_PERIMETER,
   GATEWAY_PERIMETER
 } from '../../../main/ets/adapter/ShapeDefinition';
-import { PerimeterKind } from '../../../main/ets/adapter/ShapeConfig';
+import { PerimeterKind, ShapeConfig } from '../../../main/ets/adapter/ShapeConfig';
 
 export default function shapeDefinitionTest(): void {
   describe('ShapeDefinition', () => {
@@ -58,6 +58,46 @@ export default function shapeDefinitionTest(): void {
           expect(p.yFraction >= 0 && p.yFraction <= 1).assertTrue();
         }
       }
+    });
+
+    it('registerShape_and_getShapeDefinition_should_roundtrip', 0, () => {
+      let pts: PerimeterPoint[] = [{ xFraction: 0, yFraction: 0 }];
+      ShapeConfig.registerShape('test.roundtrip', ShapeRenderKind.POLYLINE,
+        PerimeterKind.RECT, pts, 0.05);
+      let def: ShapeDefinition | null = ShapeConfig.getShapeDefinition('test.roundtrip');
+      expect(def !== null).assertTrue();
+      if (def !== null) {
+        expect(def.shapeId).assertEqual('test.roundtrip');
+        expect(def.renderKind).assertEqual(ShapeRenderKind.POLYLINE);
+        expect(def.perimeterKind).assertEqual(PerimeterKind.RECT);
+      }
+    });
+
+    it('getShapeDefinition_unknown_should_return_default_RECT', 0, () => {
+      let def: ShapeDefinition | null = ShapeConfig.getShapeDefinition('nonexistent.type');
+      expect(def !== null).assertTrue();
+      if (def !== null) {
+        expect(def.perimeterKind).assertEqual(PerimeterKind.RECT);
+        expect(def.renderKind).assertEqual(ShapeRenderKind.POLYLINE);
+      }
+    });
+
+    it('default_shape_definition_should_never_return_null', 0, () => {
+      let def: ShapeDefinition | null = ShapeConfig.getShapeDefinition('completely.unknown');
+      expect(def !== null).assertTrue();
+    });
+
+    it('predefined_bpmn_shapes_should_be_registrable', 0, () => {
+      ShapeConfig.registerShape('bpmn.task2', ShapeRenderKind.POLYLINE,
+        PerimeterKind.RECT, TASK_PERIMETER, 0.133);
+      ShapeConfig.registerShape('bpmn.event', ShapeRenderKind.NATIVE_ELLIPSE,
+        PerimeterKind.ELLIPSE, EVENT_PERIMETER);
+      ShapeConfig.registerShape('bpmn.gateway2', ShapeRenderKind.NATIVE_RHOMBUS,
+        PerimeterKind.RHOMBUS, GATEWAY_PERIMETER);
+
+      expect(ShapeConfig.getShapeDefinition('bpmn.task2') !== null).assertTrue();
+      expect(ShapeConfig.getShapeDefinition('bpmn.event') !== null).assertTrue();
+      expect(ShapeConfig.getShapeDefinition('bpmn.gateway2') !== null).assertTrue();
     });
 
   });

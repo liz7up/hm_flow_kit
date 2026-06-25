@@ -16,6 +16,7 @@
 import { xml, util } from '@kit.ArkTS';
 import { GraphModel, GraphNode, GraphEdge, Waypoint, EdgeStyle } from '../model/GraphModel';
 import { DrawioStyleParser, DrawioStyle } from './DrawioStyleParser';
+import { ShapeConfig, PerimeterKind } from '../adapter/ShapeConfig';
 
 // ─── Public Types ───────────────────────────────────────────────────────────────
 
@@ -385,23 +386,16 @@ export class DrawioXmlParser {
       return new _Point(cx, cy);
     }
 
-    let t: string = node.type;
+    let hw: number = node.width / 2;
+    let hh: number = node.height / 2;
+    let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
 
-    // Ellipse / circle perimeter
-    if (t === 'drawio.ellipse' ||
-        t === 'startEvent' || t === 'endEvent' ||
-        t === 'intermediateEvent' || t === 'boundaryEvent') {
-      return DrawioXmlParser._perimeterEllipse(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    if (kind === PerimeterKind.ELLIPSE) {
+      return DrawioXmlParser._perimeterEllipse(cx, cy, hw, hh, dx, dy);
+    } else if (kind === PerimeterKind.RHOMBUS) {
+      return DrawioXmlParser._perimeterRhombus(cx, cy, hw, hh, dx, dy);
     }
-
-    // Rhombus / diamond perimeter
-    if (t === 'drawio.rhombus' ||
-        t === 'gateway' || t === 'eventBasedGateway' || t === 'complexGateway') {
-      return DrawioXmlParser._perimeterRhombus(cx, cy, node.width / 2, node.height / 2, dx, dy);
-    }
-
-    // Rectangle (default) — task, callActivity, subProcess, data*, swimlane, text, etc.
-    return DrawioXmlParser._perimeterRect(cx, cy, node.width / 2, node.height / 2, dx, dy);
+    return DrawioXmlParser._perimeterRect(cx, cy, hw, hh, dx, dy);
   }
 
   private static _perimeterRect(cx: number, cy: number, hw: number, hh: number,
@@ -447,19 +441,11 @@ export class DrawioXmlParser {
     let dx: number = targetCx - cx;
     let dy: number = targetCy - cy;
 
-    // Check if this is a rhombus/diamond type
-    let isRhombus: boolean = node.type === 'drawio.rhombus' ||
-      node.type === 'gateway' || node.type === 'eventBasedGateway' ||
-      node.type === 'complexGateway';
-    let isEllipse: boolean = node.type === 'drawio.ellipse' ||
-      node.type === 'startEvent' || node.type === 'endEvent' ||
-      node.type === 'intermediateEvent' || node.type === 'boundaryEvent';
-
+    let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
     let hw: number = node.width / 2;
     let hh: number = node.height / 2;
 
-    if (isRhombus || isEllipse) {
-      // For diamond and circle, snap to cardinal vertex (if closer) or pure side point
+    if (kind === PerimeterKind.RHOMBUS || kind === PerimeterKind.ELLIPSE) {
       if (Math.abs(dx) > Math.abs(dy)) {
         return new _Point(cx + (dx > 0 ? hw : -hw), cy);
       } else {

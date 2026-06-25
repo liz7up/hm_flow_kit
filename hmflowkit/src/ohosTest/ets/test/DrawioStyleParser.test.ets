@@ -187,6 +187,19 @@ export default function drawioStyleParserTest(): void {
       expect(s.properties['bpmnElement']).assertEqual('complexGateway');
     });
 
+    it('should detect mxgraph.bpmn.gateway2 without gwType as eventBasedGateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;outline=standard;symbol=message;');
+      expect(s.shapeType).assertEqual('eventBasedGateway');
+      expect(s.properties['bpmnElement']).assertEqual('eventBasedGateway');
+    });
+
+    it('should set eventDefinition on event-based gateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;outline=catching;symbol=timer;');
+      expect(s.properties['eventDefinition']).assertEqual('timerEventDefinition');
+    });
+
     // ─── BPMN 2.0 tasks (shape=mxgraph.bpmn.task2) ─────────────────────
 
     it('should detect mxgraph.bpmn.task2 as task', 0, () => {

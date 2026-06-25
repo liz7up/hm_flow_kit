@@ -1,5 +1,8 @@
 import { GraphNode, NodeType } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { PathRenderer } from './PathRenderer';
+import { ShapeConfig } from '../adapter/ShapeConfig';
 
 function sanitizeLabel(text: string): string {
   if (text.length === 0) {
@@ -29,23 +32,14 @@ export class DataDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    ctx.strokeStyle = config.strokeColor;
-    ctx.fillStyle = config.fillColor;
-    ctx.lineWidth = config.strokeWidth * zoom;
-
     if (node.type === NodeType.DATA_OBJECT) {
-      // Document shape: rectangle with folded top-right corner
-      let fold: number = config.dataObjectFoldSize * zoom;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + w - fold, y);
-      ctx.lineTo(x + w, y + fold);
-      ctx.lineTo(x + w, y + h);
-      ctx.lineTo(x, y + h);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      // Document shape: rectangle via PathRenderer (sharp corners) + fold crease lines
+      let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
+      PathRenderer.render(ctx, shapeDef, x, y, w, h,
+        config.fillColor, config.strokeColor,
+        config.strokeWidth * zoom, 0);
       // Fold crease lines
+      let fold: number = config.dataObjectFoldSize * zoom;
       ctx.beginPath();
       ctx.moveTo(x + w - fold, y);
       ctx.lineTo(x + w - fold, y + fold);

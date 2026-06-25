@@ -593,7 +593,7 @@ export class DrawioXmlParser {
     }
 
     // ELLIPSE — BPMN events, drawio ellipse
-    let ellipseTypes: string[] = ['startEvent', 'endEvent', 'intermediateEvent',
+    let ellipseTypes: string[] = ['startEvent', 'bpmn.event', 'endEvent', 'intermediateEvent',
       'boundaryEvent', 'drawio.ellipse'];
     for (let i: number = 0; i < ellipseTypes.length; i++) {
       ShapeConfig.registerShape(ellipseTypes[i], ShapeRenderKind.NATIVE_ELLIPSE,
@@ -601,7 +601,7 @@ export class DrawioXmlParser {
     }
 
     // RHOMBUS — gateways
-    let rhombusTypes: string[] = ['gateway', 'eventBasedGateway', 'complexGateway',
+    let rhombusTypes: string[] = ['gateway', 'bpmn.gateway2', 'eventBasedGateway', 'complexGateway',
       'drawio.rhombus'];
     for (let i: number = 0; i < rhombusTypes.length; i++) {
       ShapeConfig.registerShape(rhombusTypes[i], ShapeRenderKind.NATIVE_RHOMBUS,

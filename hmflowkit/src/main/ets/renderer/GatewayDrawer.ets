@@ -1,5 +1,8 @@
 import { GraphNode } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { PathRenderer } from './PathRenderer';
+import { ShapeConfig } from '../adapter/ShapeConfig';
 
 function sanitizeLabel(text: string): string {
   if (text.length === 0) {
@@ -32,19 +35,11 @@ export class GatewayDrawer {
     let cx: number = x + w / 2;
     let cy: number = y + h / 2;
 
-    // Diamond path
-    ctx.beginPath();
-    ctx.moveTo(cx, y);
-    ctx.lineTo(x + w, cy);
-    ctx.lineTo(cx, y + h);
-    ctx.lineTo(x, cy);
-    ctx.closePath();
-
-    ctx.fillStyle = config.gatewayFillColor;
-    ctx.fill();
-    ctx.strokeStyle = config.gatewayStrokeColor;
-    ctx.lineWidth = config.strokeWidth * zoom;
-    ctx.stroke();
+    // Diamond outline via PathRenderer
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.gateway2');
+    PathRenderer.render(ctx, shapeDef, x, y, w, h,
+      config.gatewayFillColor, config.gatewayStrokeColor,
+      config.strokeWidth * zoom);
 
     // Gateway internal marker — per-type sizing
     let gwTag: string | undefined = node.properties['bpmnElement'];

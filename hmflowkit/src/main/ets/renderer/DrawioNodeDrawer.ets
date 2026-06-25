@@ -11,6 +11,9 @@
 import { GraphNode } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
 import { INodeDrawer, NodeRenderer } from './NodeRenderer';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { ShapeConfig } from '../adapter/ShapeConfig';
+import { PathRenderer } from './PathRenderer';
 
 export class DrawioNodeDrawer {
   private static _inited: boolean = false;
@@ -41,6 +44,31 @@ export class DrawioNodeDrawer {
     x: number, y: number, w: number, h: number, zoom: number
   ): void {
     let shape: string = this._extractShape(node.type);
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
+
+    // If this drawio shape maps to a registered BPMN shape, use PathRenderer
+    if (shapeDef.shapeId !== '_default') {
+      let fill: string = DrawioNodeDrawer._resolveColor(
+        node.properties['_fillColor'], config.fillColor);
+      let stroke: string = DrawioNodeDrawer._resolveColor(
+        node.properties['_strokeColor'], config.strokeColor);
+      let lineW: number = config.strokeWidth * zoom;
+      let dashed: boolean = node.properties['_dashed'] === '1';
+      let opacity: number = parseInt(node.properties['_opacity'] || '100') / 100;
+
+      ctx.globalAlpha = opacity;
+      if (dashed) {
+        let dp: number[] = DrawioNodeDrawer._parseDash(node, zoom);
+        ctx.setLineDash(dp);
+      }
+      PathRenderer.render(ctx, shapeDef, x, y, w, h, fill, stroke, lineW);
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1.0;
+      this._renderLabel(ctx, node, config, x, y, w, h, zoom);
+      return;
+    }
+
+    // Fall through to existing shape switch for non-BPMN shapes
     let fill: string = DrawioNodeDrawer._resolveColor(
       node.properties['_fillColor'], config.fillColor);
     let stroke: string = DrawioNodeDrawer._resolveColor(
@@ -333,5 +361,21 @@ export class DrawioNodeDrawer {
       return type.substring(7); // strip 'drawio.' prefix
     }
     return type;
+  }
+
+  private static _parseDash(node: GraphNode, zoom: number): number[] {
+    let dpStr: string = node.properties['_dashPattern'] || '6 4';
+    let dpParts: string[] = dpStr.split(' ');
+    let dp: number[] = [];
+    for (let i: number = 0; i < dpParts.length; i++) {
+      let v: number = parseInt(dpParts[i]);
+      if (!isNaN(v)) {
+        dp.push(v * zoom);
+      }
+    }
+    if (dp.length === 0) {
+      dp = [6 * zoom, 4 * zoom];
+    }
+    return dp;
   }
 }

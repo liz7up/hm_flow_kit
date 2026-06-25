@@ -341,9 +341,10 @@ export class DrawioXmlParser {
 
           if (edgeStyle === EdgeStyle.POLYLINE &&
               s.properties['_edgeStyle'] === 'orthogonalEdgeStyle') {
+            // Source: snap to cardinal side for clean right-angle exit
             let oSrc = DrawioXmlParser._cardinalPerimeter(srcNode, tgtCx, tgtCy);
-            let oTgt = DrawioXmlParser._cardinalPerimeter(tgtNode, srcCx, srcCy);
-            let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(oSrc, oTgt, srcNode, tgtNode);
+            // Target: use exact perimeter point for accurate border connection
+            let route: Waypoint[] = DrawioXmlParser._orthogonalRoute(oSrc, tgtP, srcNode, tgtNode);
             for (let r: number = 0; r < route.length; r++) {
               waypoints.push(route[r]);
             }

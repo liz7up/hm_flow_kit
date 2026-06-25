@@ -17,6 +17,9 @@ import { xml, util } from '@kit.ArkTS';
 import { GraphModel, GraphNode, GraphEdge, Waypoint, EdgeStyle } from '../model/GraphModel';
 import { DrawioStyleParser, DrawioStyle } from './DrawioStyleParser';
 import { ShapeConfig, PerimeterKind } from '../adapter/ShapeConfig';
+import { ShapeDefinition, ShapeRenderKind, TASK_PERIMETER, EVENT_PERIMETER, GATEWAY_PERIMETER } from '../adapter/ShapeDefinition';
+import { PerimeterRouter } from '../adapter/PerimeterRouter';
+import { NodeRect } from '../renderer/EdgeRenderer';
 
 // ─── Public Types ───────────────────────────────────────────────────────────────
 
@@ -114,6 +117,9 @@ export class DrawioXmlParser {
     if (cleaned.length > 0 && cleaned.charCodeAt(0) === 0xFEFF) {
       cleaned = cleaned.substring(1);
     }
+
+    // Ensure BPMN shapes are registered in the perimeter router registry
+    DrawioXmlParser._initShapeRegistry();
 
     // ── Attribute callback ──
     // Captures attributes on the current element. Fire BEFORE tokenValueCallback(START_TAG).
@@ -397,6 +403,7 @@ export class DrawioXmlParser {
 
   /**
    * Compute the point on a node's perimeter in the direction toward (targetX, targetY).
+   * Now delegates to PerimeterRouter for exact continuous-math intersection.
    */
   private static _perimeterPoint(node: GraphNode, targetX: number, targetY: number): _Point {
     let cx: number = node.x + node.width / 2;
@@ -408,47 +415,13 @@ export class DrawioXmlParser {
       return new _Point(cx, cy);
     }
 
-    let hw: number = node.width / 2;
-    let hh: number = node.height / 2;
-    let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
-
-    if (kind === PerimeterKind.ELLIPSE) {
-      return DrawioXmlParser._perimeterEllipse(cx, cy, hw, hh, dx, dy);
-    } else if (kind === PerimeterKind.RHOMBUS) {
-      return DrawioXmlParser._perimeterRhombus(cx, cy, hw, hh, dx, dy);
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
+    let nodeRect: NodeRect = new NodeRect(node.x, node.y, node.width, node.height);
+    let r = PerimeterRouter.intersect(shapeDef, nodeRect, targetX, targetY, cx, cy);
+    if (r !== null) {
+      return new _Point(r.x, r.y);
     }
-    return DrawioXmlParser._perimeterRect(cx, cy, hw, hh, dx, dy);
-  }
-
-  private static _perimeterRect(cx: number, cy: number, hw: number, hh: number,
-                                 dx: number, dy: number): _Point {
-    if (dx === 0) {
-      return new _Point(cx, cy + (dy > 0 ? hh : -hh));
-    }
-    if (dy === 0) {
-      return new _Point(cx + (dx > 0 ? hw : -hw), cy);
-    }
-    let scaleX: number = hw / Math.abs(dx);
-    let scaleY: number = hh / Math.abs(dy);
-    let scale: number = scaleX < scaleY ? scaleX : scaleY;
-    return new _Point(cx + dx * scale, cy + dy * scale);
-  }
-
-  private static _perimeterEllipse(cx: number, cy: number, rx: number, ry: number,
-                                    dx: number, dy: number): _Point {
-    let angle: number = Math.atan2(dy, dx);
-    return new _Point(cx + rx * Math.cos(angle), cy + ry * Math.sin(angle));
-  }
-
-  private static _perimeterRhombus(cx: number, cy: number, hw: number, hh: number,
-                                    dx: number, dy: number): _Point {
-    // Diamond equation: |x-cx|/hw + |y-cy|/hh = 1
-    // Ray from center: t = 1 / (|dx|/hw + |dy|/hh)
-    if (dx === 0 && dy === 0) {
-      return new _Point(cx, cy);
-    }
-    let t: number = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
-    return new _Point(cx + dx * t, cy + dy * t);
+    return new _Point(cx, cy);
   }
 
   /**
@@ -463,7 +436,8 @@ export class DrawioXmlParser {
     let dx: number = targetCx - cx;
     let dy: number = targetCy - cy;
 
-    let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
+    let kind: PerimeterKind = shapeDef.perimeterKind;
     let hw: number = node.width / 2;
     let hh: number = node.height / 2;
 
@@ -595,5 +569,21 @@ export class DrawioXmlParser {
     });
 
     return result;
+  }
+
+  /**
+   * One-time initialization: register BPMN shapes in the perimeter registry
+   * so PerimeterRouter can compute accurate edge-perimeter intersections.
+   */
+  private static _initShapeRegistry(): void {
+    if (ShapeConfig.shapeCount() > 0) {
+      return; // already initialized
+    }
+    ShapeConfig.registerShape('bpmn.task2', ShapeRenderKind.POLYLINE,
+      PerimeterKind.RECT, TASK_PERIMETER, 0.133);
+    ShapeConfig.registerShape('bpmn.event', ShapeRenderKind.NATIVE_ELLIPSE,
+      PerimeterKind.ELLIPSE, EVENT_PERIMETER);
+    ShapeConfig.registerShape('bpmn.gateway2', ShapeRenderKind.NATIVE_RHOMBUS,
+      PerimeterKind.RHOMBUS, GATEWAY_PERIMETER);
   }
 }

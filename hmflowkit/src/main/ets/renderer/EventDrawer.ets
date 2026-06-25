@@ -1,5 +1,8 @@
 import { GraphNode, NodeType } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { PathRenderer } from './PathRenderer';
+import { ShapeConfig } from '../adapter/ShapeConfig';
 
 // 净化 label 中的非 ASCII 字符，替换为 ASCII 对应字符，确保 canvas 可渲染
 function sanitizeLabel(text: string): string {
@@ -61,17 +64,12 @@ export class EventDrawer {
       }
     }
 
-    // Outer circle
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lineW * zoom;
+    // Outer circle outline via PathRenderer
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.event');
     if (isDashed) {
       ctx.setLineDash([4 * zoom, 3 * zoom]);
     }
-    ctx.stroke();
+    PathRenderer.render(ctx, shapeDef, x, y, w, h, fill, stroke, lineW * zoom);
     // Intermediate event / Boundary event: double ring (inner circle)
     if (node.type === NodeType.INTERMEDIATE_EVENT || node.type === NodeType.BOUNDARY_EVENT) {
       if (node.type === NodeType.BOUNDARY_EVENT && isDashed) {

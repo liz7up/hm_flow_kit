@@ -77,6 +77,184 @@ export default function drawioStyleParserTest(): void {
       expect(s.shapeType).assertEqual('drawio.rhombus');
     });
 
+    // ─── BPMN 2.0 events (shape=mxgraph.bpmn.event) ────────────────────
+
+    it('should detect mxgraph.bpmn.event standard outline as startEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=standard;symbol=general;');
+      expect(s.shapeType).assertEqual('startEvent');
+    });
+
+    it('should detect mxgraph.bpmn.event end outline as endEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=end;symbol=general;');
+      expect(s.shapeType).assertEqual('endEvent');
+    });
+
+    it('should detect mxgraph.bpmn.event throwing as intermediateEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=throwing;symbol=general;');
+      expect(s.shapeType).assertEqual('intermediateEvent');
+    });
+
+    it('should detect mxgraph.bpmn.event catching as intermediateEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=catching;symbol=message;');
+      expect(s.shapeType).assertEqual('intermediateEvent');
+    });
+
+    it('should detect mxgraph.bpmn.event boundInt as boundaryEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=boundInt;symbol=error;');
+      expect(s.shapeType).assertEqual('boundaryEvent');
+    });
+
+    it('should detect mxgraph.bpmn.event boundNonint as boundaryEvent', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.event;outline=boundNonint;symbol=timer;');
+      expect(s.shapeType).assertEqual('boundaryEvent');
+    });
+
+    // ─── BPMN 2.0 gateways (shape=mxgraph.bpmn.gateway2) ───────────────
+
+    it('should detect mxgraph.bpmn.gateway2 exclusive as gateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;gwType=exclusive;outline=none;');
+      expect(s.shapeType).assertEqual('gateway');
+      expect(s.properties['bpmnElement']).assertEqual('exclusiveGateway');
+    });
+
+    it('should detect mxgraph.bpmn.gateway2 parallel as gateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;gwType=parallel;outline=none;');
+      expect(s.shapeType).assertEqual('gateway');
+      expect(s.properties['bpmnElement']).assertEqual('parallelGateway');
+    });
+
+    it('should detect mxgraph.bpmn.gateway2 inclusive as gateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;gwType=inclusive;outline=none;');
+      expect(s.shapeType).assertEqual('gateway');
+      expect(s.properties['bpmnElement']).assertEqual('inclusiveGateway');
+    });
+
+    it('should detect mxgraph.bpmn.gateway2 complex as gateway', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.gateway2;gwType=complex;outline=none;');
+      expect(s.shapeType).assertEqual('gateway');
+      expect(s.properties['bpmnElement']).assertEqual('complexGateway');
+    });
+
+    // ─── BPMN 2.0 tasks (shape=mxgraph.bpmn.task2) ─────────────────────
+
+    it('should detect mxgraph.bpmn.task2 as task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=abstract;');
+      expect(s.shapeType).assertEqual('task');
+    });
+
+    it('should detect mxgraph.bpmn.task2 user task with bpmnElement', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=user;');
+      expect(s.shapeType).assertEqual('task');
+      expect(s.properties['bpmnElement']).assertEqual('userTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 service task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=service;');
+      expect(s.properties['bpmnElement']).assertEqual('serviceTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 script task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=script;');
+      expect(s.properties['bpmnElement']).assertEqual('scriptTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 manual task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=manual;');
+      expect(s.properties['bpmnElement']).assertEqual('manualTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 businessRule task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=businessRule;');
+      expect(s.properties['bpmnElement']).assertEqual('businessRuleTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 send task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=send;');
+      expect(s.properties['bpmnElement']).assertEqual('sendTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 receive task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;taskMarker=receive;');
+      expect(s.properties['bpmnElement']).assertEqual('receiveTask');
+    });
+
+    it('should detect mxgraph.bpmn.task2 subprocess', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;bpmnShapeType=subprocess;');
+      expect(s.shapeType).assertEqual('subProcess');
+    });
+
+    it('should detect mxgraph.bpmn.task2 call activity', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task2;bpmnShapeType=call;');
+      expect(s.shapeType).assertEqual('callActivity');
+    });
+
+    // ─── BPMN old format shapes ──────────────────────────────────────
+
+    it('should detect mxgraph.bpmn.task (old format) as task', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.task;taskMarker=user;');
+      expect(s.shapeType).assertEqual('task');
+      expect(s.properties['bpmnElement']).assertEqual('userTask');
+    });
+
+    it('should detect mxgraph.bpmn.callActivity (old format)', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.callActivity;');
+      expect(s.shapeType).assertEqual('callActivity');
+    });
+
+    it('should detect mxgraph.bpmn.subProcess (old format)', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.subProcess;');
+      expect(s.shapeType).assertEqual('subProcess');
+    });
+
+    // ─── Other BPMN shapes ────────────────────────────────────────────
+
+    it('should detect mxgraph.bpmn.swimlane as drawio.swimlane', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.swimlane;');
+      expect(s.shapeType).assertEqual('drawio.swimlane');
+    });
+
+    it('should detect mxgraph.bpmn.data2 as dataObject', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.bpmn.data2;');
+      expect(s.shapeType).assertEqual('dataObject');
+    });
+
+    it('should detect datastore as dataStore', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=datastore;');
+      expect(s.shapeType).assertEqual('dataStore');
+    });
+
+    it('should detect mxgraph.flowchart.annotation_2 as textAnnotation', 0, () => {
+      let s: DrawioStyle = DrawioStyleParser.parse(
+        'shape=mxgraph.flowchart.annotation_2;');
+      expect(s.shapeType).assertEqual('textAnnotation');
+    });
+
     it('should default to rect for unknown shape', 0, () => {
       let s: DrawioStyle = DrawioStyleParser.parse('whiteSpace=wrap;html=1;');
       expect(s.shapeType).assertEqual('drawio.rect');

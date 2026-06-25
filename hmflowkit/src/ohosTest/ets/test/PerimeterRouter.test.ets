@@ -39,16 +39,15 @@ export default function perimeterRouterTest(): void {
       let def: ShapeDefinition = new ShapeDefinition('test', ShapeRenderKind.POLYLINE,
         PerimeterKind.RECT, TASK_PERIMETER, 0.133);
       let rect: NodeRect = new NodeRect(0, 0, 100, 100);
-      // Ray from center (50, 50) toward top-right
+      // Ray: from (150, 0), to center (50, 50)
+      // dx = 100, dy = -50, hw = hh = 50
+      // scaleX = 50/100 = 0.5, scaleY = 50/50 = 1.0, scale = min = 0.5
+      // result: (50 + 100*0.5, 50 + (-50)*0.5) = (100, 25)
       let r = PerimeterRouter.intersect(def, rect, 150, 0, 50, 50);
       expect(r !== null).assertTrue();
       if (r !== null) {
-        // Should hit top edge (dy dominates) or right edge (dx dominates)
-        // Top: y=0, x ≈ 50 + (50/100)*50 = 75
-        // Right: x=100, y ≈ 50 + (50/100)*50 = 75
-        // Both give same distance → top edge wins with scaleX > scaleY
-        expect(r.x).assertClose(75, 5);
-        expect(r.y).assertClose(0, 5);
+        expect(r.x).assertClose(100, 5);
+        expect(r.y).assertClose(25, 5);
       }
     });
 

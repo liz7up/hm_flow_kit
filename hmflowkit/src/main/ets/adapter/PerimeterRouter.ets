@@ -81,9 +81,6 @@ export class PerimeterRouter {
 
   private static _rhombusIntersect(cx: number, cy: number, hw: number, hh: number,
                                     dx: number, dy: number): IntersectPoint {
-    if (dx === 0 && dy === 0) {
-      return new IntersectPoint(cx, cy);
-    }
     let t: number = 1 / (Math.abs(dx) / hw + Math.abs(dy) / hh);
     return new IntersectPoint(cx + dx * t, cy + dy * t);
   }

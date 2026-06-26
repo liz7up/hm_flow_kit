@@ -102,9 +102,11 @@ export struct DebugSidebar {
                 Column() {
                   Text(this._getStatsSummary())
                     .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
+                    .copyOption(CopyOptions.LocalDevice)
                   ForEach(this._getStatsTypeKeys(), (type: string) => {
                     Text('  ' + type + ': ' + this._getStatsCountForType(type))
                       .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
+                      .copyOption(CopyOptions.LocalDevice)
                   }, (type: string) => type)
                 }
                 .padding({ bottom: 4 })
@@ -127,29 +129,37 @@ export struct DebugSidebar {
                   Text('  点击画布中的节点查看详情')
                     .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
+                    .copyOption(CopyOptions.LocalDevice)
                 } else if (this._getNodeDetailOrNull() === null) {
                   Text('  元素已不存在')
                     .fontSize(11).fontColor('#E53935')
                     .padding({ left: 12, top: 4, bottom: 4 })
+                    .copyOption(CopyOptions.LocalDevice)
                 } else {
                   Column() {
                     Text('  类型: ' + this._getDetailType() + '    ID: ' + this._getDetailId())
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
+                      .copyOption(CopyOptions.LocalDevice)
                     Text('  坐标: (' + this._getDetailX() + ', ' + this._getDetailY() +
                       ')   尺寸: ' + this._getDetailWidth() + ' x ' + this._getDetailHeight())
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
+                      .copyOption(CopyOptions.LocalDevice)
                     if (this._getDetailPoolId().length > 0) {
                       Text('  Pool: ' + this._getDetailPoolId() + '    Lane: ' + this._getDetailLaneId())
                         .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }
                     Text('  层序: ' + this._getDetailLayer())
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
+                      .copyOption(CopyOptions.LocalDevice)
 
                     Text('  properties:')
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 4 })
+                      .copyOption(CopyOptions.LocalDevice)
                     ForEach(this._getDetailPropKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDetailPropValue(k))
                         .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }, (k: string) => k)
 
                     Button('Copy JSON')
@@ -180,27 +190,34 @@ export struct DebugSidebar {
                   Text('  无 XML 数据，差异分析不可用')
                     .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
+                    .copyOption(CopyOptions.LocalDevice)
                 } else {
                   Column() {
                     Text('  XML 声明:')
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
+                      .copyOption(CopyOptions.LocalDevice)
                     ForEach(this._getDiffXmlKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDiffXmlValue(k))
                         .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }, (k: string) => k)
                     Text('  已渲染:')
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 4 })
+                      .copyOption(CopyOptions.LocalDevice)
                     ForEach(this._getDiffRenderKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDiffRenderValue(k))
                         .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }, (k: string) => k)
                     if (this._hasMissing()) {
                       Text(this._getMissingText())
                         .fontSize(11).fontColor('#E53935').padding({ left: 12, top: 4 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }
                     if (this._hasDiscarded()) {
                       Text(this._getDiscardedText())
                         .fontSize(11).fontColor('#F57C00').padding({ left: 12, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }
                   }
                   .padding({ bottom: 4 })
@@ -219,12 +236,14 @@ export struct DebugSidebar {
                   Text('  无 XML 数据')
                     .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
+                    .copyOption(CopyOptions.LocalDevice)
                 } else {
                   Column() {
                     ForEach(this._getMappings(), (m: IdMapping) => {
                       Text(this._getMappingText(m))
                         .fontSize(10).fontColor(this._getMappingColor(m))
                         .padding({ left: 12, top: 1 })
+                        .copyOption(CopyOptions.LocalDevice)
                     }, (m: IdMapping, idx?: number) => m.xmlId + '_' + (idx !== undefined ? idx : 0))
                     if (this._hasMoreMappings()) {
                       Text('  仅显示前 200 项')
@@ -248,6 +267,7 @@ export struct DebugSidebar {
                   ForEach(this._getLayers(), (l: LayerInfo) => {
                     Text('  [' + l.priority + '] ' + l.nodeId + ' (' + l.type + ') ' + l.label)
                       .fontSize(10).fontColor(this._secondaryColor).padding({ left: 12, top: 1 })
+                      .copyOption(CopyOptions.LocalDevice)
                   }, (l: LayerInfo, idx?: number) => l.nodeId + '_' + (idx !== undefined ? idx : 0))
                   if (this._hasMoreLayers()) {
                     Text('  仅显示前 200 项')
@@ -269,11 +289,14 @@ export struct DebugSidebar {
                 Column() {
                   Text(this._getVpSummary())
                     .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
+                    .copyOption(CopyOptions.LocalDevice)
                   Text(this._getVpRotationText())
                     .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
+                    .copyOption(CopyOptions.LocalDevice)
                   if (this._hasRenderTime()) {
                     Text(this._getRenderTimeText())
                       .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
+                      .copyOption(CopyOptions.LocalDevice)
                   }
                 }
                 .padding({ bottom: 4 })
@@ -300,6 +323,7 @@ export struct DebugSidebar {
                     Text('  \u26A0 ' + w)
                       .fontSize(10).fontColor('#F57C00')
                       .padding({ left: 12, top: 1 }).maxLines(2)
+                      .copyOption(CopyOptions.LocalDevice)
                   }, (w: string, idx?: number) => w + '_' + (idx !== undefined ? idx : 0))
                 }
               }

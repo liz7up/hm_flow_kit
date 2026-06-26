@@ -71,6 +71,10 @@ export class DrawioNodeDrawer {
         let dp: number[] = DrawioNodeDrawer._parseDash(node, zoom);
         ctx.setLineDash(dp);
       }
+      // Process shape with backgroundOutline: thicker border
+      if (shape === 'process' && node.properties['_backgroundOutline'] === '1') {
+        lineW = config.strokeWidth * zoom * 3;
+      }
       PathRenderer.render(ctx, shapeDef, x, y, w, h, fill, stroke, lineW);
       ctx.setLineDash([]);
 

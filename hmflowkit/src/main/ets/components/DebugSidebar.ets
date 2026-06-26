@@ -1,0 +1,537 @@
+/**
+ * DebugSidebar -- Debug information panel for FlowViewer.
+ *
+ * 7 collapsible sections:
+ *   1. Render statistics (nodes/edges/pools/lanes by type)
+ *   2. Selected element detail (type, coords, pool/lane, properties)
+ *   3. XML -> rendering diff analysis
+ *   4. ID mapping table (XML ID -> rendered node ID)
+ *   5. Layer Z-order info
+ *   6. Viewport state + render timing
+ *   7. Parse warnings (only when present)
+ */
+import { DebugCollector } from '../debug/DebugCollector'
+import { NodeDetail, ElementStats, ParseDiff, IdMapping, LayerInfo,
+  ViewportInfo, RenderStats } from '../debug/DebugTypes'
+
+@Component
+export struct DebugSidebar {
+  @Prop collector: DebugCollector
+  @Prop selectedNodeId: string = ''
+  @Prop selectedEdgeId: string = ''
+  @Prop visible: boolean = false
+  @Prop canvasHeight: number = 600
+  onClose?: () => void
+
+  @State private _statsExpanded: boolean = true
+  @State private _detailExpanded: boolean = true
+  @State private _diffExpanded: boolean = true
+  @State private _idMapExpanded: boolean = false
+  @State private _layerExpanded: boolean = false
+  @State private _viewportExpanded: boolean = true
+  @State private _warnExpanded: boolean = false
+
+  build() {
+    Column() {
+      if (this.visible) {
+        // Title bar
+        Row() {
+          Text('调试信息')
+            .fontSize(14)
+            .fontColor('#333')
+            .layoutWeight(1)
+          Button() {
+            Text('X')
+              .fontSize(14)
+              .fontColor('#333')
+          }
+          .width(28).height(28)
+          .backgroundColor('#00000000')
+          .onClick(() => {
+            if (this.onClose) {
+              this.onClose()
+            }
+          })
+        }
+        .width('100%')
+        .padding({ left: 12, right: 8, top: 8, bottom: 4 })
+
+        // Scrollable content
+        Scroll() {
+          Column() {
+            // ── Section 1: 渲染统计 ──
+            Column() {
+              this.sectionHeader('渲染统计', this._statsExpanded,
+                () => { this._statsExpanded = !this._statsExpanded })
+              if (this._statsExpanded) {
+                Column() {
+                  Text(this._getStatsSummary())
+                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                  ForEach(this._getStatsTypeKeys(), (type: string) => {
+                    Text('  ' + type + ': ' + this._getStatsCountForType(type))
+                      .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                  }, (type: string) => type)
+                }
+                .padding({ bottom: 4 })
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 2: 选中元素详情 ──
+            Column() {
+              this.sectionHeader('选中元素详情', this._detailExpanded,
+                () => { this._detailExpanded = !this._detailExpanded })
+              if (this._detailExpanded) {
+                if (this.selectedNodeId.length === 0) {
+                  Text('  点击画布中的节点查看详情')
+                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .padding({ left: 12, top: 4, bottom: 4 })
+                } else if (this._getNodeDetailOrNull() === null) {
+                  Text('  元素已不存在')
+                    .fontSize(11).fontColor('#E53935')
+                    .padding({ left: 12, top: 4, bottom: 4 })
+                } else {
+                  Column() {
+                    Text('  类型: ' + this._getDetailType() + '    ID: ' + this._getDetailId())
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                    Text('  坐标: (' + this._getDetailX() + ', ' + this._getDetailY() +
+                      ')   尺寸: ' + this._getDetailWidth() + ' x ' + this._getDetailHeight())
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                    if (this._getDetailPoolId().length > 0) {
+                      Text('  Pool: ' + this._getDetailPoolId() + '    Lane: ' + this._getDetailLaneId())
+                        .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                    }
+                    Text('  层序: ' + this._getDetailLayer())
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+
+                    Text('  properties:')
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 4 })
+                    ForEach(this._getDetailPropKeys(), (k: string) => {
+                      Text('    ' + k + ': ' + this._getDetailPropValue(k))
+                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                    }, (k: string) => k)
+
+                    Button('Copy JSON')
+                      .fontSize(11)
+                      .height(24)
+                      .margin({ left: 12, top: 4, bottom: 4 })
+                  }
+                }
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 3: XML -> 渲染差异 ──
+            Column() {
+              this.sectionHeader('XML -> 渲染差异', this._diffExpanded,
+                () => { this._diffExpanded = !this._diffExpanded })
+              if (this._diffExpanded) {
+                if (!this._hasDiff()) {
+                  Text('  无 XML 数据，差异分析不可用')
+                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .padding({ left: 12, top: 4, bottom: 4 })
+                } else {
+                  Column() {
+                    Text('  XML 声明:')
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                    ForEach(this._getDiffXmlKeys(), (k: string) => {
+                      Text('    ' + k + ': ' + this._getDiffXmlValue(k))
+                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                    }, (k: string) => k)
+                    Text('  已渲染:')
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 4 })
+                    ForEach(this._getDiffRenderKeys(), (k: string) => {
+                      Text('    ' + k + ': ' + this._getDiffRenderValue(k))
+                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                    }, (k: string) => k)
+                    if (this._hasMissing()) {
+                      Text(this._getMissingText())
+                        .fontSize(11).fontColor('#E53935').padding({ left: 12, top: 4 })
+                    }
+                    if (this._hasDiscarded()) {
+                      Text(this._getDiscardedText())
+                        .fontSize(11).fontColor('#F57C00').padding({ left: 12, top: 1 })
+                    }
+                  }
+                  .padding({ bottom: 4 })
+                }
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 4: ID 映射表 ──
+            Column() {
+              this.sectionHeader('ID 映射表', this._idMapExpanded,
+                () => { this._idMapExpanded = !this._idMapExpanded })
+              if (this._idMapExpanded) {
+                if (this._getMappingCount() === 0) {
+                  Text('  无 XML 数据')
+                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .padding({ left: 12, top: 4, bottom: 4 })
+                } else {
+                  Column() {
+                    ForEach(this._getMappings(), (m: IdMapping) => {
+                      Text(this._getMappingText(m))
+                        .fontSize(10).fontColor(this._getMappingColor(m))
+                        .padding({ left: 12, top: 1 })
+                    }, (m: IdMapping, idx?: number) => m.xmlId + '_' + (idx !== undefined ? idx : 0))
+                    if (this._hasMoreMappings()) {
+                      Text('  仅显示前 200 项')
+                        .fontSize(10).fontColor('#999')
+                        .padding({ left: 12, top: 4 })
+                    }
+                  }
+                  .padding({ bottom: 4 })
+                }
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 5: 层序 Z-order ──
+            Column() {
+              this.sectionHeader('层序 Z-order', this._layerExpanded,
+                () => { this._layerExpanded = !this._layerExpanded })
+              if (this._layerExpanded) {
+                Column() {
+                  ForEach(this._getLayers(), (l: LayerInfo) => {
+                    Text('  [' + l.priority + '] ' + l.nodeId + ' (' + l.type + ') ' + l.label)
+                      .fontSize(10).fontColor('#555').padding({ left: 12, top: 1 })
+                  }, (l: LayerInfo, idx?: number) => l.nodeId + '_' + (idx !== undefined ? idx : 0))
+                  if (this._hasMoreLayers()) {
+                    Text('  仅显示前 200 项')
+                      .fontSize(10).fontColor('#999')
+                      .padding({ left: 12, top: 4 })
+                  }
+                }
+                .padding({ bottom: 4 })
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 6: 视口状态 + 渲染耗时 ──
+            Column() {
+              this.sectionHeader('视口状态 + 渲染耗时', this._viewportExpanded,
+                () => { this._viewportExpanded = !this._viewportExpanded })
+              if (this._viewportExpanded) {
+                Column() {
+                  Text(this._getVpSummary())
+                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                  Text(this._getVpRotationText())
+                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                  if (this._hasRenderTime()) {
+                    Text(this._getRenderTimeText())
+                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                  }
+                }
+                .padding({ bottom: 4 })
+              }
+            }
+            .width('100%')
+            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+
+            // ── Section 7: 解析警告 ──
+            if (this._getWarningCount() > 0) {
+              Column() {
+                Row() {
+                  Text((this._warnExpanded ? '▼ ' : '▶ ') + '解析警告 (' +
+                    this._getWarningCount() + ')')
+                    .fontSize(12).fontColor('#F57C00').fontWeight(FontWeight.Bold)
+                    .layoutWeight(1)
+                }
+                .width('100%')
+                .padding({ left: 8, right: 8, top: 6, bottom: 2 })
+                .onClick(() => { this._warnExpanded = !this._warnExpanded })
+
+                if (this._warnExpanded) {
+                  ForEach(this._getWarnings(), (w: string, idx?: number) => {
+                    Text('  \u26A0 ' + w)
+                      .fontSize(10).fontColor('#F57C00')
+                      .padding({ left: 12, top: 1 }).maxLines(2)
+                  }, (w: string, idx?: number) => w + '_' + (idx !== undefined ? idx : 0))
+                }
+              }
+              .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            }
+          }
+          .width('100%')
+        }
+        .width('100%')
+        .layoutWeight(1)
+      }
+    }
+    .width(this.visible ? 300 : 0)
+    .height(this.canvasHeight)
+    .backgroundColor('rgba(255, 255, 255, 0.92)')
+    .border({ width: 1, color: '#D0D0D0' })
+    .position({ right: 0, top: 0 })
+  }
+
+  // ── Builder: reusable collapsible section header ──
+
+  @Builder
+  sectionHeader(title: string, expanded: boolean, onToggle: () => void) {
+    Row() {
+      Text((expanded ? '▼ ' : '▶ ') + title)
+        .fontSize(12)
+        .fontColor('#555')
+        .fontWeight(FontWeight.Bold)
+        .layoutWeight(1)
+    }
+    .width('100%')
+    .padding({ left: 8, right: 8, top: 6, bottom: 2 })
+    .onClick(onToggle)
+  }
+
+  // ── Data helpers: 渲染统计 ──
+
+  private _getStatsSummary(): string {
+    let stats: ElementStats = this.collector.getStatistics()
+    return '总节点: ' + stats.totalNodes + '  连线: ' + stats.edgeCount +
+      '  泳池: ' + stats.poolCount + '  泳道: ' + stats.laneCount
+  }
+
+  private _getStatsTypeKeys(): string[] {
+    let stats: ElementStats = this.collector.getStatistics()
+    let keys: string[] = Object.keys(stats.nodesByType)
+    if (keys.length > 30) {
+      return keys.slice(0, 30)
+    }
+    return keys
+  }
+
+  private _getStatsCountForType(type: string): string {
+    let stats: ElementStats = this.collector.getStatistics()
+    let v: number | undefined = stats.nodesByType[type]
+    return (v !== undefined ? v : 0).toString()
+  }
+
+  // ── Data helpers: 选中元素详情 ──
+
+  private _getNodeDetailOrNull(): NodeDetail | null {
+    if (this.selectedNodeId.length === 0) {
+      return null
+    }
+    return this.collector.getNodeDetail(this.selectedNodeId)
+  }
+
+  private _getDetailType(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? d.type : ''
+  }
+
+  private _getDetailId(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? d.id : ''
+  }
+
+  private _getDetailX(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? Math.round(d.x).toString() : ''
+  }
+
+  private _getDetailY(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? Math.round(d.y).toString() : ''
+  }
+
+  private _getDetailWidth(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? Math.round(d.width).toString() : ''
+  }
+
+  private _getDetailHeight(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? Math.round(d.height).toString() : ''
+  }
+
+  private _getDetailPoolId(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? d.poolId : ''
+  }
+
+  private _getDetailLaneId(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? d.laneId : ''
+  }
+
+  private _getDetailLayer(): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    return d !== null ? d.layerPriority.toString() : ''
+  }
+
+  private _getDetailPropKeys(): string[] {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    if (d === null) {
+      return []
+    }
+    return Object.keys(d.properties)
+  }
+
+  private _getDetailPropValue(key: string): string {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    if (d === null) {
+      return ''
+    }
+    return d.properties[key]
+  }
+
+  // ── Data helpers: XML diff ──
+
+  private _hasDiff(): boolean {
+    return this.collector.getParseDiff() !== null
+  }
+
+  private _getDiffXmlKeys(): string[] {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return []
+    }
+    return Object.keys(diff.xmlTypes)
+  }
+
+  private _getDiffXmlValue(key: string): string {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return ''
+    }
+    let v: number | undefined = diff.xmlTypes[key]
+    return (v !== undefined ? v : 0).toString()
+  }
+
+  private _getDiffRenderKeys(): string[] {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return []
+    }
+    return Object.keys(diff.renderTypes)
+  }
+
+  private _getDiffRenderValue(key: string): string {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return ''
+    }
+    let v: number | undefined = diff.renderTypes[key]
+    return (v !== undefined ? v : 0).toString()
+  }
+
+  private _hasMissing(): boolean {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return false
+    }
+    return diff.missing.length > 0
+  }
+
+  private _getMissingText(): string {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return ''
+    }
+    return '  缺失: ' + diff.missing.length + ' (ID: ' + diff.missing.join(', ') + ')'
+  }
+
+  private _hasDiscarded(): boolean {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return false
+    }
+    return diff.discarded.length > 0
+  }
+
+  private _getDiscardedText(): string {
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null) {
+      return ''
+    }
+    return '  丢弃: ' + diff.discarded.join(', ')
+  }
+
+  // ── Data helpers: ID mapping ──
+
+  private _getMappingCount(): number {
+    return this.collector.getIdMapping().length
+  }
+
+  private _getMappings(): IdMapping[] {
+    let mappings: IdMapping[] = this.collector.getIdMapping()
+    if (mappings.length > 200) {
+      return mappings.slice(0, 200)
+    }
+    return mappings
+  }
+
+  private _hasMoreMappings(): boolean {
+    return this.collector.getIdMapping().length > 200
+  }
+
+  private _getMappingText(m: IdMapping): string {
+    let status: string = m.matched ? 'OK' : 'MISS'
+    return '  ' + m.xmlId + ' -> ' + (m.matched ? m.renderedNodeId : '-') +
+      ' (' + m.type + ') [' + status + ']'
+  }
+
+  private _getMappingColor(m: IdMapping): string {
+    return m.matched ? '#333' : '#E53935'
+  }
+
+  // ── Data helpers: Layer ──
+
+  private _getLayers(): LayerInfo[] {
+    let layers: LayerInfo[] = this.collector.getLayerInfo()
+    if (layers.length > 200) {
+      return layers.slice(0, 200)
+    }
+    return layers
+  }
+
+  private _hasMoreLayers(): boolean {
+    return this.collector.getLayerInfo().length > 200
+  }
+
+  // ── Data helpers: Viewport ──
+
+  private _getVpSummary(): string {
+    let vp: ViewportInfo = this.collector.getViewportState()
+    return '  zoom: ' + vp.zoom.toFixed(2) + '  offset: (' +
+      Math.round(vp.offsetX) + ', ' + Math.round(vp.offsetY) + ')'
+  }
+
+  private _getVpRotationText(): string {
+    let vp: ViewportInfo = this.collector.getViewportState()
+    return '  rotation: ' + vp.rotation + '\u00B0  canvas: ' +
+      vp.canvasWidth + ' x ' + vp.canvasHeight
+  }
+
+  private _getRenderTimeText(): string {
+    let stats: RenderStats = this.collector.getRenderStats()
+    if (stats.frameCount === 0) {
+      return ''
+    }
+    return '  renderAll: ' + stats.lastMs + 'ms (avg: ' + stats.avgMs +
+      'ms, max: ' + stats.maxMs + 'ms, \u5E27\u6570: ' + stats.frameCount + ')'
+  }
+
+  private _hasRenderTime(): boolean {
+    return this.collector.getRenderStats().frameCount > 0
+  }
+
+  // ── Data helpers: Warnings ──
+
+  private _getWarningCount(): number {
+    return this.collector.getParseWarnings().length
+  }
+
+  private _getWarnings(): string[] {
+    let warnings: string[] = this.collector.getParseWarnings()
+    if (warnings.length > 50) {
+      return warnings.slice(0, 50)
+    }
+    return warnings
+  }
+}

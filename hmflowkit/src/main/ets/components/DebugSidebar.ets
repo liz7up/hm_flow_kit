@@ -13,6 +13,7 @@
 import { DebugCollector } from '../debug/DebugCollector'
 import { NodeDetail, ElementStats, ParseDiff, IdMapping, LayerInfo,
   ViewportInfo, RenderStats } from '../debug/DebugTypes'
+import { ConfigurationConstant } from '@kit.AbilityKit'
 
 @Component
 export struct DebugSidebar {
@@ -21,6 +22,7 @@ export struct DebugSidebar {
   @Prop selectedEdgeId: string = ''
   @Prop visible: boolean = false
   @Prop canvasHeight: number = 600
+  @StorageProp('currentColorMode') currentColorMode: number = 0
   onClose?: () => void
 
   @State private _statsExpanded: boolean = true
@@ -29,7 +31,40 @@ export struct DebugSidebar {
   @State private _idMapExpanded: boolean = false
   @State private _layerExpanded: boolean = false
   @State private _viewportExpanded: boolean = true
-  @State private _warnExpanded: boolean = false
+  @State private _warnExpanded: boolean = true
+  @State private _copyFeedback: string = ''
+
+  // ── Dark mode color helpers ──
+
+  private get _bgColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? 'rgba(30, 30, 30, 0.92)' : 'rgba(255, 255, 255, 0.92)'
+  }
+
+  private get _textColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? '#DDD' : '#333'
+  }
+
+  private get _secondaryColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? '#AAA' : '#555'
+  }
+
+  private get _borderColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? '#555' : '#D0D0D0'
+  }
+
+  private get _sectionBorderColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? '#444' : '#E0E0E0'
+  }
+
+  private get _placeholderColor(): string {
+    return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      ? '#777' : '#999'
+  }
 
   build() {
     Column() {
@@ -38,12 +73,12 @@ export struct DebugSidebar {
         Row() {
           Text('调试信息')
             .fontSize(14)
-            .fontColor('#333')
+            .fontColor(this._textColor)
             .layoutWeight(1)
           Button() {
             Text('X')
               .fontSize(14)
-              .fontColor('#333')
+              .fontColor(this._textColor)
           }
           .width(28).height(28)
           .backgroundColor('#00000000')
@@ -61,31 +96,36 @@ export struct DebugSidebar {
           Column() {
             // ── Section 1: 渲染统计 ──
             Column() {
-              this.sectionHeader('渲染统计', this._statsExpanded,
+              this.sectionHeader('渲染统计 (' + this._getStatsCountsLabel() + ')', this._statsExpanded,
                 () => { this._statsExpanded = !this._statsExpanded })
               if (this._statsExpanded) {
                 Column() {
                   Text(this._getStatsSummary())
-                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                    .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
                   ForEach(this._getStatsTypeKeys(), (type: string) => {
                     Text('  ' + type + ': ' + this._getStatsCountForType(type))
-                      .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                      .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
                   }, (type: string) => type)
                 }
                 .padding({ bottom: 4 })
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 2: 选中元素详情 ──
             Column() {
-              this.sectionHeader('选中元素详情', this._detailExpanded,
-                () => { this._detailExpanded = !this._detailExpanded })
+              if (this.selectedNodeId.length === 0) {
+                this.sectionHeader('选中元素详情', this._detailExpanded,
+                  () => { this._detailExpanded = !this._detailExpanded })
+              } else {
+                this.sectionHeader('选中元素详情 (' + this.selectedNodeId + ')', this._detailExpanded,
+                  () => { this._detailExpanded = !this._detailExpanded })
+              }
               if (this._detailExpanded) {
                 if (this.selectedNodeId.length === 0) {
                   Text('  点击画布中的节点查看详情')
-                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
                 } else if (this._getNodeDetailOrNull() === null) {
                   Text('  元素已不存在')
@@ -94,57 +134,65 @@ export struct DebugSidebar {
                 } else {
                   Column() {
                     Text('  类型: ' + this._getDetailType() + '    ID: ' + this._getDetailId())
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
                     Text('  坐标: (' + this._getDetailX() + ', ' + this._getDetailY() +
                       ')   尺寸: ' + this._getDetailWidth() + ' x ' + this._getDetailHeight())
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
                     if (this._getDetailPoolId().length > 0) {
                       Text('  Pool: ' + this._getDetailPoolId() + '    Lane: ' + this._getDetailLaneId())
-                        .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                        .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
                     }
                     Text('  层序: ' + this._getDetailLayer())
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
 
                     Text('  properties:')
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 4 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 4 })
                     ForEach(this._getDetailPropKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDetailPropValue(k))
-                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                        .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
                     }, (k: string) => k)
 
                     Button('Copy JSON')
                       .fontSize(11)
                       .height(24)
                       .margin({ left: 12, top: 4, bottom: 4 })
+                      .onClick(() => {
+                        this._onCopyJson()
+                      })
+                    if (this._copyFeedback.length > 0) {
+                      Text(this._copyFeedback)
+                        .fontSize(10).fontColor(this._secondaryColor)
+                        .padding({ left: 12, top: 2, bottom: 4 })
+                    }
                   }
                 }
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 3: XML -> 渲染差异 ──
             Column() {
-              this.sectionHeader('XML -> 渲染差异', this._diffExpanded,
+              this.sectionHeader('XML -> 渲染差异' + this._getDiffHeaderSuffix(), this._diffExpanded,
                 () => { this._diffExpanded = !this._diffExpanded })
               if (this._diffExpanded) {
                 if (!this._hasDiff()) {
                   Text('  无 XML 数据，差异分析不可用')
-                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
                 } else {
                   Column() {
                     Text('  XML 声明:')
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
                     ForEach(this._getDiffXmlKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDiffXmlValue(k))
-                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                        .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
                     }, (k: string) => k)
                     Text('  已渲染:')
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 4 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 4 })
                     ForEach(this._getDiffRenderKeys(), (k: string) => {
                       Text('    ' + k + ': ' + this._getDiffRenderValue(k))
-                        .fontSize(11).fontColor('#555').padding({ left: 20, top: 1 })
+                        .fontSize(11).fontColor(this._secondaryColor).padding({ left: 20, top: 1 })
                     }, (k: string) => k)
                     if (this._hasMissing()) {
                       Text(this._getMissingText())
@@ -160,16 +208,16 @@ export struct DebugSidebar {
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 4: ID 映射表 ──
             Column() {
-              this.sectionHeader('ID 映射表', this._idMapExpanded,
+              this.sectionHeader('ID 映射表 (' + this._getMappingCount() + ')', this._idMapExpanded,
                 () => { this._idMapExpanded = !this._idMapExpanded })
               if (this._idMapExpanded) {
                 if (this._getMappingCount() === 0) {
                   Text('  无 XML 数据')
-                    .fontSize(11).fontColor('#999').fontStyle(FontStyle.Italic)
+                    .fontSize(11).fontColor(this._placeholderColor).fontStyle(FontStyle.Italic)
                     .padding({ left: 12, top: 4, bottom: 4 })
                 } else {
                   Column() {
@@ -180,7 +228,7 @@ export struct DebugSidebar {
                     }, (m: IdMapping, idx?: number) => m.xmlId + '_' + (idx !== undefined ? idx : 0))
                     if (this._hasMoreMappings()) {
                       Text('  仅显示前 200 项')
-                        .fontSize(10).fontColor('#999')
+                        .fontSize(10).fontColor(this._placeholderColor)
                         .padding({ left: 12, top: 4 })
                     }
                   }
@@ -189,21 +237,21 @@ export struct DebugSidebar {
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 5: 层序 Z-order ──
             Column() {
-              this.sectionHeader('层序 Z-order', this._layerExpanded,
+              this.sectionHeader('层序 Z-order (' + this.collector.getLayerInfo().length + ')', this._layerExpanded,
                 () => { this._layerExpanded = !this._layerExpanded })
               if (this._layerExpanded) {
                 Column() {
                   ForEach(this._getLayers(), (l: LayerInfo) => {
                     Text('  [' + l.priority + '] ' + l.nodeId + ' (' + l.type + ') ' + l.label)
-                      .fontSize(10).fontColor('#555').padding({ left: 12, top: 1 })
+                      .fontSize(10).fontColor(this._secondaryColor).padding({ left: 12, top: 1 })
                   }, (l: LayerInfo, idx?: number) => l.nodeId + '_' + (idx !== undefined ? idx : 0))
                   if (this._hasMoreLayers()) {
                     Text('  仅显示前 200 项')
-                      .fontSize(10).fontColor('#999')
+                      .fontSize(10).fontColor(this._placeholderColor)
                       .padding({ left: 12, top: 4 })
                   }
                 }
@@ -211,7 +259,7 @@ export struct DebugSidebar {
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 6: 视口状态 + 渲染耗时 ──
             Column() {
@@ -220,19 +268,19 @@ export struct DebugSidebar {
               if (this._viewportExpanded) {
                 Column() {
                   Text(this._getVpSummary())
-                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 2 })
+                    .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 2 })
                   Text(this._getVpRotationText())
-                    .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                    .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
                   if (this._hasRenderTime()) {
                     Text(this._getRenderTimeText())
-                      .fontSize(11).fontColor('#333').padding({ left: 12, top: 1 })
+                      .fontSize(11).fontColor(this._textColor).padding({ left: 12, top: 1 })
                   }
                 }
                 .padding({ bottom: 4 })
               }
             }
             .width('100%')
-            .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
 
             // ── Section 7: 解析警告 ──
             if (this._getWarningCount() > 0) {
@@ -255,7 +303,7 @@ export struct DebugSidebar {
                   }, (w: string, idx?: number) => w + '_' + (idx !== undefined ? idx : 0))
                 }
               }
-              .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+              .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
             }
           }
           .width('100%')
@@ -266,8 +314,8 @@ export struct DebugSidebar {
     }
     .width(this.visible ? 300 : 0)
     .height(this.canvasHeight)
-    .backgroundColor('rgba(255, 255, 255, 0.92)')
-    .border({ width: 1, color: '#D0D0D0' })
+    .backgroundColor(this._bgColor)
+    .border({ width: 1, color: this._borderColor })
     .position({ right: 0, top: 0 })
   }
 
@@ -278,13 +326,75 @@ export struct DebugSidebar {
     Row() {
       Text((expanded ? '▼ ' : '▶ ') + title)
         .fontSize(12)
-        .fontColor('#555')
+        .fontColor(this._secondaryColor)
         .fontWeight(FontWeight.Bold)
         .layoutWeight(1)
     }
     .width('100%')
     .padding({ left: 8, right: 8, top: 6, bottom: 2 })
     .onClick(onToggle)
+  }
+
+  // ── Copy JSON handler (C1) ──
+
+  private _onCopyJson(): void {
+    let d: NodeDetail | null = this._getNodeDetailOrNull()
+    if (d === null) {
+      this._copyFeedback = '无数据可复制'
+      return
+    }
+    let lines: string[] = []
+    lines.push('{')
+    lines.push('  "id": "' + this._escapeJson(d.id) + '",')
+    lines.push('  "type": "' + this._escapeJson(d.type) + '",')
+    lines.push('  "label": "' + this._escapeJson(d.label) + '",')
+    lines.push('  "x": ' + d.x + ',')
+    lines.push('  "y": ' + d.y + ',')
+    lines.push('  "width": ' + d.width + ',')
+    lines.push('  "height": ' + d.height + ',')
+    lines.push('  "poolId": "' + this._escapeJson(d.poolId) + '",')
+    lines.push('  "laneId": "' + this._escapeJson(d.laneId) + '",')
+    lines.push('  "layerPriority": ' + d.layerPriority + ',')
+    lines.push('  "properties": {')
+    let propKeys: string[] = Object.keys(d.properties)
+    for (let i: number = 0; i < propKeys.length; i++) {
+      let comma: string = i < propKeys.length - 1 ? ',' : ''
+      lines.push('    "' + this._escapeJson(propKeys[i]) + '": "' +
+        this._escapeJson(d.properties[propKeys[i]]) + '"' + comma)
+    }
+    lines.push('  }')
+    lines.push('}')
+    let json: string = lines.join('\n')
+    console.info('[DebugSidebar] Node JSON:\n' + json)
+    this._copyFeedback = 'JSON 已输出到控制台'
+  }
+
+  private _escapeJson(s: string): string {
+    let result: string = ''
+    for (let i: number = 0; i < s.length; i++) {
+      let ch: string = s[i]
+      if (ch === '"') { result += '\\"' }
+      else if (ch === '\\') { result += '\\\\' }
+      else if (ch === '\n') { result += '\\n' }
+      else if (ch === '\r') { result += '\\r' }
+      else if (ch === '\t') { result += '\\t' }
+      else { result += ch }
+    }
+    return result
+  }
+
+  // ── Section header count labels (I6) ──
+
+  private _getStatsCountsLabel(): string {
+    let stats: ElementStats = this.collector.getStatistics()
+    return stats.totalNodes + ' \u8282\u70B9, ' + stats.edgeCount + ' \u8FDE\u7EBF'  // "节点", "连线"
+  }
+
+  private _getDiffHeaderSuffix(): string {
+    if (!this._hasDiff()) { return '' }
+    let diff: ParseDiff | null = this.collector.getParseDiff()
+    if (diff === null || diff.missing.length === 0) { return '' }
+    return ' (\u7F3A\u5931 ' + diff.missing.length + ')'  // "缺失 N"
   }
 
   // ── Data helpers: 渲染统计 ──

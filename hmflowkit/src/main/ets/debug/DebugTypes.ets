@@ -1,6 +1,6 @@
 // hmflowkit/src/main/ets/debug/DebugTypes.ets
 
-import { Waypoint } from '../model/GraphModel'
+import { Waypoint, EdgeStyle } from '../model/GraphModel'
 
 export enum SourceFormat { BPMN = 'bpmn', DRAWIO = 'drawio', DIRECT = 'direct' }
 
@@ -33,7 +33,7 @@ export class EdgeDetail {
   sourceId: string = ''
   targetId: string = ''
   waypoints: Waypoint[] = []
-  style: string = ''
+  style: EdgeStyle = EdgeStyle.POLYLINE
   label: string = ''
   properties: Record<string, string> = {}
   sourcePos: Point = new Point()

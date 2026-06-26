@@ -271,20 +271,18 @@ export class DrawioNodeDrawer {
       ctx.strokeRect(x, y, w, h);
     }
 
-    // Header background
-    let hdrFill: string = node.properties['_swimlaneFillColor'] || config.poolHeaderFillColor;
-    if (hdrFill !== 'none') {
-      ctx.fillStyle = hdrFill;
-      if (isHorizontal) {
-        ctx.fillRect(x, y, headerSize, h);
-      } else {
-        ctx.fillRect(x, y, w, headerSize);
-      }
-    }
-
-    // Header text
+    // Header background + text — only when there is a label
     let label: string = node.label;
     if (label.length > 0) {
+      let hdrFill: string = node.properties['_swimlaneFillColor'] || config.poolHeaderFillColor;
+      if (hdrFill !== 'none') {
+        ctx.fillStyle = hdrFill;
+        if (isHorizontal) {
+          ctx.fillRect(x, y, headerSize, h);
+        } else {
+          ctx.fillRect(x, y, w, headerSize);
+        }
+      }
       let fontColor: string = DrawioNodeDrawer._resolveColor(
         node.properties['_fontColor'], config.poolHeaderTextColor);
       ctx.fillStyle = fontColor;

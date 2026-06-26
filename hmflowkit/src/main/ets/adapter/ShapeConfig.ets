@@ -6,7 +6,7 @@
  * can call getPerimeterType() / getEdgeDefaults() without knowing the source format.
  */
 
-import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, TASK_PERIMETER, EVENT_PERIMETER, GATEWAY_PERIMETER } from './ShapeDefinition';
+import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, SIMPLE_RECT, EVENT_PERIMETER, GATEWAY_PERIMETER } from './ShapeDefinition';
 
 // ─── Internal perimeter categories ──────────────────────────────────────────
 
@@ -70,7 +70,7 @@ _shapeDefDefault = _buildDefaultShapeDef();
 // regardless of which parser runs first.
 // NOTE: executed inline (no function wrapper) to satisfy arkts-no-func-expressions.
 {
-  let rectPath: PerimeterPoint[] = TASK_PERIMETER;
+  let rectPath: PerimeterPoint[] = SIMPLE_RECT;
   let ellipsePath: PerimeterPoint[] = EVENT_PERIMETER;
   let rhombusPath: PerimeterPoint[] = GATEWAY_PERIMETER;
 
@@ -86,7 +86,7 @@ _shapeDefDefault = _buildDefaultShapeDef();
         PerimeterKind.RHOMBUS, rhombusPath, 0);
     } else {
       _shapeDefMap[k] = new ShapeDefinition(k, ShapeRenderKind.POLYLINE,
-        PerimeterKind.RECT, rectPath, 0);
+        PerimeterKind.RECT, rectPath, 0.133);
     }
   }
   _shapeDefCount = keys.length;

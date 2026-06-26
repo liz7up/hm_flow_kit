@@ -84,9 +84,16 @@ export const EVENT_PERIMETER: PerimeterPoint[] = [
 ];
 
 /**
- * GATEWAY_PERIMETER — 8-point rhombus/diamond from mxgraph.bpmn.gateway2.
- * Clockwise from top-left diagonal → top center → top-right → right center → ...
+ * SIMPLE_RECT — 4-point sharp rectangle.
+ * For RECT perimeterKind shapes, used with cornerRadiusRatio to produce
+ * rounded corners via arcTo (matching original BPMN 1.0 renderer behavior).
  */
+export const SIMPLE_RECT: PerimeterPoint[] = [
+  { xFraction: 0, yFraction: 0 },
+  { xFraction: 1, yFraction: 0 },
+  { xFraction: 1, yFraction: 1 },
+  { xFraction: 0, yFraction: 1 },
+];
 export const GATEWAY_PERIMETER: PerimeterPoint[] = [
   { xFraction: 0.25, yFraction: 0.25 },
   { xFraction: 0.5,  yFraction: 0 },

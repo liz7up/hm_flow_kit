@@ -287,7 +287,7 @@ export class DrawioXmlParser {
 
       let absX: number = cell.x;
       let absY: number = cell.y;
-      if (cell.relative && cell.parent !== '1' && cell.parent !== '0') {
+      if (cell.parent !== '1' && cell.parent !== '0') {
         let parentNode: GraphNode | undefined = nodeMap[cell.parent];
         if (parentNode !== undefined) {
           absX = parentNode.x + cell.x;

@@ -37,6 +37,10 @@ export class DrawioNodeDrawer {
     NodeRenderer.register('drawio.parallelogram', wrapper);
     NodeRenderer.register('drawio.text', wrapper);
     NodeRenderer.register('drawio.swimlane', wrapper);
+    NodeRenderer.register('drawio.table', wrapper);
+    NodeRenderer.register('drawio.tableRow', wrapper);
+    NodeRenderer.register('drawio.document', wrapper);
+    NodeRenderer.register('drawio.process', wrapper);
   }
 
   render(
@@ -46,13 +50,13 @@ export class DrawioNodeDrawer {
     let shape: string = this._extractShape(node.type);
     let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
 
-    // Delegate to PathRenderer only for shapes with native render support
-    // (ellipse/rhombus) or standard POLYLINE rectangles. Other shapes
-    // (triangle, parallelogram, text, swimlane) stay with custom drawing.
+    // Delegate to PathRenderer for shapes with well-defined perimeter paths.
+    // Custom shapes (triangle, parallelogram, text, swimlane, table*) use
+    // their own drawing code.
     let canUsePathRenderer: boolean =
       shapeDef.renderKind === ShapeRenderKind.NATIVE_ELLIPSE ||
       shapeDef.renderKind === ShapeRenderKind.NATIVE_RHOMBUS ||
-      shape === 'rect';
+      shape === 'rect' || shape === 'document' || shape === 'process';
     if (canUsePathRenderer) {
       let fill: string = DrawioNodeDrawer._resolveColor(
         node.properties['_fillColor'], config.fillColor);
@@ -69,6 +73,18 @@ export class DrawioNodeDrawer {
       }
       PathRenderer.render(ctx, shapeDef, x, y, w, h, fill, stroke, lineW);
       ctx.setLineDash([]);
+
+      // Document shape: draw fold crease lines
+      if (shape === 'document') {
+        let fold: number = Math.min(w, h) * 0.2;
+        ctx.beginPath();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lineW;
+        ctx.moveTo(x + w - fold, y);
+        ctx.lineTo(x + w - fold, y + fold);
+        ctx.lineTo(x + w, y + fold);
+        ctx.stroke();
+      }
       ctx.globalAlpha = 1.0;
       this._renderLabel(ctx, node, config, x, y, w, h, zoom);
       return;
@@ -120,6 +136,12 @@ export class DrawioNodeDrawer {
         break;
       case 'swimlane':
         this._drawSwimlane(ctx, node, config, x, y, w, h, zoom);
+        break;
+      case 'tableRow':
+        this._drawTableRow(ctx, node, config, x, y, w, h, zoom);
+        break;
+      case 'table':
+        this._drawTable(ctx, node, config, x, y, w, h, zoom);
         break;
       case 'text':
         // No border/fill for pure text nodes
@@ -279,6 +301,96 @@ export class DrawioNodeDrawer {
         ctx.textBaseline = 'middle';
         ctx.fillText(label, x + w / 2, y + headerSize / 2);
       }
+    }
+  }
+
+  // ── Table / TableRow renderers ──────────────────────────────────────
+
+  /**
+   * tableRow: horizontal band with left-side header (like a horizontal Lane).
+   * Background with label on the left edge, rotated text.
+   */
+  private _drawTableRow(
+    ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig,
+    x: number, y: number, w: number, h: number, zoom: number
+  ): void {
+    let headerW: number = config.poolHeaderWidth * zoom;
+
+    // Container fill + stroke
+    let fill: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_fillColor'], 'none');
+    if (fill !== 'none') {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, w, h);
+    }
+    let stroke: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_strokeColor'], config.poolStrokeColor);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = config.poolStrokeWidth * zoom;
+    ctx.strokeRect(x, y, w, h);
+
+    // Left-side header
+    let hdrFill: string = node.properties['_swimlaneFillColor'] || config.poolHeaderFillColor;
+    if (hdrFill !== 'none') {
+      ctx.fillStyle = hdrFill;
+      ctx.fillRect(x, y, headerW, h);
+    }
+
+    // Header text (rotated)
+    let label: string = node.label;
+    if (label.length > 0) {
+      let fontColor: string = DrawioNodeDrawer._resolveColor(
+        node.properties['_fontColor'], config.poolHeaderTextColor);
+      ctx.fillStyle = fontColor;
+      let fontSize: number = parseInt(node.properties['_fontSize'] || '12');
+      let scaledFontSize: number = Math.max(10, Math.round(fontSize * zoom));
+      ctx.font = scaledFontSize + 'px ' + config.fontFamily;
+      ctx.save();
+      ctx.translate(x + headerW / 2, y + h / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    }
+  }
+
+  /**
+   * table: outer container with top header bar and bold title.
+   */
+  private _drawTable(
+    ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig,
+    x: number, y: number, w: number, h: number, zoom: number
+  ): void {
+    let headerH: number = 40 * zoom;
+
+    // Container background
+    let fill: string = DrawioNodeDrawer._resolveColor(
+      node.properties['_fillColor'], 'none');
+    if (fill !== 'none') {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, w, h);
+    }
+    ctx.strokeStyle = config.poolStrokeColor;
+    ctx.lineWidth = config.poolStrokeWidth * zoom;
+    ctx.strokeRect(x, y, w, h);
+
+    // Top header
+    ctx.fillStyle = config.poolHeaderFillColor;
+    ctx.fillRect(x, y, w, headerH);
+
+    // Header text (bold)
+    let label: string = node.label;
+    if (label.length > 0) {
+      let fontColor: string = DrawioNodeDrawer._resolveColor(
+        node.properties['_fontColor'], config.poolHeaderTextColor);
+      ctx.fillStyle = fontColor;
+      let fontSize: number = parseInt(node.properties['_fontSize'] || '14');
+      let scaledFontSize: number = Math.max(12, Math.round(fontSize * zoom));
+      ctx.font = 'bold ' + scaledFontSize + 'px ' + config.fontFamily;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + w / 2, y + headerH / 2);
     }
   }
 

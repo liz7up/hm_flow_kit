@@ -6,7 +6,7 @@
  * can call getPerimeterType() / getEdgeDefaults() without knowing the source format.
  */
 
-import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, SIMPLE_RECT, EVENT_PERIMETER, GATEWAY_PERIMETER } from './ShapeDefinition';
+import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, SIMPLE_RECT, EVENT_PERIMETER, GATEWAY_PERIMETER, DOCUMENT_PERIMETER } from './ShapeDefinition';
 
 // ─── Internal perimeter categories ──────────────────────────────────────────
 
@@ -44,6 +44,10 @@ const _perimeterMap: Record<string, PerimeterKind> = {
   'drawio.text':         PerimeterKind.RECT,
   'drawio.swimlane':     PerimeterKind.RECT,
   'drawio.unknown':      PerimeterKind.RECT,
+  'drawio.table':        PerimeterKind.RECT,
+  'drawio.tableRow':     PerimeterKind.RECT,
+  'drawio.document':     PerimeterKind.RECT,
+  'drawio.process':      PerimeterKind.RECT,
 };
 
 // ── Shape definition registry ─────────────────────────────────────────────
@@ -90,6 +94,10 @@ _shapeDefDefault = _buildDefaultShapeDef();
     }
   }
   _shapeDefCount = keys.length;
+
+  // Override: document shape uses folded-corner perimeter, no corner radius
+  _shapeDefMap['drawio.document'] = new ShapeDefinition('drawio.document',
+    ShapeRenderKind.POLYLINE, PerimeterKind.RECT, DOCUMENT_PERIMETER, 0);
 }
 
 export class ShapeConfig {

@@ -127,8 +127,19 @@ export struct FlowViewer {
   }
 
   build() {
-    Stack() {
-      Canvas(this.ctx)
+    Row() {
+      if (this._debugCollector !== null) {
+        DebugSidebar({
+          collector: this._debugCollector,
+          selectedNodeId: this._debugSelectedId,
+          selectedEdgeId: '',
+          visible: true,
+          canvasHeight: this.canvasHeight,
+          onClose: () => { this._sidebarVisible = false }
+        })
+      }
+      Stack() {
+        Canvas(this.ctx)
         .width('100%')
         .height(this.canvasHeight)
         .onReady(() => {
@@ -281,17 +292,10 @@ export struct FlowViewer {
         .position({ top: 8 })
       }
 
-      // Debug sidebar
-      if (this._debugCollector !== null) {
-        DebugSidebar({
-          collector: this._debugCollector,
-          selectedNodeId: this._debugSelectedId,
-          selectedEdgeId: '',
-          visible: true,
-          canvasHeight: this.canvasHeight,
-          onClose: () => { this._sidebarVisible = false }
-        })
       }
+      .width('100%')
+      .height(this.canvasHeight)
+      .layoutWeight(1)
     }
     .width('100%')
     .height(this.canvasHeight)

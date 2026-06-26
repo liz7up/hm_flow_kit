@@ -292,6 +292,23 @@ export struct FlowViewer {
         .position({ top: 8 })
       }
 
+      // "i" button — shown only when sidebar is hidden
+      if (this._debugCollector !== null && !this._sidebarVisible) {
+        Button({ type: ButtonType.Circle }) {
+          Text('i')
+            .fontSize(20)
+            .fontColor('#333')
+            .textAlign(TextAlign.Center)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.White)
+        .border({ width: 1, color: '#D0D0D0' })
+        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+        .position({ left: 14, bottom: 14 })
+        .onClick(() => { this._sidebarVisible = true })
+      }
+
       }
       .width('100%')
       .height(this.canvasHeight)

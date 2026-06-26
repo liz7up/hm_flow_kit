@@ -16,7 +16,7 @@ export class DrawioStyleParser {
     'verticalAlign': '_verticalAlign', 'arcSize': '_arcSize', 'dashed': '_dashed',
     'dashPattern': '_dashPattern', 'opacity': '_opacity', 'endArrow': '_endArrow',
     'startArrow': '_startArrow', 'edgeStyle': '_edgeStyle', 'curved': '_curved',
-    'rounded': '_rounded', 'horizontal': '_horizontal'
+    'rounded': '_rounded', 'horizontal': '_horizontal', 'backgroundOutline': '_backgroundOutline'
   };
 
   // Colors intentionally have NO defaults — missing → renderer falls back to

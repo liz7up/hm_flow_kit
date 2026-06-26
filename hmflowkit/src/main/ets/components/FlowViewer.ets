@@ -262,25 +262,6 @@ export struct FlowViewer {
       }
       .position({ right: 14, bottom: 14 })
 
-      // "i" debug info button (bottom-left)
-      if (this.debugMode) {
-        Button({ type: ButtonType.Circle }) {
-          Text('i')
-            .fontSize(20)
-            .fontColor('#333')
-            .textAlign(TextAlign.Center)
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor(Color.White)
-        .border({ width: 1, color: '#D0D0D0' })
-        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
-        .position({ left: 14, bottom: 14 })
-        .onClick(() => {
-          this._sidebarVisible = !this._sidebarVisible
-        })
-      }
-
       // 解析错误提示遮罩
       if (this._parseError.length > 0) {
         Column() {
@@ -296,12 +277,12 @@ export struct FlowViewer {
       }
 
       // Debug sidebar
-      if (this._sidebarVisible && this._debugCollector !== null) {
+      if (this._debugCollector !== null) {
         DebugSidebar({
           collector: this._debugCollector,
           selectedNodeId: this._debugSelectedId,
           selectedEdgeId: '',
-          visible: this._sidebarVisible,
+          visible: true,
           canvasHeight: this.canvasHeight,
           onClose: () => { this._sidebarVisible = false }
         })

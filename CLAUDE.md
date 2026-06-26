@@ -162,7 +162,7 @@ hm-flow-kit/
 - PanGesture 拖拽平移 + PinchGesture 双指缩放 + 浮动 +/- 缩放按钮（Stack 覆盖层）
 - 全屏覆盖层支持
 
-**当前总验收：186/186 自动化单元测试编译通过**
+**当前总验收：234/234 自动化单元测试编译通过**
 
 ### 自动化测试
 
@@ -170,7 +170,7 @@ hm-flow-kit/
 |------|------|
 | 框架 | @ohos/hypium (describe/it/expect) |
 | 位置 | `hmflowkit/src/ohosTest/ets/test/` |
-| 覆盖 | GraphModel(44) BpmnXmlParser(37) CanvasManager(17) HitTestManager(13) RenderConfig(5) DrawioStyleParser(47) DrawioXmlParser(19) |
+| 覆盖 | GraphModel(44) BpmnXmlParser(42) CanvasManager(17) HitTestManager(13) RenderConfig(5) DrawioStyleParser(47) DrawioXmlParser(19) ShapeDefinition(9) PerimeterRouter(10) DebugCollector(13) |
 | 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
 | 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
@@ -203,6 +203,16 @@ hm-flow-kit/
 - 测试：ShapeDefinition(9 项) + PerimeterRouter(10 项)，**总 216 项编译通过**
 - **TODO: 图标标准化注册表（IconDefinition）** — 内部图标/标记也声明化
 - **TODO: EdgeRenderer 接入 PerimeterRouter** — BPMN XML 连线 perimeter 计算切换到新路由
+
+**Debug Sidebar — 调试信息面板 ✅ 已完成**
+- `@Prop debugMode: boolean` 启用后在画布左侧显示 300px 调试侧边栏
+- `debug/DebugTypes.ets` (88行) — 12 个共享类型类
+- `debug/DebugCollector.ets` (286行) — 数据收集器，13 个查询方法 + 环形计时缓冲
+- `components/DebugSidebar.ets` (537行) — 7 区段可折叠面板，灰色背景 + 暗色主题 + 文本可选
+- Parser 扩展：`ParseMeta` (BPMN) + `DrawioParseMeta` (drawio) — 解析期间收集元数据
+- `CanvasManager` 新增 `canvasWidth`/`canvasHeight` 公开 getter
+- 测试：DebugCollector(13) + BpmnXmlParser ParseMeta(5)，总 234 项编译通过
+- `"i"` 按钮（左下角，与侧边栏互斥）
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

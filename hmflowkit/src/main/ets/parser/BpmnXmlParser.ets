@@ -14,10 +14,19 @@ import { PlaneHierarchy, PlaneDefinition } from '../model/PlaneHierarchy';
 
 // ===== 公开类型 =====
 
+export class ParseMeta {
+  semanticIds: string[] = []
+  semanticTypes: Record<string, string> = {}
+  diagramShapeIds: string[] = []
+  diagramEdgeIds: string[] = []
+  discardedElementTypes: Record<string, number> = {}
+}
+
 export class ParseResult {
   model: GraphModel = GraphModel.createEmpty()
   warnings: string[] = []
   isPartial: boolean = false
+  meta: ParseMeta = new ParseMeta()
   _planes: PlaneDefinition[] = []
 }
 
@@ -246,6 +255,13 @@ class _Collector {
   private _nodeParentMap: Record<string, string> = {};
   private _processName: string = 'Root';
 
+  // ParseMeta tracking
+  private _metaSemanticIds: string[] = []
+  private _metaSemanticTypes: Record<string, string> = {}
+  private _metaDiagShapeIds: string[] = []
+  private _metaDiagEdgeIds: string[] = []
+  private _metaDiscarded: Record<string, number> = {}
+
   warnings: string[] = [];
 
   addNode(id: string, type: NodeType, label: string, tagName: string, eventDefTag?: string,
@@ -394,6 +410,34 @@ class _Collector {
 
   markAsMessageFlow(id: string): void {
     this._messageFlowIds[id] = true;
+  }
+
+  trackSemantic(id: string, tagName: string): void {
+    this._metaSemanticIds.push(id)
+    this._metaSemanticTypes[id] = tagName
+  }
+
+  trackDiscarded(tagName: string): void {
+    let count: number | undefined = this._metaDiscarded[tagName]
+    this._metaDiscarded[tagName] = (count !== undefined ? count : 0) + 1
+  }
+
+  trackDiagramShape(elementId: string): void {
+    this._metaDiagShapeIds.push(elementId)
+  }
+
+  trackDiagramEdge(elementId: string): void {
+    this._metaDiagEdgeIds.push(elementId)
+  }
+
+  buildMeta(): ParseMeta {
+    let meta: ParseMeta = new ParseMeta()
+    meta.semanticIds = this._metaSemanticIds
+    meta.semanticTypes = this._metaSemanticTypes
+    meta.diagramShapeIds = this._metaDiagShapeIds
+    meta.diagramEdgeIds = this._metaDiagEdgeIds
+    meta.discardedElementTypes = this._metaDiscarded
+    return meta
   }
 
   build(): GraphModel {
@@ -1222,6 +1266,9 @@ export class BpmnXmlParser {
             if (expVal.length > 0) {
               collector.setExpanded(elId, expVal !== 'false');
             }
+            if (elId.length > 0) {
+              collector.trackDiagramShape(elId);
+            }
           }
         }
         else if (tag === 'BPMNEdge') {
@@ -1232,6 +1279,9 @@ export class BpmnXmlParser {
             if (currentDiagramId.length > 0) {
               collector.addDiagramWaypoints(currentDiagramId, elId, waypointBuf);
             }
+          }
+          if (elId.length > 0) {
+            collector.trackDiagramEdge(elId);
           }
         }
         else if (tag === 'BPMNLabel') {
@@ -1344,9 +1394,12 @@ export class BpmnXmlParser {
                 currentAttrs['triggeredByEvent'],
                 currentAttrs['isInterrupting'],
                 nodeParentId.length > 0 ? nodeParentId : undefined);
+              collector.trackSemantic(nid, tag);
             }
             currentEventDefTag = '';
             currentLoopChar = '';
+          } else {
+            collector.trackDiscarded(tag);
           }
         }
         // 弹出栈顶，恢复父级 currentAttrs
@@ -1400,6 +1453,7 @@ export class BpmnXmlParser {
     BpmnXmlParser._scanDiagramPlanes(cleaned, collector);
 
     result.model = collector.build();
+    result.meta = collector.buildMeta();
     result._planes = collector.buildAllPlanes();
     return result;
   }

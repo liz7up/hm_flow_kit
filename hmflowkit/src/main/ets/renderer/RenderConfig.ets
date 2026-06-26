@@ -9,7 +9,7 @@ export class RenderConfig {
   nodeWidth: number = 120;
   nodeHeight: number = 60;
   strokeColor: string = '#000000';
-  strokeWidth: number = 2;
+  strokeWidth: number = 1.4;
   fillColor: string = '#FFFFFF';
   activeStrokeColor: string = '#000000';
   activeFillColor: string = '#E0E0E0';
@@ -113,17 +113,17 @@ export class RenderConfig {
   // StartEvent（白底 + 黑边框，细线空心圆）
   eventStartFillColor: string = '#FFFFFF';
   eventStartStrokeColor: string = '#000000';
-  eventStartStrokeWidth: number = 2;
+  eventStartStrokeWidth: number = 1.4;
 
   // EndEvent（纯黑实心 + 粗边框）
   eventEndFillColor: string = '#000000';
   eventEndStrokeColor: string = '#000000';
-  eventEndStrokeWidth: number = 4;
+  eventEndStrokeWidth: number = 2.8;
 
   // ── Pool/Lane 泳道样式 ──
   poolFillColor: string = '#FAFAFA';
   poolStrokeColor: string = '#999999';
-  poolStrokeWidth: number = 2;
+  poolStrokeWidth: number = 1.4;
   poolHeaderWidth: number = 30;
   poolHeaderFillColor: string = '#E0E0E0';
   poolHeaderTextColor: string = '#000000';
@@ -131,7 +131,7 @@ export class RenderConfig {
 
   laneFillColor: string = '#FAFAFA';
   laneStrokeColor: string = '#CCCCCC';
-  laneStrokeWidth: number = 1;
+  laneStrokeWidth: number = 0.7;
   laneHeaderWidth: number = 20;
   laneHeaderIndent: number = 6;
   laneHeaderFillColor: string = '#EEEEEE';
@@ -140,12 +140,12 @@ export class RenderConfig {
 
   // ── 连线样式 ──
   edgeStrokeColor: string = '#000000';
-  edgeStrokeWidth: number = 1.5;
+  edgeStrokeWidth: number = 1.05;
   arrowSize: number = 12;
 
   // ── MessageFlow 样式 ──
   messageFlowStrokeColor: string = '#000000';
-  messageFlowStrokeWidth: number = 1.2;
+  messageFlowStrokeWidth: number = 0.84;
   messageFlowDashPattern: number[] = [6, 4];
 
   // ── 标记/图标样式 ──

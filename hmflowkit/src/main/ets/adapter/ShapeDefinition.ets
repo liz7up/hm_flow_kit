@@ -7,11 +7,21 @@
 
 import { PerimeterKind } from './ShapeConfig';
 
+// ── PerimeterSegmentKind ───────────────────────────────────────────────────
+
+export enum PerimeterSegmentKind {
+  LINE = 0,   // straight lineTo to this point
+  QUAD = 1,   // quadraticCurveTo using cpX/cpY as control point
+}
+
 // ── PerimeterPoint ────────────────────────────────────────────────────────
 
 export interface PerimeterPoint {
   xFraction: number;  // 0.0 ~ 1.0, relative to shape width
   yFraction: number;  // 0.0 ~ 1.0, relative to shape height
+  kind?: PerimeterSegmentKind;  // segment type (default: LINE)
+  cpXFraction?: number;  // QUAD control point X (0..1, relative to width)
+  cpYFraction?: number;  // QUAD control point Y (0..1, relative to height)
 }
 
 // ── ShapeRenderKind ───────────────────────────────────────────────────────
@@ -84,16 +94,20 @@ export const EVENT_PERIMETER: PerimeterPoint[] = [
 ];
 
 /**
- * DOCUMENT_PERIMETER — 5-point folded-corner document shape.
- * Top-right corner folded down: [0,0] → [1-fr,0] → [1,fr] → [1,1] → [0,1]
- * foldRatio defaults to 0.2 (12px fold for 60px height).
+ * DOCUMENT_PERIMETER — Rectangle with wavy bottom edge (paper effect).
+ * Clockwise: [0,0] → [1,0] → [1,0.88] → wavy bottom back to [0,0.88].
+ * Bottom waves use QUAD segments with control points dipping below baseline.
  */
 export const DOCUMENT_PERIMETER: PerimeterPoint[] = [
   { xFraction: 0, yFraction: 0 },
-  { xFraction: 0.8, yFraction: 0 },
-  { xFraction: 1, yFraction: 0.2 },
-  { xFraction: 1, yFraction: 1 },
-  { xFraction: 0, yFraction: 1 },
+  { xFraction: 1, yFraction: 0 },
+  { xFraction: 1, yFraction: 0.82 },
+  // Wave 1 (v): dips below baseline
+  { xFraction: 0.5, yFraction: 0.82,
+    kind: PerimeterSegmentKind.QUAD, cpXFraction: 0.75, cpYFraction: 1.15 },
+  // Wave 2 (^): arches above baseline
+  { xFraction: 0, yFraction: 0.82,
+    kind: PerimeterSegmentKind.QUAD, cpXFraction: 0.25, cpYFraction: 0.5 },
 ];
 
 /**

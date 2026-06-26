@@ -10,7 +10,7 @@
  * resolve colors from node properties or RenderConfig.
  */
 
-import { ShapeDefinition, ShapeRenderKind, PerimeterPoint } from '../adapter/ShapeDefinition';
+import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, PerimeterSegmentKind } from '../adapter/ShapeDefinition';
 
 export class PathRenderer {
   static render(
@@ -119,10 +119,18 @@ export class PathRenderer {
         ctx.arcTo(cornerX, cornerY, exitX, exitY, crAbs);
       }
     } else {
-      // Sharp corners: straight lineTo
+      // Sharp corners: lineTo or quadraticCurveTo per point kind
       ctx.moveTo(cxArr[0], cyArr[0]);
       for (let i: number = 1; i < pts.length; i++) {
-        ctx.lineTo(cxArr[i], cyArr[i]);
+        let pt: PerimeterPoint = pts[i];
+        if (pt.kind === PerimeterSegmentKind.QUAD &&
+            pt.cpXFraction !== undefined && pt.cpYFraction !== undefined) {
+          let cpx: number = x + pt.cpXFraction * w;
+          let cpy: number = y + pt.cpYFraction * h;
+          ctx.quadraticCurveTo(cpx, cpy, cxArr[i], cyArr[i]);
+        } else {
+          ctx.lineTo(cxArr[i], cyArr[i]);
+        }
       }
     }
     ctx.closePath();

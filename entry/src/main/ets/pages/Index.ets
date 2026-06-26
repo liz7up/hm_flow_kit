@@ -11,6 +11,7 @@ struct Index {
   @State parseError: string = ''
   @State drawioXml: string = ''
   @State showDrawio: boolean = false
+  @State _debugMode: boolean = false
 
   aboutToAppear(): void {
     this.loadComplex()
@@ -102,6 +103,17 @@ struct Index {
       .width('100%')
       .padding(10)
 
+      // ── Debug 开关 ──
+      Row() {
+        Text('Debug:')
+          .fontSize(14)
+          .margin({ right: 6 })
+        Toggle({ type: ToggleType.Switch, isOn: false })
+          .onChange((isOn: boolean): void => { this._debugMode = isOn })
+      }
+      .width('100%')
+      .padding({ left: 12, bottom: 4 })
+
       if (this.parseError.length > 0) {
         Text(this.parseError)
           .fontSize(13)
@@ -111,11 +123,11 @@ struct Index {
 
       // ── 画布 ──
       if (this.showDrawio) {
-        FlowViewer({ drawioXml: this.drawioXml })
+        FlowViewer({ drawioXml: this.drawioXml, debugMode: this._debugMode })
           .width('100%')
           .layoutWeight(1)
       } else {
-        FlowViewer({ model: this.model })
+        FlowViewer({ model: this.model, debugMode: this._debugMode })
           .width('100%')
           .layoutWeight(1)
       }

@@ -24,7 +24,7 @@ export class DrawioStyleParser {
   private static _defaults: Record<string, string> = {
     '_fontSize': '12', '_fontFamily': '', '_align': 'center', '_verticalAlign': 'middle',
     '_arcSize': '0', '_dashed': '0', '_dashPattern': '', '_opacity': '100',
-    '_endArrow': '', '_startArrow': '', '_edgeStyle': '', '_curved': '0', '_rounded': '0', '_horizontal': '1'
+    '_endArrow': '', '_startArrow': '', '_edgeStyle': '', '_curved': '0', '_rounded': '0', '_horizontal': '0'
   };
 
   // Maps drawio BPMN symbols to BPMN element names (reuses BPMN drawers)

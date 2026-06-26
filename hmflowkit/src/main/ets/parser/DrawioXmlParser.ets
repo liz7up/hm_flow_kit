@@ -358,6 +358,20 @@ export class DrawioXmlParser {
         waypoints.push(new Waypoint(cell.points[p].x, cell.points[p].y));
       }
 
+      // Edge waypoints are relative to edge's parent container. Adjust by parent
+      // absolute position so they align with source/target node absolute coords.
+      if (cell.parent !== '1' && cell.parent !== '0') {
+        let edgeParent: GraphNode | undefined = nodeMap[cell.parent];
+        if (edgeParent !== undefined) {
+          for (let p: number = 0; p < waypoints.length; p++) {
+            waypoints[p] = new Waypoint(
+              waypoints[p].x + edgeParent.x,
+              waypoints[p].y + edgeParent.y
+            );
+          }
+        }
+      }
+
       // If explicit waypoints exist, prepend source perimeter and append target
       // perimeter so the edge connects to shape borders (drawio waypoints are
       // intermediate routing points only).

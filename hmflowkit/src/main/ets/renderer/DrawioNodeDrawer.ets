@@ -56,7 +56,7 @@ export class DrawioNodeDrawer {
     let canUsePathRenderer: boolean =
       shapeDef.renderKind === ShapeRenderKind.NATIVE_ELLIPSE ||
       shapeDef.renderKind === ShapeRenderKind.NATIVE_RHOMBUS ||
-      shape === 'rect' || shape === 'document' || shape === 'process';
+      shape === 'rect' || shape === 'process' || shape === 'document';
     if (canUsePathRenderer) {
       let fill: string = DrawioNodeDrawer._resolveColor(
         node.properties['_fillColor'], config.fillColor);
@@ -78,17 +78,6 @@ export class DrawioNodeDrawer {
       PathRenderer.render(ctx, shapeDef, x, y, w, h, fill, stroke, lineW);
       ctx.setLineDash([]);
 
-      // Document shape: draw fold crease lines
-      if (shape === 'document') {
-        let fold: number = Math.min(w, h) * 0.2;
-        ctx.beginPath();
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = lineW;
-        ctx.moveTo(x + w - fold, y);
-        ctx.lineTo(x + w - fold, y + fold);
-        ctx.lineTo(x + w, y + fold);
-        ctx.stroke();
-      }
       ctx.globalAlpha = 1.0;
       this._renderLabel(ctx, node, config, x, y, w, h, zoom);
       return;

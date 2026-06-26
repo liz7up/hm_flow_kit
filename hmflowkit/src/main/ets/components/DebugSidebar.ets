@@ -67,8 +67,15 @@ export struct DebugSidebar {
   }
 
   build() {
-    Column() {
-      if (this.visible) {
+    Stack() {
+      // Background fill
+      Column()
+        .width(300)
+        .height(this.canvasHeight)
+        .backgroundColor(this._bgColor)
+      // Content
+      Column() {
+        if (this.visible) {
         // Title bar
         Row() {
           Text('调试信息')
@@ -311,10 +318,11 @@ export struct DebugSidebar {
         .width('100%')
         .layoutWeight(1)
       }
+      .width(300)
+      .height(this.canvasHeight)
     }
     .width(300)
     .height(this.canvasHeight)
-    .backgroundColor(this._bgColor)
     .border({ width: 1, color: this._borderColor })
     .position({ left: 0, top: 0 })
   }

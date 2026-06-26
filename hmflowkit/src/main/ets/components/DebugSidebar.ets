@@ -14,6 +14,8 @@ import { DebugCollector } from '../debug/DebugCollector'
 import { NodeDetail, ElementStats, ParseDiff, IdMapping, LayerInfo,
   ViewportInfo, RenderStats } from '../debug/DebugTypes'
 import { ConfigurationConstant } from '@kit.AbilityKit'
+import { pasteboard } from '@kit.BasicServicesKit'
+import { CopyOptions } from '@kit.ArkUI'
 
 @Component
 export struct DebugSidebar {
@@ -38,7 +40,7 @@ export struct DebugSidebar {
 
   private get _bgColor(): string {
     return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
-      ? 'rgba(30, 30, 30, 0.92)' : 'rgba(255, 255, 255, 0.92)'
+      ? 'rgba(50, 50, 50, 0.95)' : 'rgba(240, 240, 240, 0.95)'
   }
 
   private get _textColor(): string {
@@ -306,6 +308,7 @@ export struct DebugSidebar {
               .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
             }
           }
+          .copyOption(CopyOptions.LocalDevice)
           .width('100%')
         }
         .width('100%')
@@ -365,8 +368,15 @@ export struct DebugSidebar {
     lines.push('  }')
     lines.push('}')
     let json: string = lines.join('\n')
-    console.info('[DebugSidebar] Node JSON:\n' + json)
-    this._copyFeedback = 'JSON 已输出到控制台'
+    try {
+      let data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, json)
+      let sysPasteboard = pasteboard.getSystemPasteboard()
+      sysPasteboard.setData(data)
+      this._copyFeedback = '已复制到剪贴板'
+    } catch (e) {
+      console.info('[DebugSidebar] Node JSON:\n' + json)
+      this._copyFeedback = '复制失败，已输出到控制台'
+    }
   }
 
   private _escapeJson(s: string): string {

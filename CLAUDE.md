@@ -27,7 +27,9 @@ hm-flow-kit/
 │   │   │   ├── GraphModel.ets            # 图数据模型（唯一数据源）
 │   │   │   └── PlaneHierarchy.ets        # 多平面层级管理（钻取导航）
 │   │   ├── adapter/
-│   │   │   └── ShapeConfig.ets             # 跨格式形状配置（PerimeterKind 注册表）
+│   │   │   ├── ShapeConfig.ets             # 跨格式形状配置（PerimeterKind 注册表 + ShapeDefinition 注册表）
+│   │   │   ├── ShapeDefinition.ets         # PerimeterPoint + ShapeRenderKind + PerimeterPath 预置数据
+│   │   │   └── PerimeterRouter.ets         # 精确 perimeter 交点计算（椭圆/菱形/矩形连续数学）
 │   │   ├── parser/
 │   │   │   ├── BpmnXmlParser.ets           # BPMN 2.0 XML 解析器（v2, XmlPullParser）
 │   │   │   ├── DrawioXmlParser.ets         # drawio mxGraph XML 解析器
@@ -40,6 +42,8 @@ hm-flow-kit/
 │   │   │   ├── HitTestManager.ets          # 命中检测
 │   │   │   ├── PoolLaneRenderer.ets        # 泳池/泳道渲染器
 │   │   │   ├── DrawioNodeDrawer.ets        # drawio 基础形状渲染器
+│   │   │   ├── PathRenderer.ets            # 数据驱动外轮廓渲染（ShapeDefinition → Canvas）
+│   │   │   ├── TextUtils.ets               # 共享文本工具（sanitizeLabel）
 │   │   │   └── RenderConfig.ets            # 渲染配置
 │   │   ├── ohosTest/ets/test/              # 单元测试（Hypium 框架）
 │   │   │   ├── GraphModel.test.ets         #   44 项
@@ -48,7 +52,9 @@ hm-flow-kit/
 │   │   │   ├── HitTestManager.test.ets     #   13 项
 │   │   │   ├── RenderConfig.test.ets       #    5 项
 │   │   │   ├── DrawioStyleParser.test.ets  #   47 项
-│   │   │   └── DrawioXmlParser.test.ets    #   19 项
+│   │   │   ├── DrawioXmlParser.test.ets    #   19 项
+│   │   │   ├── ShapeDefinition.test.ets     #    9 项
+│   │   │   └── PerimeterRouter.test.ets     #   10 项
 │   │   └── components/
 │   │       └── FlowViewer.ets              # 只读流程查看器（BPMN + drawio 双模式）
 │   ├── Index.ets                         # 公开 API 导出入口
@@ -184,6 +190,19 @@ hm-flow-kit/
 - `FlowViewer` 新增 `@Prop drawioXml: string` prop + Demo 页面文件选择器
 - 测试：DrawioStyleParser(47 项) + DrawioXmlParser(19 项)，总 186 项编译通过
 - ⚠️ drawio `<Array as="points">` 只是中间路由点，不连形状边界——parser 自动补 source/target perimeter
+
+**Data-Driven Shape Geometry — 数据驱动形状几何系统 ✅ 已完成**
+- `ShapeDefinition.ets`（100 行）— PerimeterPoint + ShapeRenderKind(NATIVE_ELLIPSE/NATIVE_RHOMBUS/POLYLINE) + 4 种 canon 路径(SIMPLE_RECT/EVENT_PERIMETER/GATEWAY_PERIMETER/TASK_PERIMETER)
+- `PerimeterRouter.ets`（85 行）— 椭圆/菱形/矩形连续数学 perimeter 交点，替换 DrawioXmlParser 中 3 个旧 `_perimeter*` 方法
+- `PathRenderer.ets`（135 行）— 根据 ShapeDefinition 的 renderKind 分发：NATIVE_ELLIPSE→ctx.ellipse()，NATIVE_RHOMBUS→四边中点菱形，POLYLINE→4 点矩形 + arcTo 圆角
+- `ShapeConfig.ets` 扩展 — registerShape()/getShapeDefinition() 注册表 + module init 时从 `_perimeterMap` 预填充全部 22 种类型
+- `TextUtils.ets` — 提取 5 个 Drawer 中重复的 sanitizeLabel()
+- 6 个 Drawer 全部切换轮廓绘制至 PathRenderer，图标/标记代码完整保留
+- `DrawioNodeDrawer` 对 ELLIPSE/RHOMBUS/rect 类型走 PathRenderer，三角形/平行四边形/文本保留原 switch
+- RECT 类型用 4 点 SIMPLE_RECT + cornerRadiusRatio 0.133 → 与 BPMN 1.0 一致的细腻圆角
+- 测试：ShapeDefinition(9 项) + PerimeterRouter(10 项)，**总 216 项编译通过**
+- **TODO: 图标标准化注册表（IconDefinition）** — 内部图标/标记也声明化
+- **TODO: EdgeRenderer 接入 PerimeterRouter** — BPMN XML 连线 perimeter 计算切换到新路由
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

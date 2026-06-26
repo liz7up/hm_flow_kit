@@ -11,7 +11,7 @@
 import { GraphNode } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
 import { INodeDrawer, NodeRenderer } from './NodeRenderer';
-import { ShapeDefinition } from '../adapter/ShapeDefinition';
+import { ShapeDefinition, ShapeRenderKind } from '../adapter/ShapeDefinition';
 import { ShapeConfig } from '../adapter/ShapeConfig';
 import { PathRenderer } from './PathRenderer';
 
@@ -46,8 +46,14 @@ export class DrawioNodeDrawer {
     let shape: string = this._extractShape(node.type);
     let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
 
-    // If this drawio shape maps to a registered BPMN shape, use PathRenderer
-    if (shapeDef.shapeId !== '_default') {
+    // Delegate to PathRenderer only for shapes with native render support
+    // (ellipse/rhombus) or standard POLYLINE rectangles. Other shapes
+    // (triangle, parallelogram, text, swimlane) stay with custom drawing.
+    let canUsePathRenderer: boolean =
+      shapeDef.renderKind === ShapeRenderKind.NATIVE_ELLIPSE ||
+      shapeDef.renderKind === ShapeRenderKind.NATIVE_RHOMBUS ||
+      shape === 'rect';
+    if (canUsePathRenderer) {
       let fill: string = DrawioNodeDrawer._resolveColor(
         node.properties['_fillColor'], config.fillColor);
       let stroke: string = DrawioNodeDrawer._resolveColor(

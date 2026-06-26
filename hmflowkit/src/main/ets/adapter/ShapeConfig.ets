@@ -6,7 +6,7 @@
  * can call getPerimeterType() / getEdgeDefaults() without knowing the source format.
  */
 
-import { ShapeDefinition, ShapeRenderKind, PerimeterPoint } from './ShapeDefinition';
+import { ShapeDefinition, ShapeRenderKind, PerimeterPoint, TASK_PERIMETER, EVENT_PERIMETER, GATEWAY_PERIMETER } from './ShapeDefinition';
 
 // ─── Internal perimeter categories ──────────────────────────────────────────
 
@@ -64,6 +64,32 @@ function _buildDefaultShapeDef(): ShapeDefinition {
 }
 
 _shapeDefDefault = _buildDefaultShapeDef();
+
+// Pre-populate shape definitions from the existing PerimeterKind map.
+// This ensures both BPMN and drawio types have correct ShapeDefinitions
+// regardless of which parser runs first.
+(function _initDefaultRegistry(): void {
+  let rectPath: PerimeterPoint[] = TASK_PERIMETER;
+  let ellipsePath: PerimeterPoint[] = EVENT_PERIMETER;
+  let rhombusPath: PerimeterPoint[] = GATEWAY_PERIMETER;
+
+  let keys: string[] = Object.keys(_perimeterMap);
+  for (let i: number = 0; i < keys.length; i++) {
+    let k: string = keys[i];
+    let kind: PerimeterKind = _perimeterMap[k];
+    if (kind === PerimeterKind.ELLIPSE) {
+      _shapeDefMap[k] = new ShapeDefinition(k, ShapeRenderKind.NATIVE_ELLIPSE,
+        PerimeterKind.ELLIPSE, ellipsePath, 0);
+    } else if (kind === PerimeterKind.RHOMBUS) {
+      _shapeDefMap[k] = new ShapeDefinition(k, ShapeRenderKind.NATIVE_RHOMBUS,
+        PerimeterKind.RHOMBUS, rhombusPath, 0);
+    } else {
+      _shapeDefMap[k] = new ShapeDefinition(k, ShapeRenderKind.POLYLINE,
+        PerimeterKind.RECT, rectPath, 0);
+    }
+  }
+  _shapeDefCount = keys.length;
+})();
 
 export class ShapeConfig {
   /**

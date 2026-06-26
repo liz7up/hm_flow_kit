@@ -204,6 +204,17 @@ hm-flow-kit/
 - **TODO: 图标标准化注册表（IconDefinition）** — 内部图标/标记也声明化
 - **TODO: EdgeRenderer 接入 PerimeterRouter** — BPMN XML 连线 perimeter 计算切换到新路由
 
+**Drawio Cross-Functional Flowchart 支持 ✅ 已完成**
+- `swinlane.drawio` table > tableRow > swimlane 嵌套层级坐标累加（移除 `cell.relative` 条件）
+- Edge waypoint 坐标累加——修复跨 swimlane 连线起点/终点偏移
+- `PerimeterSegmentKind` 枚举（LINE=0 / QUAD=1）→ `PerimeterPoint` 可选 `kind + cpXFraction/cpYFraction`
+- `PathRenderer._drawPolyline` 按 `kind` 分发 `lineTo` / `quadraticCurveTo`
+- `DOCUMENT_PERIMETER` — 5 点 v^ 波浪底边（数据驱动贝塞尔曲线）
+- `drawio.table` / `drawio.tableRow` 形状识别 + 容器头栏渲染
+- `drawio.document` / `drawio.process` 形状识别（document → PathRenderer，process → backgroundOutline 粗边框）
+- `drawio.swimlane` 默认 `_horizontal='0'`（CF 流程图垂直列布局）
+- Swimlane/tableRow/table 无 label 时跳过 header 背景 + 重复中心文字
+
 **Debug Sidebar — 调试信息面板 ✅ 已完成**
 - `@Prop debugMode: boolean` 启用后在画布左侧显示 300px 调试侧边栏
 - `debug/DebugTypes.ets` (88行) — 12 个共享类型类

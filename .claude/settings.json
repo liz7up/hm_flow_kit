@@ -1,0 +1,21 @@
+{
+  "model": "deepseek-v4-pro[1m]",
+  "statusLine": {
+    "type": "command",
+    "command": "python3 /storage/Users/currentUser/Documents/repo/hm_flow_kit/.claude/statusline.py",
+    "refreshInterval": 10
+  },
+  "hooks": {
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{ printf '[%s] ' \"$(date '+%Y-%m-%d %H:%M:%S')\"; cat; printf '\\n---\\n'; } >> /storage/Users/currentUser/.claude/bash_pitfalls.log 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -589,7 +589,7 @@ export class DrawioXmlParser {
       'drawio.parallelogram', 'drawio.text', 'drawio.swimlane', 'drawio.unknown'];
     for (let i: number = 0; i < rectTypes.length; i++) {
       ShapeConfig.registerShape(rectTypes[i], ShapeRenderKind.POLYLINE,
-        PerimeterKind.RECT, TASK_PERIMETER, 0.133);
+        PerimeterKind.RECT, TASK_PERIMETER, 0);
     }
 
     // ELLIPSE — BPMN events, drawio ellipse

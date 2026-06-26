@@ -35,15 +35,24 @@ export class DiagramInfo {
   }
 }
 
+export class DrawioParseMeta {
+  cellCount: number = 0;
+  shapeTypes: Record<string, number> = {};
+  unknownStyles: number = 0;
+}
+
 export class DrawioParseResult {
   model: GraphModel;
   pages: DiagramInfo[];
   warnings: string[];
+  meta: DrawioParseMeta;
 
-  constructor(model: GraphModel, pages: DiagramInfo[], warnings: string[]) {
+  constructor(model: GraphModel, pages: DiagramInfo[], warnings: string[],
+              meta: DrawioParseMeta) {
     this.model = model;
     this.pages = pages;
     this.warnings = warnings;
+    this.meta = meta;
   }
 }
 
@@ -54,6 +63,10 @@ class _ParseState {
   diagrams: _DiagramData[] = [];
   currentDiagram: _DiagramData = new _DiagramData('Page-1', 'd1');
   warnings: string[] = [];
+  // DrawioParseMeta tracking
+  metaCellCount: number = 0;
+  metaShapeTypes: Record<string, number> = {};
+  metaUnknownStyles: number = 0;
   currentCell: _CellData = new _CellData();
   inCell: boolean = false;
   inGeometry: boolean = false;
@@ -258,7 +271,7 @@ export class DrawioXmlParser {
     let pages: DiagramInfo[] = [];
     for (let i: number = 0; i < state.diagrams.length; i++) {
       let d: _DiagramData = state.diagrams[i];
-      let model: GraphModel = DrawioXmlParser._buildModel(d);
+      let model: GraphModel = DrawioXmlParser._buildModel(d, state);
       pages.push(new DiagramInfo(d.name, d.id, model));
     }
 
@@ -268,21 +281,33 @@ export class DrawioXmlParser {
       pages.push(new DiagramInfo('Page-1', 'd1', empty));
     }
 
-    return new DrawioParseResult(pages[0].model, pages, state.warnings);
+    let meta: DrawioParseMeta = new DrawioParseMeta();
+    meta.cellCount = state.metaCellCount;
+    meta.shapeTypes = state.metaShapeTypes;
+    meta.unknownStyles = state.metaUnknownStyles;
+    return new DrawioParseResult(pages[0].model, pages, state.warnings, meta);
   }
 
   // ── Model building ──────────────────────────────────────────────────────────
 
-  private static _buildModel(diagram: _DiagramData): GraphModel {
+  private static _buildModel(diagram: _DiagramData, state: _ParseState): GraphModel {
     let model: GraphModel = GraphModel.createEmpty();
     let nodeMap: Record<string, GraphNode> = {};
 
     // Pass 1: build all vertices first (edges may appear before their source/target in XML)
     for (let i: number = 0; i < diagram.cells.length; i++) {
       let cell: _CellData = diagram.cells[i];
+      state.metaCellCount++;
       if (!cell.vertex) continue;
 
       let s: DrawioStyle = DrawioStyleParser.parse(cell.style);
+      // Track shape type distribution
+      if (s.shapeType === 'drawio.unknown') {
+        state.metaUnknownStyles++;
+      } else {
+        let curr: number = state.metaShapeTypes[s.shapeType] || 0;
+        state.metaShapeTypes[s.shapeType] = curr + 1;
+      }
       let label: string = DrawioXmlParser.stripHtml(cell.value);
 
       let absX: number = cell.x;

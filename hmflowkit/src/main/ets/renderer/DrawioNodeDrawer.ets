@@ -159,8 +159,10 @@ export class DrawioNodeDrawer {
     ctx.setLineDash([]);
     ctx.globalAlpha = 1.0;
 
-    // Draw label
-    this._renderLabel(ctx, node, config, x, y, w, h, zoom);
+    // Draw label — skip for shapes that handle their own text internally
+    if (shape !== 'swimlane' && shape !== 'tableRow' && shape !== 'table') {
+      this._renderLabel(ctx, node, config, x, y, w, h, zoom);
+    }
   }
 
   // ── Shape drawers ─────────────────────────────────────────────────

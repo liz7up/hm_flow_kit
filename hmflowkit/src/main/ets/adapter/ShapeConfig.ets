@@ -68,7 +68,8 @@ _shapeDefDefault = _buildDefaultShapeDef();
 // Pre-populate shape definitions from the existing PerimeterKind map.
 // This ensures both BPMN and drawio types have correct ShapeDefinitions
 // regardless of which parser runs first.
-let _initDefaultRegistry: () => void = (): void => {
+// NOTE: executed inline (no function wrapper) to satisfy arkts-no-func-expressions.
+{
   let rectPath: PerimeterPoint[] = TASK_PERIMETER;
   let ellipsePath: PerimeterPoint[] = EVENT_PERIMETER;
   let rhombusPath: PerimeterPoint[] = GATEWAY_PERIMETER;
@@ -89,7 +90,7 @@ let _initDefaultRegistry: () => void = (): void => {
     }
   }
   _shapeDefCount = keys.length;
-})();
+}
 
 export class ShapeConfig {
   /**

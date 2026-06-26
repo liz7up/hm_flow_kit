@@ -14,8 +14,6 @@ import { DebugCollector } from '../debug/DebugCollector'
 import { NodeDetail, ElementStats, ParseDiff, IdMapping, LayerInfo,
   ViewportInfo, RenderStats } from '../debug/DebugTypes'
 import { ConfigurationConstant } from '@kit.AbilityKit'
-import { pasteboard } from '@kit.BasicServicesKit'
-import { CopyOptions } from '@kit.ArkUI'
 
 @Component
 export struct DebugSidebar {
@@ -308,7 +306,6 @@ export struct DebugSidebar {
               .border({ width: { bottom: 0.5 }, color: this._sectionBorderColor })
             }
           }
-          .copyOption(CopyOptions.LocalDevice)
           .width('100%')
         }
         .width('100%')

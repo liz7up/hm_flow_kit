@@ -11,6 +11,8 @@ import { PlaneHierarchy, BreadcrumbEntry } from '../model/PlaneHierarchy'
 import { DrawioNodeDrawer } from '../renderer/DrawioNodeDrawer'
 import { DrawioXmlParser, DrawioParseResult } from '../parser/DrawioXmlParser'
 import { ConfigurationConstant } from '@kit.AbilityKit'
+import { DebugCollector } from '../debug/DebugCollector'
+import { DebugSidebar } from './DebugSidebar'
 
 @Component
 export struct FlowViewer {
@@ -25,6 +27,7 @@ export struct FlowViewer {
   @Prop renderConfig: RenderConfig = new RenderConfig()
   @Prop @Watch('onPlaneHierarchyChange') planeHierarchy: PlaneHierarchy | null = null
   @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
+  @Prop debugMode: boolean = false
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -48,6 +51,9 @@ export struct FlowViewer {
   @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
   private _currentPlaneId: string = ''
+  @State _sidebarVisible: boolean = false
+  @State _debugSelectedId: string = ''
+  private _debugCollector: DebugCollector | null = null
 
   aboutToAppear(): void {
     // 检测用户是否传了自定义 config（非默认亮色值）
@@ -57,8 +63,9 @@ export struct FlowViewer {
     }
     this.applyTheme()
     if (this.xml.length > 0) {
+      let result: ParseResult
       try {
-        let result: ParseResult = BpmnXmlParser.parseBestEffort(this.xml)
+        result = BpmnXmlParser.parseBestEffort(this.xml)
         this.model = result.model
         if (result.isPartial) {
           this._parseError = 'BPMN XML 解析不完整，部分内容可能无法显示'
@@ -67,6 +74,7 @@ export struct FlowViewer {
       } catch (e) {
         this._parseError = 'BPMN XML 解析失败: ' + e
         this.model = GraphModel.createEmpty()
+        result = new ParseResult()
       }
       // 自动检测多平面
       if (this.planeHierarchy === null && this._parseError.length === 0) {
@@ -81,11 +89,18 @@ export struct FlowViewer {
           // 无多平面数据，保持单平面模式
         }
       }
+      // Create debug collector if debug mode enabled
+      if (this.debugMode) {
+        this._debugCollector = new DebugCollector(
+          this.getActiveModel(), this.canvasManager, this.renderConfig,
+          result.meta, undefined, result.warnings, result.isPartial)
+      }
     }
     if (this.drawioXml.length > 0) {
+      let result: DrawioParseResult | null = null
       try {
         DrawioNodeDrawer.init()
-        let result: DrawioParseResult = DrawioXmlParser.parse(this.drawioXml)
+        result = DrawioXmlParser.parse(this.drawioXml)
         this.model = result.model
         if (result.warnings.length > 0) {
           this._parseWarnings = result.warnings
@@ -93,6 +108,12 @@ export struct FlowViewer {
       } catch (e) {
         this._parseError = 'Drawio XML 解析失败: ' + e
         this.model = GraphModel.createEmpty()
+      }
+      if (this.debugMode && result !== null) {
+        let drawioMeta = result.meta
+        this._debugCollector = new DebugCollector(
+          this.getActiveModel(), this.canvasManager, this.renderConfig,
+          undefined, drawioMeta, result.warnings)
       }
     }
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
@@ -241,6 +262,25 @@ export struct FlowViewer {
       }
       .position({ right: 14, bottom: 14 })
 
+      // "i" debug info button (bottom-left)
+      if (this.debugMode) {
+        Button({ type: ButtonType.Circle }) {
+          Text('i')
+            .fontSize(20)
+            .fontColor('#333')
+            .textAlign(TextAlign.Center)
+        }
+        .width(40)
+        .height(40)
+        .backgroundColor(Color.White)
+        .border({ width: 1, color: '#D0D0D0' })
+        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+        .position({ left: 14, bottom: 14 })
+        .onClick(() => {
+          this._sidebarVisible = !this._sidebarVisible
+        })
+      }
+
       // 解析错误提示遮罩
       if (this._parseError.length > 0) {
         Column() {
@@ -253,6 +293,18 @@ export struct FlowViewer {
         }
         .width('100%')
         .position({ top: 8 })
+      }
+
+      // Debug sidebar
+      if (this._sidebarVisible && this._debugCollector !== null) {
+        DebugSidebar({
+          collector: this._debugCollector,
+          selectedNodeId: this._debugSelectedId,
+          selectedEdgeId: '',
+          visible: this._sidebarVisible,
+          canvasHeight: this.canvasHeight,
+          onClose: () => { this._sidebarVisible = false }
+        })
       }
     }
     .width('100%')
@@ -282,6 +334,10 @@ export struct FlowViewer {
     this._updateBreadcrumb()
     this._needFit = true
     this._highlightId = ''
+    this._debugSelectedId = ''
+    if (this._debugCollector !== null) {
+      this._debugCollector.updateModel(this.getActiveModel())
+    }
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this.renderAll()
   }
@@ -313,6 +369,7 @@ export struct FlowViewer {
         return
       }
       this._highlightId = result.nodeId
+      this._debugSelectedId = result.nodeId
       this.renderAll()
       if (this.onNodeClick) {
         this.onNodeClick(result.nodeId)
@@ -321,6 +378,7 @@ export struct FlowViewer {
       // 点击空白处取消高亮
       if (this._highlightId.length > 0) {
         this._highlightId = ''
+        this._debugSelectedId = ''
         this.renderAll()
       }
     }
@@ -352,6 +410,10 @@ export struct FlowViewer {
       this._updateBreadcrumb()
       this._needFit = true
       this._highlightId = ''
+      this._debugSelectedId = ''
+      if (this._debugCollector !== null) {
+        this._debugCollector.updateModel(this.getActiveModel())
+      }
       this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
       if (this._canvasReady) {
         this.renderAll()
@@ -377,6 +439,9 @@ export struct FlowViewer {
     } else {
       this.renderConfig = new RenderConfig()
     }
+    if (this._debugCollector !== null) {
+      this._debugCollector.updateRenderConfig(this.renderConfig)
+    }
   }
 
   // 外部 prop 变化时触发重绘（无需等待 Canvas onReady）
@@ -392,6 +457,10 @@ export struct FlowViewer {
     // 用 canvasHeight prop 兜底初始渲染尺寸
     if (w <= 0) { w = 800 }
     if (h <= 0) { h = this.canvasHeight }
+    let t0: number = 0
+    if (this._debugCollector !== null) {
+      t0 = Date.now()
+    }
 
     // 同步画布尺寸给 CanvasManager（旋转中心计算需要）
     if (w > 0 && h > 0) {
@@ -563,6 +632,9 @@ export struct FlowViewer {
         this.ctx.fillStyle = this.renderConfig.highlightColor
         this.ctx.fillRect(hlNode.x - hp, hlNode.y - hp, hlNode.width + hp * 2, hlNode.height + hp * 2)
       }
+    }
+    if (this._debugCollector !== null) {
+      this._debugCollector.recordRenderTime(Date.now() - t0)
     }
   }
 }

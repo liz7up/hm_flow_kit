@@ -44,7 +44,7 @@ export class EventDrawer {
     }
 
     // Outer circle outline via PathRenderer
-    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.event');
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
     if (isDashed) {
       ctx.setLineDash([4 * zoom, 3 * zoom]);
     }

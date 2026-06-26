@@ -15,7 +15,7 @@ export class DataDrawer {
   ): void {
     if (node.type === NodeType.DATA_OBJECT) {
       // Document shape: rectangle via PathRenderer (sharp corners) + fold crease lines
-      let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
+      let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
       PathRenderer.render(ctx, shapeDef, x, y, w, h,
         config.fillColor, config.strokeColor,
         config.strokeWidth * zoom, 0);

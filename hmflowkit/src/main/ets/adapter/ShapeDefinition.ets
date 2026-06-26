@@ -84,6 +84,19 @@ export const EVENT_PERIMETER: PerimeterPoint[] = [
 ];
 
 /**
+ * DOCUMENT_PERIMETER — 5-point folded-corner document shape.
+ * Top-right corner folded down: [0,0] → [1-fr,0] → [1,fr] → [1,1] → [0,1]
+ * foldRatio defaults to 0.2 (12px fold for 60px height).
+ */
+export const DOCUMENT_PERIMETER: PerimeterPoint[] = [
+  { xFraction: 0, yFraction: 0 },
+  { xFraction: 0.8, yFraction: 0 },
+  { xFraction: 1, yFraction: 0.2 },
+  { xFraction: 1, yFraction: 1 },
+  { xFraction: 0, yFraction: 1 },
+];
+
+/**
  * SIMPLE_RECT — 4-point sharp rectangle.
  * For RECT perimeterKind shapes, used with cornerRadiusRatio to produce
  * rounded corners via arcTo (matching original BPMN 1.0 renderer behavior).

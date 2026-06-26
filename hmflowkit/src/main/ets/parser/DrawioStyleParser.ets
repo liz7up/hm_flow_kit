@@ -151,6 +151,14 @@ export class DrawioStyleParser {
       shapeType = 'drawio.rhombus';
     } else if (raw['shape'] === 'datastore' || shape === 'datastore') {
       shapeType = 'dataStore';
+    } else if (shape === 'document') {
+      shapeType = 'drawio.document';
+    } else if (shape === 'process') {
+      shapeType = 'drawio.process';
+    } else if (shape === 'tableRow') {
+      shapeType = 'drawio.tableRow';
+    } else if (shape === 'table') {
+      shapeType = 'drawio.table';
     }
     // rect is the fallback for everything else
 

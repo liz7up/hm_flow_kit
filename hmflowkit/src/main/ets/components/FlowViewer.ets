@@ -116,6 +116,11 @@ export struct FlowViewer {
           undefined, drawioMeta, result.warnings)
       }
     }
+    // Direct model mode (no XML): create collector without parseMeta
+    if (this.debugMode && this._debugCollector === null) {
+      this._debugCollector = new DebugCollector(
+        this.getActiveModel(), this.canvasManager, this.renderConfig)
+    }
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this._needFit = true
     this._highlightId = ''

@@ -20,7 +20,7 @@ export struct DebugSidebar {
   @Prop collector: DebugCollector
   @Prop selectedNodeId: string = ''
   @Prop selectedEdgeId: string = ''
-  @Prop visible: boolean = false
+  @Prop visible: boolean = true
   @Prop canvasHeight: number = 600
   @StorageProp('currentColorMode') currentColorMode: number = 0
   onClose?: () => void
@@ -38,7 +38,7 @@ export struct DebugSidebar {
 
   private get _bgColor(): string {
     return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
-      ? 'rgba(50, 50, 50, 0.95)' : 'rgba(240, 240, 240, 0.95)'
+      ? '#333333' : '#E8E8E8'
   }
 
   private get _textColor(): string {
@@ -312,7 +312,7 @@ export struct DebugSidebar {
         .layoutWeight(1)
       }
     }
-    .width(this.visible ? 300 : 0)
+    .width(300)
     .height(this.canvasHeight)
     .backgroundColor(this._bgColor)
     .border({ width: 1, color: this._borderColor })

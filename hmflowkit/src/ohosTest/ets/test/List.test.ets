@@ -8,6 +8,7 @@ import drawioStyleParserTest from './DrawioStyleParser.test';
 import drawioXmlParserTest from './DrawioXmlParser.test';
 import shapeDefinitionTest from './ShapeDefinition.test';
 import perimeterRouterTest from './PerimeterRouter.test';
+import debugCollectorTest from './DebugCollector.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -20,4 +21,5 @@ export default function testsuite() {
   drawioXmlParserTest();
   shapeDefinitionTest();
   perimeterRouterTest();
+  debugCollectorTest();
 }

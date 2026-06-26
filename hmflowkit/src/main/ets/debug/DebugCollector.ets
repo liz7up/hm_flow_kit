@@ -87,7 +87,7 @@ export class DebugCollector {
     detail.sourceId = edge.sourceId
     detail.targetId = edge.targetId
     detail.waypoints = edge.waypoints
-    detail.style = edge.style as string
+    detail.style = edge.style
     detail.label = edge.label
     let keys: string[] = Object.keys(edge.properties)
     for (let i: number = 0; i < keys.length; i++) {
@@ -145,6 +145,8 @@ export class DebugCollector {
     info.offsetX = this._canvasManager.offsetX
     info.offsetY = this._canvasManager.offsetY
     info.rotation = this._canvasManager.rotationTurns * 90
+    info.canvasWidth = this._canvasManager.canvasWidth
+    info.canvasHeight = this._canvasManager.canvasHeight
     return info
   }
 
@@ -240,17 +242,18 @@ export class DebugCollector {
     stats.frameCount = this._frameCount
     if (this._frameCount === 0) { return stats }
     let count: number = this._frameCount < 60 ? this._frameCount : 60
+    let start: number = this._frameCount < 60 ? 0 : (this._timeIdx % 60)
     let sum: number = 0
     stats.minMs = 999999
     stats.maxMs = 0
     for (let i: number = 0; i < count; i++) {
-      let t: number = this._times[i]
+      let t: number = this._times[(start + i) % 60]
       sum += t
       if (t < stats.minMs) { stats.minMs = t }
       if (t > stats.maxMs) { stats.maxMs = t }
     }
     stats.avgMs = Math.round(sum / count)
-    stats.lastMs = this._times[(this._timeIdx - 1) % 60]
+    stats.lastMs = this._times[(this._timeIdx - 1 + 60) % 60]
     return stats
   }
 

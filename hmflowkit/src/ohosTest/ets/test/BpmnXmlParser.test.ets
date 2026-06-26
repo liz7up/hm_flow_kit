@@ -807,5 +807,121 @@ export default function bpmnXmlParserTest(): void {
       // node type 应正确映射
       expect(n !== null ? n.type : NodeType.TASK).assertEqual(NodeType.INTERMEDIATE_EVENT);
     });
+
+    // ── ParseMeta 测试 (C3) ──
+
+    it('parseMeta_has_semanticIds_after_parsing', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<endEvent id="e1"/>' +
+          '</process>' +
+        '</definitions>';
+      let result = BpmnXmlParser.parseBestEffort(xml);
+      let ids: string[] = result.meta.semanticIds;
+      expect(ids.length >= 2).assertEqual(true);
+      let hasS1: boolean = false;
+      let hasE1: boolean = false;
+      for (let i: number = 0; i < ids.length; i++) {
+        if (ids[i] === 's1') { hasS1 = true; }
+        if (ids[i] === 'e1') { hasE1 = true; }
+      }
+      expect(hasS1).assertEqual(true);
+      expect(hasE1).assertEqual(true);
+    });
+
+    it('parseMeta_semanticTypes_maps_id_to_tag_name', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<userTask id="t1"/>' +
+            '<exclusiveGateway id="g1"/>' +
+          '</process>' +
+        '</definitions>';
+      let result = BpmnXmlParser.parseBestEffort(xml);
+      expect(result.meta.semanticTypes['s1']).assertEqual('startEvent');
+      expect(result.meta.semanticTypes['t1']).assertEqual('userTask');
+      expect(result.meta.semanticTypes['g1']).assertEqual('exclusiveGateway');
+    });
+
+    it('parseMeta_has_diagramShapeIds_from_BPMNShape', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<task id="t1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="s1">' +
+              '<Bounds x="0" y="0" width="36" height="36"/>' +
+            '</bpmndi:BPMNShape>' +
+            '<bpmndi:BPMNShape bpmnElement="t1">' +
+              '<Bounds x="100" y="100" width="120" height="60"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      let result = BpmnXmlParser.parseBestEffort(xml);
+      let shapeIds: string[] = result.meta.diagramShapeIds;
+      expect(shapeIds.length).assertEqual(2);
+      let hasS1: boolean = false;
+      let hasT1: boolean = false;
+      for (let i: number = 0; i < shapeIds.length; i++) {
+        if (shapeIds[i] === 's1') { hasS1 = true; }
+        if (shapeIds[i] === 't1') { hasT1 = true; }
+      }
+      expect(hasS1).assertEqual(true);
+      expect(hasT1).assertEqual(true);
+    });
+
+    it('parseMeta_has_diagramEdgeIds_from_BPMNEdge', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<endEvent id="e1"/>' +
+            '<sequenceFlow id="f1" sourceRef="s1" targetRef="e1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNEdge bpmnElement="f1">' +
+              '<waypoint x="10" y="10"/>' +
+              '<waypoint x="200" y="200"/>' +
+            '</bpmndi:BPMNEdge>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      let result = BpmnXmlParser.parseBestEffort(xml);
+      let edgeIds: string[] = result.meta.diagramEdgeIds;
+      expect(edgeIds.length).assertEqual(1);
+      expect(edgeIds[0]).assertEqual('f1');
+    });
+
+    it('parseMeta_tracks_discardedElementTypes', 0, () => {
+      let xml: string = '<?xml version="1.0"?>' +
+        '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"' +
+        '             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI">' +
+          '<process id="p1">' +
+            '<startEvent id="s1"/>' +
+            '<textAnnotation id="a1"/>' +
+          '</process>' +
+          '<bpmndi:BPMNDiagram>' +
+            '<bpmndi:BPMNShape bpmnElement="s1">' +
+              '<Bounds x="0" y="0" width="36" height="36"/>' +
+            '</bpmndi:BPMNShape>' +
+          '</bpmndi:BPMNDiagram>' +
+        '</definitions>';
+      let result = BpmnXmlParser.parseBestEffort(xml);
+      let discarded: Record<string, number> = result.meta.discardedElementTypes;
+      let keys: string[] = Object.keys(discarded);
+      let foundAnnotation: boolean = false;
+      for (let i: number = 0; i < keys.length; i++) {
+        if (keys[i] === 'textAnnotation' && discarded[keys[i]] > 0) {
+          foundAnnotation = true;
+        }
+      }
+      expect(foundAnnotation).assertEqual(true);
+    });
   });
 }

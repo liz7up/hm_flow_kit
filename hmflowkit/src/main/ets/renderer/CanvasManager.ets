@@ -151,6 +151,20 @@ export class CanvasManager {
   }
 
   /**
+   * 获取当前画布宽度（屏幕像素）
+   */
+  public get canvasWidth(): number {
+    return this._canvasWidth;
+  }
+
+  /**
+   * 获取当前画布高度（屏幕像素）
+   */
+  public get canvasHeight(): number {
+    return this._canvasHeight;
+  }
+
+  /**
    * 设置画布尺寸（旋转中心计算需要）
    *
    * @param w - 画布宽度（屏幕像素）

@@ -68,7 +68,7 @@ _shapeDefDefault = _buildDefaultShapeDef();
 // Pre-populate shape definitions from the existing PerimeterKind map.
 // This ensures both BPMN and drawio types have correct ShapeDefinitions
 // regardless of which parser runs first.
-(function _initDefaultRegistry(): void {
+let _initDefaultRegistry: () => void = (): void => {
   let rectPath: PerimeterPoint[] = TASK_PERIMETER;
   let ellipsePath: PerimeterPoint[] = EVENT_PERIMETER;
   let rhombusPath: PerimeterPoint[] = GATEWAY_PERIMETER;

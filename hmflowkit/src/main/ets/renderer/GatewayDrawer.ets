@@ -17,7 +17,7 @@ export class GatewayDrawer {
     let cy: number = y + h / 2;
 
     // Diamond outline via PathRenderer
-    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.gateway2');
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
     PathRenderer.render(ctx, shapeDef, x, y, w, h,
       config.gatewayFillColor, config.gatewayStrokeColor,
       config.strokeWidth * zoom);

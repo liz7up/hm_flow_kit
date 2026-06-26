@@ -14,7 +14,7 @@ export class TaskDrawer {
     zoom: number
   ): void {
     // Outline via PathRenderer
-    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
     let subFill: string = config.taskFillColor;
     let subStroke: string = config.taskStrokeColor;
     let textColor: string = config.taskTextColor;

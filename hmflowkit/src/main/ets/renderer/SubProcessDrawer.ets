@@ -13,7 +13,7 @@ export class SubProcessDrawer {
     x: number, y: number, w: number, h: number,
     zoom: number
   ): void {
-    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition('bpmn.task2');
+    let shapeDef: ShapeDefinition = ShapeConfig.getShapeDefinition(node.type);
     let isTx: boolean = node.properties['bpmnElement'] === 'transaction';
 
     // Event subProcess → dashed; Transaction → double-line; else → solid

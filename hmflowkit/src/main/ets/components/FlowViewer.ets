@@ -51,7 +51,7 @@ export struct FlowViewer {
   @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
   private _currentPlaneId: string = ''
-  @State _sidebarVisible: boolean = false
+  @State _sidebarVisible: boolean = true
   @State _debugSelectedId: string = ''
   private _debugCollector: DebugCollector | null = null
 
@@ -128,7 +128,7 @@ export struct FlowViewer {
 
   build() {
     Row() {
-      if (this._debugCollector !== null) {
+      if (this._debugCollector !== null && this._sidebarVisible) {
         DebugSidebar({
           collector: this._debugCollector,
           selectedNodeId: this._debugSelectedId,

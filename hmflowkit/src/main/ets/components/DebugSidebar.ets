@@ -365,15 +365,8 @@ export struct DebugSidebar {
     lines.push('  }')
     lines.push('}')
     let json: string = lines.join('\n')
-    try {
-      let data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, json)
-      let sysPasteboard = pasteboard.getSystemPasteboard()
-      sysPasteboard.setData(data)
-      this._copyFeedback = '已复制到剪贴板'
-    } catch (e) {
-      console.info('[DebugSidebar] Node JSON:\n' + json)
-      this._copyFeedback = '复制失败，已输出到控制台'
-    }
+    console.info('[DebugSidebar] Node JSON:\n' + json)
+    this._copyFeedback = 'JSON 已输出到控制台（SDK 不支持剪贴板）'
   }
 
   private _escapeJson(s: string): string {

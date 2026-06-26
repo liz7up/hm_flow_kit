@@ -1,7 +1,7 @@
 {
   "name": "hmflowkit",
-  "version": "1.0.0",
-  "description": "鸿蒙原生BPMN流程图组件库。纯ArkTS+Canvas 2D实现，零依赖，一行代码渲染审批流。支持BPMN 2.0 XML解析、自动缩放适配、点击高亮、拖拽平移。兼容OpenHarmony与HarmonyOS。",
+  "version": "1.1.0",
+  "description": "鸿蒙原生流程图引擎，支持BPMN、drawio格式。纯ArkTS+Canvas 2D实现，零依赖。兼容OpenHarmony与HarmonyOS。",
   "main": "Index.ets",
   "author": "lizhen",
   "license": "Apache-2.0",

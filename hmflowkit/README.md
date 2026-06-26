@@ -1,6 +1,6 @@
 # hmflowkit
 
-鸿蒙原生 BPMN 2.0 流程图组件库。纯 ArkTS + Canvas 2D 实现，零第三方依赖。
+鸿蒙原生流程图引擎，支持 BPMN、drawio 格式。纯 ArkTS + Canvas 2D 实现，零第三方依赖。
 
 ## 安装
 
@@ -11,21 +11,20 @@ ohpm install hmflowkit
 
 ## 功能
 
-- 🎨 纯 ArkTS Canvas 2D 渲染，无 WebView
-- 📋 BPMN 2.0 XML 解析 — 兼容 bpmn.js 导出格式
-- 🔷 4 类 Gateway 内部标记 + 10 种 EventDefinition 图标 + 7 种 Task 类型图标
-- 🏊 Pool/Lane 泳池泳道 + 3 种 SubProcess 边框（单线/双线/虚线）
-- 🔗 SequenceFlow 实线 + MessageFlow 虚线 + Association 关联线
-- 🎯 节点/连线/泳道命中检测（HitTest），嵌套元素最小面积优先
-- 🌓 系统明暗主题自动适配 + RenderConfig 自定义配色
-- 🔲 多平面钻取导航：嵌套子流程展开/折叠 + 面包屑层级跳转
-- 📐 自动适配画布（auto-fit）+ 拖拽平移 + 双指缩放 + 浮动缩放按钮
-- 🖱️ 点击高亮选中 + 空白取消
-- 🏗️ 不可变数据模型 GraphModel + PlaneHierarchy 层级管理
-- 🧩 ~30 design token 可配置样式（RenderConfig）
-- 🔄 画布四向旋转（0°/90°/180°/270°），旋转矩阵变换补偿
-- 📦 120 项自动化单元测试
-- 💻 鸿蒙 PC + 移动端通用
+| BPMN | drawio | 共用基础 |
+|------|--------|----------|
+| BPMN 2.0 XML 解析（兼容 bpmn.js） | mxGraph XML 解析 + HTML 净化 | 纯 ArkTS Canvas 2D 渲染，无 WebView |
+| 4 类 Gateway 内部标记（X / + / ○ / ◇） | BPMN 2.0 形状全映射（Event / Gateway / Task） | 命中检测（HitTest），嵌套元素最小面积优先 |
+| 10 种 EventDefinition 图标 | 跨职能流程图（swimlane / tableRow） | 系统明暗主题自动适配 + RenderConfig 自定义配色 |
+| 7 种 Task 类型图标 + callActivity | drawio 容器形状（table / tableRow / swimlane） | 画布自动适配（auto-fit）+ 拖拽平移 + 双指缩放 |
+| Pool/Lane 泳池泳道（嵌套 Lane + 横向/纵向） | document 波浪底边、process 粗边框 | 画布四向旋转（0°/90°/180°/270°） |
+| 3 种 SubProcess 边框（单线/双线/虚线） | bezier 曲线 + 起止箭头（endArrow/startArrow） | GraphModel 不可变数据模型 + PlaneHierarchy 层级管理 |
+| SequenceFlow、MessageFlow、Association | 多页 drawio diagram 支持 | 数据驱动形状几何（ShapeDefinition + PerimeterRouter + PathRenderer） |
+| 多平面钻取导航（展开/折叠 + 面包屑） | per-edge 颜色 / 虚线样式 | INodeDrawer 扩展接口 + ShapeConfig 跨格式注册表 |
+| — | — | 调试侧边栏（7 区段可折叠面板，含时间线/性能/统计） |
+| — | — | 234 项自动化单元测试，鸿蒙 PC + 移动端通用 |
+
+> 更多审批流功能即将上线！
 
 ## 快速开始
 
@@ -44,11 +43,13 @@ FlowViewer({ xml: this.bpmnXmlString })
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| xml | string | '' | BPMN XML 字符串（推荐，自动解析 + 钻取检测） |
+| xml | string | '' | BPMN XML 字符串（自动解析 + 钻取检测） |
+| drawioXml | string | '' | drawio mxGraph XML 字符串 |
 | model | GraphModel | 空模型 | 编程构建场景 |
 | canvasHeight | number | 600 | 画布高度 |
 | showGrid | boolean | true | 背景网格 |
 | renderConfig | RenderConfig | 默认配置 | 自定义配色 |
+| debugMode | boolean | false | 启用调试侧边栏 |
 | onNodeClick | (nodeId: string) => void | — | 节点点击回调 |
 | onCanvasReady | () => void | — | 画布就绪回调 |
 
@@ -81,6 +82,29 @@ BpmnXmlParser.parse(xml: string): GraphModel                // 严格解析
 BpmnXmlParser.parseBestEffort(xml: string): ParseResult      // 宽松解析（遇错保留已有数据）
 BpmnXmlParser.parseHierarchy(xml: string): PlaneHierarchy    // 多平面层级
 ```
+
+### DrawioXmlParser
+
+```typescript
+DrawioXmlParser.parse(xml: string): DrawioParseResult      // mxGraph XML → GraphModel + 元数据
+// DrawioParseResult { model, meta }
+// DrawioParseMeta: diagrams[], pageCount, styleParseStats
+```
+
+### DrawioStyleParser
+
+```typescript
+DrawioStyleParser.parse(style: string): DrawioStyle         // style 字符串 → 形状类型 + 属性
+// DrawioStyle { shapeType, fillColor, strokeColor, strokeWidth, ... }
+```
+
+### INodeDrawer（扩展接口）
+
+```typescript
+interface INodeDrawer {
+  draw(ctx, node, config, offsetX, offsetY, zoom): void
+}
+NodeRenderer.register('myShape', myDrawer)  // 用户可注册自定义形状
 
 ### GraphModel
 

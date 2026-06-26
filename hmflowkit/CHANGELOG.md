@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-24
+
+### Added — Drawio Support (Phase 8)
+
+- **`DrawioXmlParser`** (~500 行): mxGraph XML → GraphModel，两趟构建、HTML 净化、perimeter 路由自动补全
+- **`DrawioStyleParser`** (~240 行): drawio style 字符串解析，形状检测 + 属性映射
+- **`DrawioNodeDrawer`** (~340 行): 基础几何形状渲染（矩形/菱形/椭圆/三角形/圆柱/圆角矩形）+ 多行文本
+- **BPMN 2.0 drawio 形状全映射**: 8 种 Event（outline）、2 种 Gateway 格式（新旧）、8 种 Task（taskMarker）、SubProcess/CallActivity、DataObject/DataStore、Annotation、Swimlane/Pool
+- **EdgeRenderer 扩展**: bezier 曲线 + `_endArrow`/`_startArrow` 支持 + per-edge 颜色
+- **`GraphNode.type` 放宽**: `NodeType` enum → `string`，registry 注册表模式（`NodeRenderer.register()`）
+- **`INodeDrawer` 接口导出**: 用户可注册自定义形状 Drawer
+- `FlowViewer` 新增 `@Prop drawioXml: string` prop
+- Demo 页面文件选择器支持 `.drawio` / `.xml` 文件
+
+### Added — Cross-Format Shape Configuration (Phase 9)
+
+- **`ShapeConfig.ets`** (~70 行): `PerimeterKind` 注册表 + `ShapeDefinition` 注册表，跨格式统一配置层
+- 22 种类型预填充：Visio/UML 只需加映射即可接入
+
+### Added — Data-Driven Shape Geometry (Phase 10)
+
+- **`ShapeDefinition.ets`** (100 行): `PerimeterPoint` + `ShapeRenderKind` (NATIVE_ELLIPSE/NATIVE_RHOMBUS/POLYLINE) + 4 canon 路径
+- **`PerimeterRouter.ets`** (85 行): 椭圆/菱形/矩形连续数学 perimeter 交点计算
+- **`PathRenderer.ets`** (135 行): 按 ShapeDefinition.renderKind 分发渲染
+- **`TextUtils.ets`**: 5 个 Drawer 中重复的 `sanitizeLabel()` 提取为共享工具
+- 6 个 BPMN Drawer 全部切换轮廓绘制至 PathRenderer
+- `DrawioXmlParser` 3 个旧 perimeter 方法替换为 PerimeterRouter
+
+### Added — Drawio Cross-Functional Flowchart (swinlane.drawio)
+
+- `table` > `tableRow` > `swimlane` 嵌套层级坐标累加
+- Edge waypoint 坐标累加修复跨 swimlane 连线偏移
+- `PerimeterSegmentKind` 枚举（LINE/QUAD）→ `DOCUMENT_PERIMETER` 5 点波浪底边
+- `drawio.table` / `drawio.tableRow` 容器头栏渲染
+- `drawio.document`（PathRenderer 波浪底）/ `drawio.process`（粗边框）形状识别
+- `drawio.swimlane` 默认垂直列布局（CF 流程图）
+- Swimlane/tableRow/table 无 label 时跳过 header 背景
+
+### Added — Debug Sidebar
+
+- `debug/DebugTypes.ets` (88 行): 12 个共享调试类型类
+- `debug/DebugCollector.ets` (286 行): 数据收集器，13 个查询方法 + 环形计时缓冲
+- `components/DebugSidebar.ets` (537 行): 7 区段可折叠面板（概览/节点/边/Pool/统计/时间线/性能）
+- `FlowViewer` 新增 `@Prop debugMode: boolean`
+- Parser 扩展: `ParseMeta` (BPMN) + `DrawioParseMeta` (drawio) — 解析期间收集元数据
+- "i" 按钮（左下角，与侧边栏互斥）
+
+### Added — Public API
+
+- `DrawioXmlParser`, `DrawioParseResult`, `DrawioParseMeta`, `DiagramInfo` exported
+- `DrawioStyleParser`, `DrawioStyle`, `DrawioNodeDrawer` exported
+- `ShapeConfig`, `PerimeterKind`, `INodeDrawer` exported
+- `FlowViewer.@Prop drawioXml`, `FlowViewer.@Prop debugMode`
+
+### Changed
+
+- 66 new tests: DrawioStyleParser(47) + DrawioXmlParser(19), total 186 项编译通过
+- Total 234 项编译通过（含 DebugCollector 13 + BpmnXmlParser ParseMeta 5 + ShapeDefinition 9 + PerimeterRouter 10）
+
 ## [1.0.0] - 2026-06-22
 
 ### Added — Canvas Rotation (Phase 7)

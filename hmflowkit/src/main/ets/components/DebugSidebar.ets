@@ -316,7 +316,7 @@ export struct DebugSidebar {
     .height(this.canvasHeight)
     .backgroundColor(this._bgColor)
     .border({ width: 1, color: this._borderColor })
-    .position({ right: 0, top: 0 })
+    .position({ left: 0, top: 0 })
   }
 
   // ── Builder: reusable collapsible section header ──

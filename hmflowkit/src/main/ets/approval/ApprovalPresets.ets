@@ -38,6 +38,19 @@ export const ApprovalColorPresets: IApprovalColorPresets = {
   ),
 };
 
+export function getPresetById(presetId: PresetId): ApprovalStatusColorMap | undefined {
+  if (presetId === 'CLASSIC') {
+    return ApprovalColorPresets.CLASSIC;
+  }
+  if (presetId === 'GOVERNMENT') {
+    return ApprovalColorPresets.GOVERNMENT;
+  }
+  if (presetId === 'DARK') {
+    return ApprovalColorPresets.DARK;
+  }
+  return undefined;
+}
+
 function buildPreset(
   approved: StatusColor,
   rejected: StatusColor,

@@ -11,6 +11,7 @@ import perimeterRouterTest from './PerimeterRouter.test';
 import debugCollectorTest from './DebugCollector.test';
 import approvalTypesTest from './ApprovalTypes.test';
 import statusOverlayRendererTest from './StatusOverlayRenderer.test';
+import flowableHistoryAdapterTest from './FlowableHistoryAdapter.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -26,4 +27,5 @@ export default function testsuite() {
   debugCollectorTest();
   approvalTypesTest();
   statusOverlayRendererTest();
+  flowableHistoryAdapterTest();
 }

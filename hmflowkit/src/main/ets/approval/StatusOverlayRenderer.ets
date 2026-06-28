@@ -1,30 +1,52 @@
 // hmflowkit/src/main/ets/approval/StatusOverlayRenderer.ets
 import {
   NodeStatus, NodeStatusMap, EdgeTrail, StatusColor,
-  ApprovalOverlayConfig, ApprovalStatusColorMap,
+  ApprovalOverlayConfig, ApprovalStatusColorMap, ApprovalStatus,
   NodeDrawRect, OnNodeDecorator, BadgePosition
 } from './ApprovalTypes';
-import { ApprovalColorPresets, PresetId } from './ApprovalPresets';
+import { ApprovalColorPresets, PresetId, getPresetById } from './ApprovalPresets';
 import { GraphNode, GraphEdge } from '../model/GraphModel';
 import { RenderConfig } from '../renderer/RenderConfig';
+
+// Fallback color storage (ArkTS forbids Record<K,V> object literals)
+class FallbackColorStore {
+  approved: StatusColor;
+  rejected: StatusColor;
+  current: StatusColor;
+  skipped: StatusColor;
+  transferred: StatusColor;
+  pending: StatusColor;
+
+  constructor() {
+    this.approved = new StatusColor('#E8F5E9', '#4CAF50', 0, '✓');
+    this.rejected = new StatusColor('#FFEBEE', '#F44336', 0, '✗');
+    this.current = new StatusColor('#E3F2FD', '#2196F3', 0, '●');
+    this.skipped = new StatusColor('#F5F5F5', '#9E9E9E', 0, '—');
+    this.transferred = new StatusColor('#FFF3E0', '#FF9800', 0, '↗');
+    this.pending = new StatusColor('#FFFFFF', '#BDBDBD', 0, '');
+  }
+
+  getByStatus(s: string): StatusColor | undefined {
+    if (s === 'approved') return this.approved;
+    if (s === 'rejected') return this.rejected;
+    if (s === 'current') return this.current;
+    if (s === 'skipped') return this.skipped;
+    if (s === 'transferred') return this.transferred;
+    if (s === 'pending') return this.pending;
+    return undefined;
+  }
+}
 
 export class StatusOverlayRenderer {
 
   // ═══ 内部默认回退色（保证无配置时也能显示） ═══
-  private static _fallbackColors: Record<string, StatusColor> = {
-    approved:    new StatusColor('#E8F5E9', '#4CAF50', 0, '✓'),
-    rejected:    new StatusColor('#FFEBEE', '#F44336', 0, '✗'),
-    current:     new StatusColor('#E3F2FD', '#2196F3', 0, '●'),
-    skipped:     new StatusColor('#F5F5F5', '#9E9E9E', 0, '—'),
-    transferred: new StatusColor('#FFF3E0', '#FF9800', 0, '↗'),
-    pending:     new StatusColor('#FFFFFF', '#BDBDBD', 0, ''),
-  };
+  private static _fallbackColors: FallbackColorStore = new FallbackColorStore();
 
   /**
    * 查表取色，按优先级：user config → preset → fallback
    */
   static resolveColor(
-    status: string,
+    status: ApprovalStatus,
     config: ApprovalOverlayConfig | undefined,
     presetId: PresetId | undefined
   ): StatusColor {
@@ -37,7 +59,7 @@ export class StatusOverlayRenderer {
     }
     // 2. 预设
     if (presetId !== undefined) {
-      let preset: ApprovalStatusColorMap | undefined = ApprovalColorPresets[presetId];
+      let preset: ApprovalStatusColorMap | undefined = getPresetById(presetId);
       if (preset !== undefined) {
         let pc: StatusColor | null = preset.getByStatus(status);
         if (pc !== null) {
@@ -46,7 +68,7 @@ export class StatusOverlayRenderer {
       }
     }
     // 3. 回退
-    let fb: StatusColor | undefined = StatusOverlayRenderer._fallbackColors[status];
+    let fb: StatusColor | undefined = StatusOverlayRenderer._fallbackColors.getByStatus(status);
     if (fb !== undefined) {
       return fb;
     }

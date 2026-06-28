@@ -1,7 +1,7 @@
 // hmflowkit/src/ohosTest/ets/test/StatusOverlayRenderer.test.ets
 import { describe, it, expect } from '@ohos/hypium';
-import { StatusOverlayRenderer } from '../../main/ets/approval/StatusOverlayRenderer';
-import { StatusColor, ApprovalOverlayConfig, NodeStatusMap, NodeStatus } from '../../main/ets/approval/ApprovalTypes';
+import { StatusOverlayRenderer } from '../../../main/ets/approval/StatusOverlayRenderer';
+import { StatusColor, ApprovalOverlayConfig, NodeStatusMap, NodeStatus } from '../../../main/ets/approval/ApprovalTypes';
 
 export default function statusOverlayRendererTest() {
   describe('StatusOverlayRenderer', () => {

@@ -22,7 +22,7 @@ export struct DebugSidebar {
   @Prop selectedEdgeId: string = ''
   @Prop visible: boolean = true
   @Prop canvasHeight: number = 600
-  @StorageProp('currentColorMode') currentColorMode: number = 0
+  @Prop currentColorMode: number = 0
   onClose?: () => void
 
   @State private _statsExpanded: boolean = true

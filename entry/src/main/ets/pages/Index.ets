@@ -11,6 +11,7 @@ struct Index {
   @State parseError: string = ''
   @State drawioXml: string = ''
   @State showDrawio: boolean = false
+  @State highlightNodeId: string = 'Activity_0qp0vie'
 
   aboutToAppear(): void {
     this.loadComplex()
@@ -111,11 +112,11 @@ struct Index {
 
       // ── 画布 ──
       if (this.showDrawio) {
-        FlowViewer({ drawioXml: this.drawioXml, debugMode: true })
+        FlowViewer({ drawioXml: this.drawioXml, highlightNodeId: this.highlightNodeId, debugMode: true })
           .width('100%')
           .layoutWeight(1)
       } else {
-        FlowViewer({ model: this.model, debugMode: true })
+        FlowViewer({ model: this.model, highlightNodeId: this.highlightNodeId, debugMode: true })
           .width('100%')
           .layoutWeight(1)
       }

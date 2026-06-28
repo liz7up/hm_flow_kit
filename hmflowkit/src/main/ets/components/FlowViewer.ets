@@ -13,6 +13,7 @@ import { DrawioXmlParser, DrawioParseResult } from '../parser/DrawioXmlParser'
 import { ConfigurationConstant } from '@kit.AbilityKit'
 import { DebugCollector } from '../debug/DebugCollector'
 import { DebugSidebar } from './DebugSidebar'
+import { ShapeConfig, PerimeterKind } from '../adapter/ShapeConfig'
 
 @Component
 export struct FlowViewer {
@@ -135,6 +136,7 @@ export struct FlowViewer {
           selectedEdgeId: '',
           visible: true,
           canvasHeight: this.canvasHeight,
+          currentColorMode: this.currentColorMode,
           onClose: () => { this._sidebarVisible = false }
         })
       }
@@ -635,13 +637,59 @@ export struct FlowViewer {
       let hlNode: GraphNode | null
       hlNode = this.getActiveModel().getNode(activeHighlightId)
       if (hlNode !== null) {
-        let hp: number = this.renderConfig.highlightPadding
-        this.ctx.fillStyle = this.renderConfig.highlightColor
-        this.ctx.fillRect(hlNode.x - hp, hlNode.y - hp, hlNode.width + hp * 2, hlNode.height + hp * 2)
+        this._drawHighlightOutline(hlNode.x, hlNode.y, hlNode.width, hlNode.height, hlNode.type)
       }
     }
     if (this._debugCollector !== null) {
       this._debugCollector.recordRenderTime(Date.now() - t0)
+    }
+  }
+
+  private _drawHighlightOutline(x: number, y: number, w: number, h: number, nodeType: string): void {
+    let hp: number = this.renderConfig.highlightPadding
+    let color: string = this.renderConfig.highlightColor
+    let lw: number = this.renderConfig.highlightLineWidth
+    this.ctx.strokeStyle = color
+    this.ctx.lineWidth = lw
+    this.ctx.fillStyle = 'none'
+
+    let kind: PerimeterKind = ShapeConfig.perimeterKind(nodeType)
+
+    if (kind === PerimeterKind.ELLIPSE) {
+      this.ctx.beginPath()
+      this.ctx.ellipse(x + w / 2, y + h / 2, w / 2 + hp, h / 2 + hp, 0, 0, 2 * Math.PI)
+      this.ctx.stroke()
+    } else if (kind === PerimeterKind.RHOMBUS) {
+      this.ctx.beginPath()
+      this.ctx.moveTo(x + w / 2, y - hp)
+      this.ctx.lineTo(x + w + hp, y + h / 2)
+      this.ctx.lineTo(x + w / 2, y + h + hp)
+      this.ctx.lineTo(x - hp, y + h / 2)
+      this.ctx.closePath()
+      this.ctx.stroke()
+    } else {
+      // Rounded rectangle with corner radius expanded proportionally
+      let cr: number = this.renderConfig.cornerRadiusRatio * Math.min(w, h)
+      let ex: number = x - hp
+      let ey: number = y - hp
+      let ew: number = w + hp * 2
+      let eh: number = h + hp * 2
+      let r: number = cr + hp * this.renderConfig.cornerRadiusRatio * 2
+      if (r > Math.min(ew, eh) / 2) {
+        r = Math.min(ew, eh) / 2
+      }
+      this.ctx.beginPath()
+      this.ctx.moveTo(ex + r, ey)
+      this.ctx.lineTo(ex + ew - r, ey)
+      this.ctx.arcTo(ex + ew, ey, ex + ew, ey + r, r)
+      this.ctx.lineTo(ex + ew, ey + eh - r)
+      this.ctx.arcTo(ex + ew, ey + eh, ex + ew - r, ey + eh, r)
+      this.ctx.lineTo(ex + r, ey + eh)
+      this.ctx.arcTo(ex, ey + eh, ex, ey + eh - r, r)
+      this.ctx.lineTo(ex, ey + r)
+      this.ctx.arcTo(ex, ey, ex + r, ey, r)
+      this.ctx.closePath()
+      this.ctx.stroke()
     }
   }
 }

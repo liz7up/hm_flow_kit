@@ -68,8 +68,9 @@ export class RenderConfig {
   renderThrottleMs: number = 16;
 
   // ═══ Highlight ═══
-  highlightColor: string = 'rgba(0, 0, 0, 0.12)';
-  highlightPadding: number = 4;
+  highlightColor: string = '#1890FF';
+  highlightPadding: number = 3;
+  highlightLineWidth: number = 3;
 
   // ═══ Font ═══
   fontSizeMin: number = 12;
@@ -202,7 +203,8 @@ export class RenderConfig {
     c.gatewayMarkerColor = '#FFFFFF';
     c.eventIconColor = '#FFFFFF';
     // Highlight
-    c.highlightColor = 'rgba(255, 255, 255, 0.18)';
+    c.highlightColor = '#FFC107';
+    c.highlightLineWidth = 3;
     // Grid
     c.gridColor = '#333333';
     return c;

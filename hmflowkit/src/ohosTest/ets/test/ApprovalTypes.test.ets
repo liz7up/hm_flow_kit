@@ -2,8 +2,9 @@ import { describe, it, expect } from '@ohos/hypium';
 import {
   NodeStatus, MultiInstanceStatus, EdgeTrail, EdgeTrailKind,
   StatusColor, ApprovalOverlayConfig, ApprovalStatusColorMap,
-  NodeStatusMap, NodeDrawRect
-} from '../../main/ets/approval/ApprovalTypes';
+  NodeStatusMap, NodeStatusEntry, NodeDrawRect
+} from '../../../main/ets/approval/ApprovalTypes';
+import { ApprovalColorPresets } from '../../../main/ets/approval/ApprovalPresets';
 
 export default function approvalTypesTest() {
   describe('ApprovalTypes', () => {
@@ -112,7 +113,7 @@ export default function approvalTypesTest() {
       let map: NodeStatusMap = new NodeStatusMap();
       map.set('a', new NodeStatus('a', 'approved'));
       map.set('b', new NodeStatus('b', 'rejected'));
-      let entries: Array<{ nodeId: string; status: NodeStatus }> = map.entries();
+      let entries: NodeStatusEntry[] = map.entries();
       expect(entries.length).assertEqual(2);
     });
 
@@ -132,6 +133,26 @@ export default function approvalTypesTest() {
       expect(r.y).assertEqual(20);
       expect(r.width).assertEqual(100);
       expect(r.height).assertEqual(50);
+    });
+
+    // ── Presets ──
+    it('Presets_CLASSIC_exists', 0, () => {
+      let classic: ApprovalStatusColorMap = ApprovalColorPresets.CLASSIC;
+      expect(classic.approved !== null).assertTrue();
+      expect(classic.rejected !== null).assertTrue();
+      expect(classic.current !== null).assertTrue();
+    });
+
+    it('Presets_GOVERNMENT_has_chinese_badges', 0, () => {
+      let gov: ApprovalStatusColorMap = ApprovalColorPresets.GOVERNMENT;
+      if (gov.approved !== null) {
+        expect(gov.approved.badgeText).assertEqual('\u5DF2\u6279');
+      }
+    });
+
+    it('Presets_DARK_exists', 0, () => {
+      let dark: ApprovalStatusColorMap = ApprovalColorPresets.DARK;
+      expect(dark.approved !== null).assertTrue();
     });
   });
 }

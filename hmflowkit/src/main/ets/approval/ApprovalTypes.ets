@@ -140,6 +140,17 @@ export class ApprovalOverlayConfig {
   }
 }
 
+// ═══ 节点状态表条目 (ArkTS 禁止 inline object literal types) ═══
+export class NodeStatusEntry {
+  nodeId: string;
+  status: NodeStatus;
+
+  constructor(nodeId: string, status: NodeStatus) {
+    this.nodeId = nodeId;
+    this.status = status;
+  }
+}
+
 // ═══ 节点状态表容器 (替代 Partial<Record<...>>) ═══
 export class NodeStatusMap {
   _map: Record<string, NodeStatus>;
@@ -165,20 +176,22 @@ export class NodeStatusMap {
     return Object.keys(this._map);
   }
 
-  entries(): Array<{ nodeId: string; status: NodeStatus }> {
-    let result: Array<{ nodeId: string; status: NodeStatus }> = [];
+  entries(): NodeStatusEntry[] {
+    let result: NodeStatusEntry[] = [];
     let ks: string[] = Object.keys(this._map);
     for (let i: number = 0; i < ks.length; i++) {
-      result.push({ nodeId: ks[i], status: this._map[ks[i]] });
+      result.push(new NodeStatusEntry(ks[i], this._map[ks[i]]));
     }
     return result;
   }
 
-  static fromRecord(record: Record<string, NodeStatus>): NodeStatusMap {
+  // ArkTS 禁止 Record<K,V> 参数类型, 改用 object + 内部转换
+  static fromRecord(record: object): NodeStatusMap {
     let map: NodeStatusMap = new NodeStatusMap();
-    let keys: string[] = Object.keys(record);
+    let r: Record<string, NodeStatus> = record as Record<string, NodeStatus>;
+    let keys: string[] = Object.keys(r);
     for (let i: number = 0; i < keys.length; i++) {
-      map._map[keys[i]] = record[keys[i]];
+      map._map[keys[i]] = r[keys[i]];
     }
     return map;
   }

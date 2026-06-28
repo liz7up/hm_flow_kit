@@ -7,6 +7,7 @@ import {
 import { ApprovalColorPresets, PresetId, getPresetById } from './ApprovalPresets';
 import { GraphNode, GraphEdge } from '../model/GraphModel';
 import { RenderConfig } from '../renderer/RenderConfig';
+import { ShapeConfig, PerimeterKind } from '../adapter/ShapeConfig';
 
 // Fallback color storage (ArkTS forbids Record<K,V> object literals)
 class FallbackColorStore {
@@ -103,38 +104,42 @@ export class StatusOverlayRenderer {
     let color: StatusColor = StatusOverlayRenderer.resolveColor(
       status.status, config, presetId);
 
-    // ── 内边框（参考 highlight 外边框，但向内收缩）──
+    // ── 内边框（形状自适应：圆形 / 菱形 / 圆角矩形）──
+    let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
     let inset: number = 2.5 * zoom;
     let lw: number = 3 * zoom;
     ctx.save();
     if (status.status === 'current' && pulseAlpha > 0) {
-      // 脉冲：透明度在 [0.3, 1.0] 间振荡
       ctx.globalAlpha = 0.3 + 0.7 * pulseAlpha;
     }
     ctx.strokeStyle = color.strokeColor;
     ctx.lineWidth = lw;
-    // 圆角内边框（与节点形状一致）
-    let cr: number = 0.133 * Math.min(w, h);  // cornerRadiusRatio
-    if (cr > inset) cr = cr - inset;
-    else cr = 0;
-    let ix: number = x + inset;
-    let iy: number = y + inset;
-    let iw: number = w - inset * 2;
-    let ih: number = h - inset * 2;
-    if (iw < 0) iw = 0;
-    if (ih < 0) ih = 0;
-    ctx.beginPath();
-    ctx.moveTo(ix + cr, iy);
-    ctx.lineTo(ix + iw - cr, iy);
-    ctx.arcTo(ix + iw, iy, ix + iw, iy + cr, cr);
-    ctx.lineTo(ix + iw, iy + ih - cr);
-    ctx.arcTo(ix + iw, iy + ih, ix + iw - cr, iy + ih, cr);
-    ctx.lineTo(ix + cr, iy + ih);
-    ctx.arcTo(ix, iy + ih, ix, iy + ih - cr, cr);
-    ctx.lineTo(ix, iy + cr);
-    ctx.arcTo(ix, iy, ix + cr, iy, cr);
-    ctx.closePath();
-    ctx.stroke();
+
+    if (kind === PerimeterKind.ELLIPSE) {
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, y + h / 2, w / 2 - inset, h / 2 - inset, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+    } else {
+      let cr: number = 0.133 * Math.min(w, h);
+      if (cr > inset) cr = cr - inset;
+      else cr = 0;
+      let ix: number = x + inset;
+      let iy: number = y + inset;
+      let iw: number = w - inset * 2;
+      let ih: number = h - inset * 2;
+      ctx.beginPath();
+      ctx.moveTo(ix + cr, iy);
+      ctx.lineTo(ix + iw - cr, iy);
+      ctx.arcTo(ix + iw, iy, ix + iw, iy + cr, cr);
+      ctx.lineTo(ix + iw, iy + ih - cr);
+      ctx.arcTo(ix + iw, iy + ih, ix + iw - cr, iy + ih, cr);
+      ctx.lineTo(ix + cr, iy + ih);
+      ctx.arcTo(ix, iy + ih, ix, iy + ih - cr, cr);
+      ctx.lineTo(ix, iy + cr);
+      ctx.arcTo(ix, iy, ix + cr, iy, cr);
+      ctx.closePath();
+      ctx.stroke();
+    }
     ctx.globalAlpha = 1.0;
     ctx.restore();
 
@@ -250,19 +255,21 @@ export class StatusOverlayRenderer {
     borderInset: number
   ): void {
     let r: number = 7 * zoom;
+    // shift inward so ~1/4 of badge circle overlaps border corner
+    let shift: number = r * 0.4;
     let cx: number;
     let cy: number;
 
     if (position === 'topRight') {
-      cx = x + w - borderInset;
-      cy = y + borderInset;
+      cx = x + w - borderInset - shift;
+      cy = y + borderInset + shift;
     } else if (position === 'topLeft') {
-      cx = x + borderInset;
-      cy = y + borderInset;
+      cx = x + borderInset + shift;
+      cy = y + borderInset + shift;
     } else {
       // bottomRight
-      cx = x + w - borderInset;
-      cy = y + h - borderInset;
+      cx = x + w - borderInset - shift;
+      cy = y + h - borderInset - shift;
     }
 
     ctx.save();

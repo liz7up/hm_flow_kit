@@ -136,8 +136,8 @@ export class TaskDrawer {
     x: number, y: number, _w: number, _h: number,
     iconColor: string, zoom: number, config: RenderConfig
   ): void {
-    let ix: number = x + config.taskIconOffset * zoom;
-    let iy: number = y + config.taskIconOffset * zoom;
+    let ix: number = x + (config.taskIconOffset + 2) * zoom;
+    let iy: number = y + (config.taskIconOffset + 2) * zoom;
     let s: number = config.taskIconSize * zoom;
     ctx.strokeStyle = iconColor;
     ctx.fillStyle = iconColor;

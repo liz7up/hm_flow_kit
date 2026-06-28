@@ -33,19 +33,15 @@ struct ApprovalDemoPage {
 
   async init(): Promise<void> {
     try {
-      // 1. 加载 kitchen-sink.bpmn
       let context = getContext(this)
       let rawData: Uint8Array = await context.resourceManager.getRawFileContent('kitchen-sink.bpmn')
       let decoder = new util.TextDecoder('utf-8')
       let xmlStr: string = decoder.decodeToString(rawData)
       this.model = BpmnXmlParser.parse(xmlStr)
-
-      // 2. 构建 mock 审批状态数据
       this.buildMockData()
-
       this.loading = false
     } catch (e) {
-      this.errorMsg = 'Failed to load: ' + JSON.stringify(e)
+      this.errorMsg = 'Failed: ' + e
       this.loading = false
     }
   }
@@ -191,8 +187,7 @@ struct ApprovalDemoPage {
           model: this.model,
           nodeStatuses: this.nodeStatuses,
           edgeTrails: this.edgeTrails,
-          approvalColorPreset: 'GOVERNMENT',
-          canvasHeight: 0  // 使用 layoutWeight 自适应
+          approvalColorPreset: 'GOVERNMENT'
         })
           .width('100%')
           .layoutWeight(1)

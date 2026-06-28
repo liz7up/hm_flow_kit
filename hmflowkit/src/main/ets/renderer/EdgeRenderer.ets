@@ -8,6 +8,8 @@
 
 import { GraphEdge, EdgeStyle } from '../model/GraphModel';
 import { RenderConfig } from './RenderConfig';
+import { StatusOverlayRenderer } from '../approval/StatusOverlayRenderer';
+import { EdgeTrail } from '../approval/ApprovalTypes';
 
 export class NodeRect {
   x: number;
@@ -52,13 +54,14 @@ export class EdgeRenderer {
     offsetX: number,
     offsetY: number,
     zoom: number,
-    config: RenderConfig = new RenderConfig()
+    config: RenderConfig = new RenderConfig(),
+    edgeTrails?: EdgeTrail[]
   ): void {
     ctx.save();
     ctx.translate(offsetX, offsetY);
     ctx.scale(zoom, zoom);
 
-    const points: Array<number[]> = [];
+    let points: Array<number[]> = [];
 
     if (edge.waypoints.length > 0) {
       // Use explicit waypoints from the model
@@ -288,6 +291,12 @@ export class EdgeRenderer {
         ctx.fillStyle = edgeColor;
         ctx.fillText(label, lx, ly);
       }
+    }
+
+    // ── 流转路径覆盖层 ──
+    if (edgeTrails !== undefined && edgeTrails.length > 0) {
+      StatusOverlayRenderer.renderEdgeTrail(
+        ctx, edge, edgeTrails, points, zoom, config);
     }
 
     ctx.restore();

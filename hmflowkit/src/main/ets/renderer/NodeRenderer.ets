@@ -6,6 +6,12 @@ import { EventDrawer } from './EventDrawer';
 import { SubProcessDrawer } from './SubProcessDrawer';
 import { DataDrawer } from './DataDrawer';
 import { AnnotationDrawer } from './AnnotationDrawer';
+import { StatusOverlayRenderer } from '../approval/StatusOverlayRenderer';
+import {
+  NodeStatus, NodeStatusMap, ApprovalOverlayConfig,
+  OnNodeDecorator, NodeDrawRect
+} from '../approval/ApprovalTypes';
+import { PresetId } from '../approval/ApprovalPresets';
 
 export type INodeDrawer = (
   ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig,
@@ -22,7 +28,11 @@ export class NodeRenderer {
 
   static render(
     ctx: CanvasRenderingContext2D, node: GraphNode, config: RenderConfig,
-    offsetX: number, offsetY: number, zoom: number
+    offsetX: number, offsetY: number, zoom: number,
+    nodeStatuses?: NodeStatusMap,
+    approvalConfig?: ApprovalOverlayConfig,
+    approvalColorPreset?: PresetId,
+    onNodeDecorator?: OnNodeDecorator
   ): void {
     if (!NodeRenderer._inited) {
       NodeRenderer._initDefaultRegistry();
@@ -39,6 +49,23 @@ export class NodeRenderer {
     } else {
       NodeRenderer._fallbackRender(ctx, node, config, x, y, w, h, zoom);
     }
+
+    // ── 审批状态覆盖层 ──
+    let status: NodeStatus | null = null;
+    if (nodeStatuses !== undefined) {
+      status = nodeStatuses.get(node.id);
+    }
+    StatusOverlayRenderer.renderNodeStatus(
+      ctx, node, nodeStatuses, approvalConfig, approvalColorPreset,
+      x, y, w, h, zoom, node
+    );
+
+    // ── 开发者装饰器回调 ──
+    if (onNodeDecorator !== undefined) {
+      onNodeDecorator(node, status, ctx,
+        new NodeDrawRect(x, y, w, h), zoom);
+    }
+
     ctx.restore();
   }
 

@@ -10,6 +10,7 @@ import shapeDefinitionTest from './ShapeDefinition.test';
 import perimeterRouterTest from './PerimeterRouter.test';
 import debugCollectorTest from './DebugCollector.test';
 import approvalTypesTest from './ApprovalTypes.test';
+import statusOverlayRendererTest from './StatusOverlayRenderer.test';
 
 export default function testsuite() {
   graphModelTest();
@@ -24,4 +25,5 @@ export default function testsuite() {
   perimeterRouterTest();
   debugCollectorTest();
   approvalTypesTest();
+  statusOverlayRendererTest();
 }

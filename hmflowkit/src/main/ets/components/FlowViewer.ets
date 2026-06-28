@@ -11,9 +11,13 @@ import { PlaneHierarchy, BreadcrumbEntry } from '../model/PlaneHierarchy'
 import { DrawioNodeDrawer } from '../renderer/DrawioNodeDrawer'
 import { DrawioXmlParser, DrawioParseResult } from '../parser/DrawioXmlParser'
 import { ConfigurationConstant } from '@kit.AbilityKit'
-import { DebugCollector } from '../debug/DebugCollector'
-import { DebugSidebar } from './DebugSidebar'
 import { ShapeConfig, PerimeterKind } from '../adapter/ShapeConfig'
+import {
+  NodeStatusMap, EdgeTrail, ApprovalOverlayConfig,
+  OnNodeDecorator, NodeDrawRect
+} from '../approval/ApprovalTypes'
+import { PresetId } from '../approval/ApprovalPresets'
+import { ApprovalInfoPanel } from './ApprovalInfoPanel'
 
 @Component
 export struct FlowViewer {
@@ -28,6 +32,13 @@ export struct FlowViewer {
   @Prop renderConfig: RenderConfig = new RenderConfig()
   @Prop @Watch('onPlaneHierarchyChange') planeHierarchy: PlaneHierarchy | null = null
   @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
+
+  // ═══ 审批 Props（新增）═══
+  @Prop nodeStatuses: NodeStatusMap = new NodeStatusMap()
+  @Prop edgeTrails: EdgeTrail[] = []
+  @Prop approvalConfig: ApprovalOverlayConfig = new ApprovalOverlayConfig()
+  @Prop approvalColorPreset: PresetId = 'CLASSIC'
+  onNodeDecorator?: OnNodeDecorator
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -51,9 +62,11 @@ export struct FlowViewer {
   @State _showBreadcrumb: boolean = false
   private _userConfig: boolean = false
   private _currentPlaneId: string = ''
-  @State _sidebarVisible: boolean = true
-  @State _debugSelectedId: string = ''
-  private _debugCollector: DebugCollector | null = null
+  @State _approvalPanelVisible: boolean = false
+  @State _approvalSelectedId: string = ''
+  private _pulseStartTime: number = 0
+  private _pulsePhase: number = 0
+  private _pulseCycles: number = 0
 
   aboutToAppear(): void {
     // 检测用户是否传了自定义 config（非默认亮色值）
@@ -89,9 +102,6 @@ export struct FlowViewer {
           // 无多平面数据，保持单平面模式
         }
       }
-      this._debugCollector = new DebugCollector(
-        this.getActiveModel(), this.canvasManager, this.renderConfig,
-        result.meta, undefined, result.warnings, result.isPartial)
     }
     if (this.drawioXml.length > 0) {
       let result: DrawioParseResult | null = null
@@ -106,32 +116,31 @@ export struct FlowViewer {
         this._parseError = 'Drawio XML 解析失败: ' + e
         this.model = GraphModel.createEmpty()
       }
-      if (result !== null) {
-        this._debugCollector = new DebugCollector(
-          this.getActiveModel(), this.canvasManager, this.renderConfig,
-          undefined, result.meta, result.warnings)
-      }
-    }
-    if (this._debugCollector === null) {
-      this._debugCollector = new DebugCollector(
-        this.getActiveModel(), this.canvasManager, this.renderConfig)
     }
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this._needFit = true
     this._highlightId = ''
   }
 
+  aboutToDisappear(): void {
+    // 清理脉冲动画状态
+    this._pulseCycles = 5;  // 停止脉冲
+    this._approvalPanelVisible = false;
+  }
+
   build() {
     Row() {
-      if (this._debugCollector !== null && this._sidebarVisible) {
-        DebugSidebar({
-          collector: this._debugCollector,
-          selectedNodeId: this._debugSelectedId,
-          selectedEdgeId: '',
+      if (this._approvalPanelVisible && this._approvalSelectedId.length > 0) {
+        ApprovalInfoPanel({
+          model: this.getActiveModel(),
+          nodeStatuses: this.nodeStatuses,
+          selectedNodeId: this._approvalSelectedId,
           visible: true,
           canvasHeight: this.canvasHeight,
-          currentColorMode: this.currentColorMode,
-          onClose: () => { this._sidebarVisible = false }
+          approvalConfig: this.approvalConfig,
+          onClose: () => {
+            this._approvalPanelVisible = false
+          }
         })
       }
       Stack() {
@@ -288,8 +297,8 @@ export struct FlowViewer {
         .position({ top: 8 })
       }
 
-      // "i" button — shown only when sidebar is hidden
-      if (this._debugCollector !== null && !this._sidebarVisible) {
+      // "i" button — shown when approval data is available and panel is hidden
+      if (this._approvalSelectedId.length > 0 && !this._approvalPanelVisible) {
         Button({ type: ButtonType.Circle }) {
           Text('i')
             .fontSize(20)
@@ -302,7 +311,7 @@ export struct FlowViewer {
         .border({ width: 1, color: '#D0D0D0' })
         .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
         .position({ left: 14, bottom: 14 })
-        .onClick(() => { this._sidebarVisible = true })
+        .onClick(() => { this._approvalPanelVisible = true })
       }
 
       }
@@ -337,10 +346,8 @@ export struct FlowViewer {
     this._updateBreadcrumb()
     this._needFit = true
     this._highlightId = ''
-    this._debugSelectedId = ''
-    if (this._debugCollector !== null) {
-      this._debugCollector.updateModel(this.getActiveModel())
-    }
+    this._approvalSelectedId = ''
+    this._approvalPanelVisible = false
     this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this.renderAll()
   }
@@ -372,7 +379,10 @@ export struct FlowViewer {
         return
       }
       this._highlightId = result.nodeId
-      this._debugSelectedId = result.nodeId
+      this._approvalSelectedId = result.nodeId
+      this._pulseStartTime = Date.now()
+      this._pulsePhase = 0
+      this._pulseCycles = 0
       this.renderAll()
       if (this.onNodeClick) {
         this.onNodeClick(result.nodeId)
@@ -381,7 +391,8 @@ export struct FlowViewer {
       // 点击空白处取消高亮
       if (this._highlightId.length > 0) {
         this._highlightId = ''
-        this._debugSelectedId = ''
+        this._approvalSelectedId = ''
+        this._approvalPanelVisible = false
         this.renderAll()
       }
     }
@@ -392,6 +403,16 @@ export struct FlowViewer {
     let now: number = Date.now()
     if (now - this._lastRenderTime < this.renderConfig.renderThrottleMs) {
       return
+    }
+    // 脉冲动画控制：5 周期自停
+    if (this._pulseCycles < 5 && this._approvalSelectedId.length > 0) {
+      let elapsed: number = now - this._pulseStartTime
+      let duration: number = this.approvalConfig !== undefined
+        ? this.approvalConfig.pulseDuration : 800
+      this._pulsePhase = (elapsed % duration) / duration
+      if (elapsed >= duration * (this._pulseCycles + 1)) {
+        this._pulseCycles++
+      }
     }
     this._lastRenderTime = now
     this.renderAll()
@@ -413,10 +434,8 @@ export struct FlowViewer {
       this._updateBreadcrumb()
       this._needFit = true
       this._highlightId = ''
-      this._debugSelectedId = ''
-      if (this._debugCollector !== null) {
-        this._debugCollector.updateModel(this.getActiveModel())
-      }
+      this._approvalSelectedId = ''
+      this._approvalPanelVisible = false
       this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
       if (this._canvasReady) {
         this.renderAll()
@@ -442,9 +461,6 @@ export struct FlowViewer {
     } else {
       this.renderConfig = new RenderConfig()
     }
-    if (this._debugCollector !== null) {
-      this._debugCollector.updateRenderConfig(this.renderConfig)
-    }
   }
 
   // 外部 prop 变化时触发重绘（无需等待 Canvas onReady）
@@ -460,11 +476,6 @@ export struct FlowViewer {
     // 用 canvasHeight prop 兜底初始渲染尺寸
     if (w <= 0) { w = 800 }
     if (h <= 0) { h = this.canvasHeight }
-    let t0: number = 0
-    if (this._debugCollector !== null) {
-      t0 = Date.now()
-    }
-
     // 同步画布尺寸给 CanvasManager（旋转中心计算需要）
     if (w > 0 && h > 0) {
       this.canvasManager.setCanvasSize(w, h);
@@ -610,14 +621,16 @@ export struct FlowViewer {
     for (let p: number = 0; p <= 6; p++) {
       for (let i: number = 0; i < nodes.length; i++) {
         if (nodePris[i] === p) {
-          NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1);
+          NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1,
+            this.nodeStatuses, this.approvalConfig,
+            this.approvalColorPreset, this.onNodeDecorator);
         }
       }
       for (let i: number = 0; i < edges.length; i++) {
         if (edgePris[i] === p) {
           EdgeRenderer.render(this.ctx, edges[i], (id: string): NodeRect => {
             return this.getNodePosition(id);
-          }, 0, 0, 1, this.renderConfig);
+          }, 0, 0, 1, this.renderConfig, this.edgeTrails);
         }
       }
     }
@@ -634,9 +647,7 @@ export struct FlowViewer {
         this._drawHighlightOutline(hlNode.x, hlNode.y, hlNode.width, hlNode.height, hlNode.type)
       }
     }
-    if (this._debugCollector !== null) {
-      this._debugCollector.recordRenderTime(Date.now() - t0)
-    }
+    // _pulsePhase stored for potential renderer use
   }
 
   private _drawHighlightOutline(x: number, y: number, w: number, h: number, nodeType: string): void {

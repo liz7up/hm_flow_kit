@@ -9,7 +9,7 @@ import { ConfigurationConstant } from '@kit.AbilityKit';
 export struct ApprovalInfoPanel {
   @Prop model: GraphModel = GraphModel.createEmpty();
   @Prop nodeStatuses: NodeStatusMap = new NodeStatusMap();
-  @Prop selectedNodeId: string = '';
+  @Prop @Watch('onSelectionChange') selectedNodeId: string = '';
   @Prop visible: boolean = false;
   @Prop canvasHeight: number = 600;
   @Prop approvalConfig: ApprovalOverlayConfig = new ApprovalOverlayConfig();
@@ -17,6 +17,69 @@ export struct ApprovalInfoPanel {
   onClose?: () => void;
 
   @State _multiExpanded: boolean = true;
+  @State _cachedNodeType: string = '';
+  @State _cachedNodeLabel: string = '';
+  @State _cachedOperator: string = '';
+  @State _cachedTimestamp: number = 0;
+  @State _cachedResult: string = '';
+  @State _cachedComment: string = '';
+  @State _cachedHasData: boolean = false;
+  @State _cachedMultiInstance: MultiInstanceStatus | null = null;
+  @State _cachedChildList: NodeStatus[] = [];
+
+  onSelectionChange(): void {
+    this._refreshCache();
+  }
+
+  aboutToAppear(): void {
+    this._refreshCache();
+  }
+
+  private _refreshCache(): void {
+    if (this.selectedNodeId.length === 0) {
+      this._cachedNodeType = '';
+      this._cachedNodeLabel = '';
+      this._cachedOperator = '';
+      this._cachedTimestamp = 0;
+      this._cachedResult = '';
+      this._cachedComment = '';
+      this._cachedHasData = false;
+      this._cachedMultiInstance = null;
+      this._cachedChildList = [];
+      return;
+    }
+    let node: GraphNode | null = this.model.getNode(this.selectedNodeId);
+    if (node != null) {
+      this._cachedNodeType = node.type;
+      this._cachedNodeLabel = node.label;
+    } else {
+      this._cachedNodeType = '';
+      this._cachedNodeLabel = '';
+    }
+    let status: NodeStatus | null = this.nodeStatuses.get(this.selectedNodeId);
+    if (status != null) {
+      this._cachedOperator = status.operator;
+      this._cachedTimestamp = status.timestamp;
+      this._cachedResult = status.result;
+      this._cachedComment = status.comment;
+      this._cachedHasData = status.operator.length > 0 ||
+        status.result.length > 0 || status.timestamp > 0;
+      this._cachedMultiInstance = status.multiInstance;
+      if (status.multiInstance != null) {
+        this._cachedChildList = status.multiInstance.children;
+      } else {
+        this._cachedChildList = [];
+      }
+    } else {
+      this._cachedOperator = '';
+      this._cachedTimestamp = 0;
+      this._cachedResult = '';
+      this._cachedComment = '';
+      this._cachedHasData = false;
+      this._cachedMultiInstance = null;
+      this._cachedChildList = [];
+    }
+  }
 
   private get _bgColor(): string {
     return this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
@@ -59,13 +122,6 @@ export struct ApprovalInfoPanel {
   build() {
     Column() {
       if (this.visible && this.selectedNodeId.length > 0) {
-        // 关键修复：将 getter 结果缓存为局部变量，避免 ArkTS 状态系统重复求值
-        let cachedNode: GraphNode | null = this.model.getNode(this.selectedNodeId);
-        let cachedStatus: NodeStatus | null = this.nodeStatuses.get(this.selectedNodeId);
-        let hasData: boolean = cachedStatus != null &&
-          (cachedStatus.operator.length > 0 || cachedStatus.result.length > 0 ||
-           cachedStatus.timestamp > 0);
-
         Column() {
           Row() {
             Text('节点详情')
@@ -82,21 +138,21 @@ export struct ApprovalInfoPanel {
 
           Scroll() {
             Column() {
-              if (cachedNode != null) {
+              if (this._cachedNodeType.length > 0) {
                 Row() {
                   Text('类型:')
                     .fontSize(11).fontColor(this._secondaryColor).width(60)
-                  Text(cachedNode.type)
+                  Text(this._cachedNodeType)
                     .fontSize(11).fontColor(this._textColor)
                     .layoutWeight(1).maxLines(3)
                 }
                 .padding({ left: 12, top: 3, bottom: 1 })
 
-                if (cachedNode.label.length > 0) {
+                if (this._cachedNodeLabel.length > 0) {
                   Row() {
                     Text('名称:')
                       .fontSize(11).fontColor(this._secondaryColor).width(60)
-                    Text(cachedNode.label)
+                    Text(this._cachedNodeLabel)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
@@ -109,43 +165,43 @@ export struct ApprovalInfoPanel {
                   .margin({ top: 6, bottom: 2 })
               }
 
-              // ── 审批信息 ──
-              if (cachedStatus != null && hasData) {
-                if (cachedStatus.operator.length > 0) {
+              // 审批信息
+              if (this._cachedHasData) {
+                if (this._cachedOperator.length > 0) {
                   Row() {
                     Text('审批人:')
                       .fontSize(11).fontColor(this._secondaryColor).width(60)
-                    Text(cachedStatus.operator)
+                    Text(this._cachedOperator)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (cachedStatus.timestamp > 0) {
+                if (this._cachedTimestamp > 0) {
                   Row() {
                     Text('时间:')
                       .fontSize(11).fontColor(this._secondaryColor).width(60)
-                    Text(this._formatTime(cachedStatus.timestamp))
+                    Text(this._formatTime(this._cachedTimestamp))
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (cachedStatus.result.length > 0) {
+                if (this._cachedResult.length > 0) {
                   Row() {
                     Text('结果:')
                       .fontSize(11).fontColor(this._secondaryColor).width(60)
-                    Text(cachedStatus.result)
+                    Text(this._cachedResult)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (cachedStatus.comment.length > 0) {
+                if (this._cachedComment.length > 0) {
                   Row() {
                     Text('意见:')
                       .fontSize(11).fontColor(this._secondaryColor).width(60)
-                    Text(cachedStatus.comment)
+                    Text(this._cachedComment)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
@@ -157,12 +213,12 @@ export struct ApprovalInfoPanel {
                   .backgroundColor(this._getDividerColor())
                   .margin({ top: 6, bottom: 2 })
 
-                // ── 会签详情 ──
-                if (cachedStatus.multiInstance != null) {
-                  let mi: MultiInstanceStatus = cachedStatus.multiInstance;
+                // 会签详情
+                if (this._cachedMultiInstance != null) {
                   Row() {
                     Text((this._multiExpanded ? '▼ ' : '▶ ') +
-                      '会签详情 (' + mi.completedCount + '/' + mi.totalCount + ')')
+                      '会签详情 (' + this._cachedMultiInstance.completedCount +
+                      '/' + this._cachedMultiInstance.totalCount + ')')
                       .fontSize(12).fontColor(this._secondaryColor)
                       .fontWeight(FontWeight.Bold)
                       .layoutWeight(1)
@@ -171,7 +227,7 @@ export struct ApprovalInfoPanel {
                   .onClick(() => { this._multiExpanded = !this._multiExpanded; })
 
                   if (this._multiExpanded) {
-                    ForEach(mi.children, (child: NodeStatus, idx: number) => {
+                    ForEach(this._cachedChildList, (child: NodeStatus, idx: number) => {
                       Row() {
                         Text(this._statusIcon(child.status))
                           .fontSize(11).fontColor(this._textColor)

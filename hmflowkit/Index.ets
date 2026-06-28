@@ -48,3 +48,13 @@ export { DrawioStyleParser, DrawioStyle } from './src/main/ets/parser/DrawioStyl
 
 // ── UI 组件层 ──
 export { FlowViewer } from './src/main/ets/components/FlowViewer'
+
+// ── Approval 审批流状态层 ──
+export {
+  ApprovalStatus, ApprovalStatusColorMap,
+  ApprovalOverlayConfig, BadgePosition,
+  EdgeTrail, EdgeTrailKind,
+  MultiInstanceStatus, NodeDrawRect,
+  NodeStatus, NodeStatusMap,
+  OnNodeDecorator, StatusColor
+} from './src/main/ets/approval/ApprovalTypes'

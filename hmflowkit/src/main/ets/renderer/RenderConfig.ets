@@ -22,7 +22,7 @@ export class RenderConfig {
 
   // ═══ Task markers ═══
   taskIconSize: number = 12;
-  taskIconOffset: number = 4;
+  taskIconOffset: number = 6;
   loopMarkerSize: number = 5;
   loopMarkerSpacing: number = 4;
   loopMarkerOffset: number = 5;

@@ -92,6 +92,12 @@ struct Index {
           .onClick(() => {
             router.pushUrl({ url: 'pages/BpmnViewerPage', params: { fileName: 'nested-subprocesses.bpmn' } })
           })
+        Button('审批流 Demo')
+          .fontSize(14)
+          .fontColor('#1565C0')
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/ApprovalDemoPage' })
+          })
         Button('打开任意bpmn文件')
           .fontSize(14)
           .onClick(() => { this.openBpmnFile() })

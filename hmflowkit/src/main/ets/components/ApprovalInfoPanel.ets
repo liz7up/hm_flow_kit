@@ -33,21 +33,6 @@ export struct ApprovalInfoPanel {
       ? '#AAA' : '#666';
   }
 
-  private get _node(): GraphNode | null {
-    if (this.selectedNodeId.length === 0) return null;
-    return this.model.getNode(this.selectedNodeId);
-  }
-
-  private get _status(): NodeStatus | null {
-    if (this.nodeStatuses === undefined || this.selectedNodeId.length === 0) return null;
-    return this.nodeStatuses.get(this.selectedNodeId);
-  }
-
-  private get _hasApprovalData(): boolean {
-    let s: NodeStatus | null = this._status;
-    return s !== null && (s.operator.length > 0 || s.result.length > 0 || s.timestamp > 0);
-  }
-
   private _formatTime(ts: number): string {
     if (ts <= 0) return '—';
     let d: Date = new Date(ts);
@@ -74,8 +59,14 @@ export struct ApprovalInfoPanel {
   build() {
     Column() {
       if (this.visible && this.selectedNodeId.length > 0) {
+        // 关键修复：将 getter 结果缓存为局部变量，避免 ArkTS 状态系统重复求值
+        let cachedNode: GraphNode | null = this.model.getNode(this.selectedNodeId);
+        let cachedStatus: NodeStatus | null = this.nodeStatuses.get(this.selectedNodeId);
+        let hasData: boolean = cachedStatus != null &&
+          (cachedStatus.operator.length > 0 || cachedStatus.result.length > 0 ||
+           cachedStatus.timestamp > 0);
+
         Column() {
-          // ── 标题栏 ──
           Row() {
             Text('节点详情')
               .fontSize(14).fontColor(this._textColor).fontWeight(FontWeight.Bold)
@@ -91,107 +82,96 @@ export struct ApprovalInfoPanel {
 
           Scroll() {
             Column() {
-              // ── 节点基础信息 ──
-              if (this._node !== null) {
+              if (cachedNode != null) {
                 Row() {
                   Text('类型:')
-                    .fontSize(11).fontColor(this._secondaryColor)
-                    .width(60)
-                  Text(this._node.type)
+                    .fontSize(11).fontColor(this._secondaryColor).width(60)
+                  Text(cachedNode.type)
                     .fontSize(11).fontColor(this._textColor)
                     .layoutWeight(1).maxLines(3)
                 }
                 .padding({ left: 12, top: 3, bottom: 1 })
 
-                if (this._node.label.length > 0) {
+                if (cachedNode.label.length > 0) {
                   Row() {
                     Text('名称:')
-                      .fontSize(11).fontColor(this._secondaryColor)
-                      .width(60)
-                    Text(this._node.label)
+                      .fontSize(11).fontColor(this._secondaryColor).width(60)
+                    Text(cachedNode.label)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
 
-                // divider
                 Row()
-                  .width('100%')
-                  .height(1)
+                  .width('100%').height(1)
                   .backgroundColor(this._getDividerColor())
                   .margin({ top: 6, bottom: 2 })
               }
 
               // ── 审批信息 ──
-              if (this._status !== null && this._hasApprovalData) {
-                if (this._status.operator.length > 0) {
+              if (cachedStatus != null && hasData) {
+                if (cachedStatus.operator.length > 0) {
                   Row() {
                     Text('审批人:')
-                      .fontSize(11).fontColor(this._secondaryColor)
-                      .width(60)
-                    Text(this._status.operator)
+                      .fontSize(11).fontColor(this._secondaryColor).width(60)
+                    Text(cachedStatus.operator)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (this._status.timestamp > 0) {
+                if (cachedStatus.timestamp > 0) {
                   Row() {
                     Text('时间:')
-                      .fontSize(11).fontColor(this._secondaryColor)
-                      .width(60)
-                    Text(this._formatTime(this._status.timestamp))
+                      .fontSize(11).fontColor(this._secondaryColor).width(60)
+                    Text(this._formatTime(cachedStatus.timestamp))
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (this._status.result.length > 0) {
+                if (cachedStatus.result.length > 0) {
                   Row() {
                     Text('结果:')
-                      .fontSize(11).fontColor(this._secondaryColor)
-                      .width(60)
-                    Text(this._status.result)
+                      .fontSize(11).fontColor(this._secondaryColor).width(60)
+                    Text(cachedStatus.result)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
-                if (this._status.comment.length > 0) {
+                if (cachedStatus.comment.length > 0) {
                   Row() {
                     Text('意见:')
-                      .fontSize(11).fontColor(this._secondaryColor)
-                      .width(60)
-                    Text(this._status.comment)
+                      .fontSize(11).fontColor(this._secondaryColor).width(60)
+                    Text(cachedStatus.comment)
                       .fontSize(11).fontColor(this._textColor)
                       .layoutWeight(1).maxLines(3)
                   }
                   .padding({ left: 12, top: 3, bottom: 1 })
                 }
 
-                // divider
                 Row()
-                  .width('100%')
-                  .height(1)
+                  .width('100%').height(1)
                   .backgroundColor(this._getDividerColor())
                   .margin({ top: 6, bottom: 2 })
 
                 // ── 会签详情 ──
-                if (this._status.multiInstance !== null) {
+                if (cachedStatus.multiInstance != null) {
+                  let mi: MultiInstanceStatus = cachedStatus.multiInstance;
                   Row() {
                     Text((this._multiExpanded ? '▼ ' : '▶ ') +
-                      '会签详情 (' + this._status.multiInstance.completedCount + '/' + this._status.multiInstance.totalCount + ')')
+                      '会签详情 (' + mi.completedCount + '/' + mi.totalCount + ')')
                       .fontSize(12).fontColor(this._secondaryColor)
                       .fontWeight(FontWeight.Bold)
                       .layoutWeight(1)
-                    Text('')
                   }
                   .width('100%').padding({ left: 8, right: 8, top: 6, bottom: 2 })
                   .onClick(() => { this._multiExpanded = !this._multiExpanded; })
 
                   if (this._multiExpanded) {
-                    ForEach(this._status.multiInstance.children, (child: NodeStatus, idx: number) => {
+                    ForEach(mi.children, (child: NodeStatus, idx: number) => {
                       Row() {
                         Text(this._statusIcon(child.status))
                           .fontSize(11).fontColor(this._textColor)
@@ -222,7 +202,7 @@ export struct ApprovalInfoPanel {
         .width(280)
         .height(this.canvasHeight)
         .backgroundColor(this._bgColor)
-        .border({ width: 1, color: this.currentColorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? '#555' : '#D0D0D0' })
+        .border({ width: 1, color: this._getDividerColor() })
         .borderRadius(8)
       }
     }

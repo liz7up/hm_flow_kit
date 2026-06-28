@@ -77,6 +77,9 @@ export class StatusOverlayRenderer {
 
   /**
    * 在标准节点渲染后调用，绘制审批状态覆盖层。
+   * 使用内边框 + 角标，不填充节点底色。
+   *
+   * @param pulseAlpha  脉冲透明度（0=不透明, 1=完全透明），仅 current 节点使用
    */
   static renderNodeStatus(
     ctx: CanvasRenderingContext2D,
@@ -86,7 +89,8 @@ export class StatusOverlayRenderer {
     presetId: PresetId | undefined,
     x: number, y: number, w: number, h: number,
     zoom: number,
-    activeModel: GraphNode // for lookup
+    activeModel: GraphNode,
+    pulseAlpha: number
   ): void {
     if (statusMap === undefined) {
       return;
@@ -99,28 +103,47 @@ export class StatusOverlayRenderer {
     let color: StatusColor = StatusOverlayRenderer.resolveColor(
       status.status, config, presetId);
 
-    // ── 颜色覆写：重绘填充 + 边框 ──
-    // 注意：此处用 clearRect 擦除原有节点的填充区域，再重新填充
-    // 但更简洁的做法是直接绘制半透明覆盖矩形
+    // ── 内边框（参考 highlight 外边框，但向内收缩）──
+    let inset: number = 2.5 * zoom;
+    let lw: number = 3 * zoom;
     ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = color.fillColor;
-    ctx.fillRect(x, y, w, h);
-    ctx.globalAlpha = 1.0;
-    ctx.strokeStyle = color.strokeColor;
-    let sw: number = color.strokeWidth > 0 ? color.strokeWidth * zoom :
-      ctx.lineWidth * 0; // use existing lineWidth
-    if (color.strokeWidth > 0) {
-      ctx.lineWidth = sw;
+    if (status.status === 'current' && pulseAlpha > 0) {
+      // 脉冲：透明度在 [0.3, 1.0] 间振荡
+      ctx.globalAlpha = 0.3 + 0.7 * pulseAlpha;
     }
-    ctx.strokeRect(x, y, w, h);
+    ctx.strokeStyle = color.strokeColor;
+    ctx.lineWidth = lw;
+    // 圆角内边框（与节点形状一致）
+    let cr: number = 0.133 * Math.min(w, h);  // cornerRadiusRatio
+    if (cr > inset) cr = cr - inset;
+    else cr = 0;
+    let ix: number = x + inset;
+    let iy: number = y + inset;
+    let iw: number = w - inset * 2;
+    let ih: number = h - inset * 2;
+    if (iw < 0) iw = 0;
+    if (ih < 0) ih = 0;
+    ctx.beginPath();
+    ctx.moveTo(ix + cr, iy);
+    ctx.lineTo(ix + iw - cr, iy);
+    ctx.arcTo(ix + iw, iy, ix + iw, iy + cr, cr);
+    ctx.lineTo(ix + iw, iy + ih - cr);
+    ctx.arcTo(ix + iw, iy + ih, ix + iw - cr, iy + ih, cr);
+    ctx.lineTo(ix + cr, iy + ih);
+    ctx.arcTo(ix, iy + ih, ix, iy + ih - cr, cr);
+    ctx.lineTo(ix, iy + cr);
+    ctx.arcTo(ix, iy, ix + cr, iy, cr);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.globalAlpha = 1.0;
     ctx.restore();
 
-    // ── Badge 角标 ──
+    // ── Badge 角标（贴合内边框角）──
     if (color.badgeText.length > 0) {
       StatusOverlayRenderer._drawBadge(
         ctx, color, x, y, w, h, zoom,
-        config !== undefined ? config.badgePosition : 'topRight'
+        config !== undefined ? config.badgePosition : 'topRight',
+        inset
       );
     }
 
@@ -223,23 +246,23 @@ export class StatusOverlayRenderer {
     color: StatusColor,
     x: number, y: number, w: number, h: number,
     zoom: number,
-    position: BadgePosition
+    position: BadgePosition,
+    borderInset: number
   ): void {
-    let r: number = 8 * zoom;
-    let offset: number = 4 * zoom;
+    let r: number = 7 * zoom;
     let cx: number;
     let cy: number;
 
     if (position === 'topRight') {
-      cx = x + w - offset - r;
-      cy = y + offset + r;
+      cx = x + w - borderInset;
+      cy = y + borderInset;
     } else if (position === 'topLeft') {
-      cx = x + offset + r;
-      cy = y + offset + r;
+      cx = x + borderInset;
+      cy = y + borderInset;
     } else {
       // bottomRight
-      cx = x + w - offset - r;
-      cy = y + h - offset - r;
+      cx = x + w - borderInset;
+      cy = y + h - borderInset;
     }
 
     ctx.save();

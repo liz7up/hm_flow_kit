@@ -67,6 +67,8 @@ export struct FlowViewer {
   private _pulseStartTime: number = 0
   private _pulsePhase: number = 0
   private _pulseCycles: number = 0
+  private _pulseTimer: number = -1
+  private _pulseAlpha: number = 0
 
   aboutToAppear(): void {
     // 检测用户是否传了自定义 config（非默认亮色值）
@@ -123,9 +125,46 @@ export struct FlowViewer {
   }
 
   aboutToDisappear(): void {
-    // 清理脉冲动画状态
-    this._pulseCycles = 5;  // 停止脉冲
+    this._clearPulse();
     this._approvalPanelVisible = false;
+  }
+
+  private _startPulse(): void {
+    this._clearPulse();
+    this._pulseCycles = 0;
+    this._pulseStartTime = Date.now();
+    this._pulsePhase = 0;
+    this._pulseAlpha = 0;
+    this._pulseTick();
+  }
+
+  private _pulseTick(): void {
+    if (this._pulseCycles >= 5 || this._approvalSelectedId.length === 0) {
+      this._pulseAlpha = 0;
+      return;
+    }
+    let now: number = Date.now();
+    let elapsed: number = now - this._pulseStartTime;
+    let duration: number = this.approvalConfig !== undefined
+      ? this.approvalConfig.pulseDuration : 800;
+    this._pulsePhase = (elapsed % duration) / duration;
+    if (elapsed >= duration * (this._pulseCycles + 1)) {
+      this._pulseCycles++;
+    }
+    this._pulseAlpha = Math.abs(Math.sin(this._pulsePhase * Math.PI));
+    this.renderAll();
+    if (this._pulseCycles < 5 && this._approvalSelectedId.length > 0) {
+      this._pulseTimer = setTimeout(() => { this._pulseTick(); }, 50);
+    }
+  }
+
+  private _clearPulse(): void {
+    this._pulseCycles = 5;
+    this._pulseAlpha = 0;
+    if (this._pulseTimer >= 0) {
+      clearTimeout(this._pulseTimer);
+      this._pulseTimer = -1;
+    }
   }
 
   build() {
@@ -380,9 +419,7 @@ export struct FlowViewer {
       }
       this._highlightId = result.nodeId
       this._approvalSelectedId = result.nodeId
-      this._pulseStartTime = Date.now()
-      this._pulsePhase = 0
-      this._pulseCycles = 0
+      this._startPulse()
       this.renderAll()
       if (this.onNodeClick) {
         this.onNodeClick(result.nodeId)
@@ -393,6 +430,7 @@ export struct FlowViewer {
         this._highlightId = ''
         this._approvalSelectedId = ''
         this._approvalPanelVisible = false
+        this._clearPulse()
         this.renderAll()
       }
     }
@@ -403,16 +441,6 @@ export struct FlowViewer {
     let now: number = Date.now()
     if (now - this._lastRenderTime < this.renderConfig.renderThrottleMs) {
       return
-    }
-    // 脉冲动画控制：5 周期自停
-    if (this._pulseCycles < 5 && this._approvalSelectedId.length > 0) {
-      let elapsed: number = now - this._pulseStartTime
-      let duration: number = this.approvalConfig !== undefined
-        ? this.approvalConfig.pulseDuration : 800
-      this._pulsePhase = (elapsed % duration) / duration
-      if (elapsed >= duration * (this._pulseCycles + 1)) {
-        this._pulseCycles++
-      }
     }
     this._lastRenderTime = now
     this.renderAll()
@@ -623,7 +651,8 @@ export struct FlowViewer {
         if (nodePris[i] === p) {
           NodeRenderer.render(this.ctx, nodes[i], this.renderConfig, 0, 0, 1,
             this.nodeStatuses, this.approvalConfig,
-            this.approvalColorPreset, this.onNodeDecorator);
+            this.approvalColorPreset, this.onNodeDecorator,
+            this._pulseAlpha);
         }
       }
       for (let i: number = 0; i < edges.length; i++) {

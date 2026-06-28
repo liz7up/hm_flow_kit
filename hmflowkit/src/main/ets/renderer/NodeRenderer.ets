@@ -32,7 +32,8 @@ export class NodeRenderer {
     nodeStatuses?: NodeStatusMap,
     approvalConfig?: ApprovalOverlayConfig,
     approvalColorPreset?: PresetId,
-    onNodeDecorator?: OnNodeDecorator
+    onNodeDecorator?: OnNodeDecorator,
+    pulseAlpha?: number
   ): void {
     if (!NodeRenderer._inited) {
       NodeRenderer._initDefaultRegistry();
@@ -55,9 +56,10 @@ export class NodeRenderer {
     if (nodeStatuses !== undefined) {
       status = nodeStatuses.get(node.id);
     }
+    let pa: number = pulseAlpha !== undefined ? pulseAlpha : 0;
     StatusOverlayRenderer.renderNodeStatus(
       ctx, node, nodeStatuses, approvalConfig, approvalColorPreset,
-      x, y, w, h, zoom, node
+      x, y, w, h, zoom, node, pa
     );
 
     // ── 开发者装饰器回调 ──

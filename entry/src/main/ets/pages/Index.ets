@@ -112,11 +112,11 @@ struct Index {
 
       // ── 画布 ──
       if (this.showDrawio) {
-        FlowViewer({ drawioXml: this.drawioXml, highlightNodeId: this.highlightNodeId, debugMode: true })
+        FlowViewer({ drawioXml: this.drawioXml, highlightNodeId: this.highlightNodeId })
           .width('100%')
           .layoutWeight(1)
       } else {
-        FlowViewer({ model: this.model, highlightNodeId: this.highlightNodeId, debugMode: true })
+        FlowViewer({ model: this.model, highlightNodeId: this.highlightNodeId })
           .width('100%')
           .layoutWeight(1)
       }

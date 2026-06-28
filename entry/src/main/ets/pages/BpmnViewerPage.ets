@@ -118,7 +118,6 @@ struct BpmnViewerPage {
           model: this.model,
           planeHierarchy: this.planeHierarchy,
           showGrid: true,
-          debugMode: true,
           onNodeClick: (id: string) => { console.info('BPMN node clicked: ' + id) }
         })
           .width('100%')

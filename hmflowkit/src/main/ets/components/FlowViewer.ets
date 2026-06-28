@@ -28,7 +28,6 @@ export struct FlowViewer {
   @Prop renderConfig: RenderConfig = new RenderConfig()
   @Prop @Watch('onPlaneHierarchyChange') planeHierarchy: PlaneHierarchy | null = null
   @StorageProp('currentColorMode') @Watch('onColorModeChange') currentColorMode: number = 0
-  @Prop debugMode: boolean = false
 
   onNodeClick?: (nodeId: string) => void
   onCanvasReady?: () => void
@@ -90,12 +89,9 @@ export struct FlowViewer {
           // 无多平面数据，保持单平面模式
         }
       }
-      // Create debug collector if debug mode enabled
-      if (this.debugMode) {
-        this._debugCollector = new DebugCollector(
-          this.getActiveModel(), this.canvasManager, this.renderConfig,
-          result.meta, undefined, result.warnings, result.isPartial)
-      }
+      this._debugCollector = new DebugCollector(
+        this.getActiveModel(), this.canvasManager, this.renderConfig,
+        result.meta, undefined, result.warnings, result.isPartial)
     }
     if (this.drawioXml.length > 0) {
       let result: DrawioParseResult | null = null
@@ -110,15 +106,13 @@ export struct FlowViewer {
         this._parseError = 'Drawio XML 解析失败: ' + e
         this.model = GraphModel.createEmpty()
       }
-      if (this.debugMode && result !== null) {
-        let drawioMeta = result.meta
+      if (result !== null) {
         this._debugCollector = new DebugCollector(
           this.getActiveModel(), this.canvasManager, this.renderConfig,
-          undefined, drawioMeta, result.warnings)
+          undefined, result.meta, result.warnings)
       }
     }
-    // Direct model mode (no XML): create collector without parseMeta
-    if (this.debugMode && this._debugCollector === null) {
+    if (this._debugCollector === null) {
       this._debugCollector = new DebugCollector(
         this.getActiveModel(), this.canvasManager, this.renderConfig)
     }

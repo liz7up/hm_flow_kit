@@ -58,3 +58,14 @@ export {
   NodeStatus, NodeStatusMap,
   OnNodeDecorator, StatusColor
 } from './src/main/ets/approval/ApprovalTypes'
+
+export { ApprovalColorPresets, PresetId } from './src/main/ets/approval/ApprovalPresets'
+export { StatusOverlayRenderer } from './src/main/ets/approval/StatusOverlayRenderer'
+export { IApprovalAdapter } from './src/main/ets/approval/IApprovalAdapter'
+export {
+  FlowableHistoryAdapter,
+  FlowableActivity
+} from './src/main/ets/approval/FlowableHistoryAdapter'
+
+// 新 UI 组件
+export { ApprovalInfoPanel } from './src/main/ets/components/ApprovalInfoPanel'

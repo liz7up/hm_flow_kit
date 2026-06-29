@@ -37,6 +37,7 @@ TODO.md
 
 # 文档（内部开发文档，不提交）
 docs/
+specs/plans/
 
 # OS
 .DS_Store

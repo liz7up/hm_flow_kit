@@ -170,7 +170,7 @@ hm-flow-kit/
 |------|------|
 | 框架 | @ohos/hypium (describe/it/expect) |
 | 位置 | `hmflowkit/src/ohosTest/ets/test/` |
-| 覆盖 | GraphModel(44) BpmnXmlParser(42) CanvasManager(17) HitTestManager(13) RenderConfig(5) DrawioStyleParser(47) DrawioXmlParser(19) ShapeDefinition(9) PerimeterRouter(10) DebugCollector(13) |
+| 覆盖 | GraphModel(44) BpmnXmlParser(42) CanvasManager(17) HitTestManager(13) RenderConfig(5) DrawioStyleParser(47) DrawioXmlParser(19) ShapeDefinition(9) PerimeterRouter(10) DebugCollector(13) ApprovalTypes(18) StatusOverlayRenderer(4) FlowableHistoryAdapter(6) |
 | 运行 | `sh test_all.sh`（编译验证）/ DevEco Studio 右键 ohosTest → Run（真机执行） |
 | 原则 | 纯数据/算法测试，不依赖 Canvas mock 或 UI 组件 |
 
@@ -224,6 +224,18 @@ hm-flow-kit/
 - `CanvasManager` 新增 `canvasWidth`/`canvasHeight` 公开 getter
 - 测试：DebugCollector(13) + BpmnXmlParser ParseMeta(5)，总 234 项编译通过
 - `"i"` 按钮（左下角，与侧边栏互斥）
+
+**Spec 09 — 审批流状态可视化 ✅ 已完成**
+- 6 个新文件：`approval/` 目录 — ApprovalTypes(9 class)/ApprovalPresets(3预设)/StatusOverlayRenderer/IApprovalAdapter/FlowableHistoryAdapter；`components/ApprovalInfoPanel`
+- 节点状态：6 种审批状态 → 形状自适应内边框(ellipse/rect) + 角标(topRight/topLeft/bottomRight)，配置化(borderInset/borderWidth/badgeRadius/badgeFontSize/badgeFontFamily)
+- 流转路径：4 态边染色(active=绿色加粗/rejected=红色虚线+标签/historical=浅灰细线/skipped=灰色短虚线)，edgeId 粒度
+- 脉冲动画：setTimeout 递归驱动，5 周期自停，current 节点 border alpha 0.3↔1.0 振荡
+- 信息面板：200×300 浮动气泡，📋 pasteboard 复制全文，会签子实例列表，暗色自动跟随
+- i 按钮始终显示；点击高亮含半透明填充；DebugSidebar 替换为 ApprovalInfoPanel；Grid 默认关闭
+- 适配器可插拔：`IApprovalAdapter` 接口 + `FlowableHistoryAdapter` 参考实现
+- Demo：ApprovalDemoPage 支持 BPMN(kitchen-sink) 和 drawio(swinlane) 双格式切换，全场景 mock
+- 关键修复：`renderAll()` 始终 rebuild 命中索引；`onDataVersionChange` 用 `setTimeout(0)` 确保 @Prop 同步到达
+- 测试：ApprovalTypes(18) StatusOverlayRenderer(4) FlowableHistoryAdapter(6)，总 ~262 项编译通过
 
 **已推迟：Spec 04 交互编辑、Spec 05 Dagre 布局**
 

@@ -4,6 +4,7 @@ import { NodeStatus, NodeStatusMap, MultiInstanceStatus,
   ApprovalOverlayConfig } from '../approval/ApprovalTypes';
 import { GraphModel, GraphNode, NodeType } from '../model/GraphModel';
 import { ConfigurationConstant } from '@kit.AbilityKit';
+import { pasteboard } from '@kit.BasicServicesKit';
 
 @Component
 export struct ApprovalInfoPanel {
@@ -119,6 +120,58 @@ export struct ApprovalInfoPanel {
       ? '#444' : '#E0E0E0';
   }
 
+  private _buildCopyText(): string {
+    let lines: string[] = [];
+    if (this._cachedNodeType.length > 0) {
+      lines.push('类型: ' + this._cachedNodeType);
+    }
+    if (this._cachedNodeLabel.length > 0) {
+      lines.push('名称: ' + this._cachedNodeLabel);
+    }
+    if (this._cachedHasData) {
+      if (this._cachedOperator.length > 0) {
+        lines.push('审批人: ' + this._cachedOperator);
+      }
+      if (this._cachedTimestamp > 0) {
+        lines.push('时间: ' + this._formatTime(this._cachedTimestamp));
+      }
+      if (this._cachedResult.length > 0) {
+        lines.push('结果: ' + this._cachedResult);
+      }
+      if (this._cachedComment.length > 0) {
+        lines.push('意见: ' + this._cachedComment);
+      }
+      if (this._cachedMultiInstance != null) {
+        lines.push('会签 (' + this._cachedMultiInstance.completedCount +
+          '/' + this._cachedMultiInstance.totalCount + '):');
+        for (let i: number = 0; i < this._cachedChildList.length; i++) {
+          let child: NodeStatus = this._cachedChildList[i];
+          let childLine: string = '  ' + this._statusIcon(child.status) + ' ' +
+            (child.operator.length > 0 ? child.operator : '—') + ' ' + child.result;
+          if (child.timestamp > 0) {
+            childLine = childLine + ' ' + this._formatTime(child.timestamp);
+          }
+          lines.push(childLine);
+        }
+      }
+    }
+    return lines.join('\n');
+  }
+
+  private _copyToClipboard(): void {
+    let text: string = this._buildCopyText();
+    if (text.length === 0) {
+      return;
+    }
+    try {
+      let pasteData: pasteboard.PasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
+      let sysPasteboard: pasteboard.SystemPasteboard = pasteboard.getSystemPasteboard();
+      sysPasteboard.setData(pasteData);
+    } catch (_e) {
+      // clipboard unavailable, silent fail
+    }
+  }
+
   build() {
     Column() {
       if (this.visible && this.selectedNodeId.length > 0) {
@@ -128,11 +181,11 @@ export struct ApprovalInfoPanel {
               .fontSize(14).fontColor(this._textColor).fontWeight(FontWeight.Bold)
               .layoutWeight(1)
             Button() {
-              Text('✕')
-                .fontSize(14).fontColor(this._textColor)
+              Text('📋')
+                .fontSize(14)
             }
             .width(28).height(28).backgroundColor('#00000000')
-            .onClick(() => { if (this.onClose) this.onClose(); })
+            .onClick(() => { this._copyToClipboard(); })
           }
           .width('100%').padding({ left: 12, right: 8, top: 8, bottom: 4 })
 
@@ -255,11 +308,12 @@ export struct ApprovalInfoPanel {
           }
           .width('100%').layoutWeight(1)
         }
-        .width(280)
-        .height(this.canvasHeight)
+        .width(this.approvalConfig.popupWidth)
+        .height(this.approvalConfig.popupHeight)
         .backgroundColor(this._bgColor)
         .border({ width: 1, color: this._getDividerColor() })
         .borderRadius(8)
+        .shadow({ radius: 8, color: '#00000030', offsetY: 4 })
       }
     }
   }

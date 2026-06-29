@@ -106,8 +106,8 @@ export class StatusOverlayRenderer {
 
     // ── 内边框（形状自适应：圆形 / 菱形 / 圆角矩形）──
     let kind: PerimeterKind = ShapeConfig.perimeterKind(node.type);
-    let inset: number = 2.5 * zoom;
-    let lw: number = 3 * zoom;
+    let inset: number = (config !== undefined ? config.borderInset : 2.5) * zoom;
+    let lw: number = (config !== undefined ? config.borderWidth : 3) * zoom;
     ctx.save();
     if (status.status === 'current' && pulseAlpha > 0) {
       ctx.globalAlpha = 0.3 + 0.7 * pulseAlpha;
@@ -146,9 +146,8 @@ export class StatusOverlayRenderer {
     // ── Badge 角标（贴合内边框角）──
     if (color.badgeText.length > 0) {
       StatusOverlayRenderer._drawBadge(
-        ctx, color, x, y, w, h, zoom,
-        config !== undefined ? config.badgePosition : 'topRight',
-        inset
+        ctx, color, config,
+        x, y, w, h, zoom, inset
       );
     }
 
@@ -249,27 +248,28 @@ export class StatusOverlayRenderer {
   private static _drawBadge(
     ctx: CanvasRenderingContext2D,
     color: StatusColor,
+    config: ApprovalOverlayConfig | undefined,
     x: number, y: number, w: number, h: number,
     zoom: number,
-    position: BadgePosition,
     borderInset: number
   ): void {
-    let r: number = 7 * zoom;
-    // shift inward so ~1/4 of badge circle overlaps border corner
-    let shift: number = r * 0.4;
+    let r: number = (config !== undefined ? config.badgeRadius : 7) * zoom;
+    if (r <= 0) r = 7 * zoom;
+    let pos: BadgePosition = config !== undefined ? config.badgePosition : 'topRight';
+    // badge entirely inside inner border, arc touches border corner
     let cx: number;
     let cy: number;
 
-    if (position === 'topRight') {
-      cx = x + w - borderInset - shift;
-      cy = y + borderInset + shift;
-    } else if (position === 'topLeft') {
-      cx = x + borderInset + shift;
-      cy = y + borderInset + shift;
+    if (pos === 'topRight') {
+      cx = x + w - borderInset - r;
+      cy = y + borderInset + r;
+    } else if (pos === 'topLeft') {
+      cx = x + borderInset + r;
+      cy = y + borderInset + r;
     } else {
       // bottomRight
-      cx = x + w - borderInset - shift;
-      cy = y + h - borderInset - shift;
+      cx = x + w - borderInset - r;
+      cy = y + h - borderInset - r;
     }
 
     ctx.save();
@@ -278,8 +278,10 @@ export class StatusOverlayRenderer {
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#FFFFFF';
-    let fs: number = Math.max(7, Math.round(9 * zoom));
-    ctx.font = 'bold ' + fs + 'px sans-serif';
+    let fontSize: number = config !== undefined ? config.badgeFontSize : 10;
+    let fontFamily: string = config !== undefined ? config.badgeFontFamily : 'sans-serif';
+    let fs: number = Math.max(7, Math.round(fontSize * zoom));
+    ctx.font = 'bold ' + fs + 'px ' + fontFamily;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(color.badgeText, cx, cy);

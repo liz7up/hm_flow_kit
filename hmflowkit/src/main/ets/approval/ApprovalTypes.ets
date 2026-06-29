@@ -130,6 +130,14 @@ export class ApprovalOverlayConfig {
   pulseDuration: number;
   badgePosition: BadgePosition;
   infoPanelEnabled: boolean;
+  // 内边框视觉参数（可覆盖）
+  borderInset: number;     // 内边框距节点边界的距离，单位 zoom 倍率，默认 2.5
+  borderWidth: number;     // 内边框线宽，单位 zoom 倍率，默认 3
+  badgeRadius: number;     // 角标圆半径，单位 zoom 倍率，默认 10
+  badgeFontSize: number;   // 角标字体大小（zoom=1 时），默认 10
+  badgeFontFamily: string; // 角标字体系列，默认 'sans-serif'
+  popupWidth: number;      // 信息气泡宽度，默认 200
+  popupHeight: number;     // 信息气泡高度，默认 300
 
   constructor() {
     this.statusColors = new ApprovalStatusColorMap();
@@ -137,6 +145,13 @@ export class ApprovalOverlayConfig {
     this.pulseDuration = 800;
     this.badgePosition = 'topRight';
     this.infoPanelEnabled = true;
+    this.borderInset = 2.5;
+    this.borderWidth = 3;
+    this.badgeRadius = 10;
+    this.badgeFontSize = 10;
+    this.badgeFontFamily = 'sans-serif';
+    this.popupWidth = 200;
+    this.popupHeight = 300;
   }
 }
 

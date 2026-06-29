@@ -22,10 +22,11 @@ import { ApprovalInfoPanel } from './ApprovalInfoPanel'
 @Component
 export struct FlowViewer {
   @Prop model: GraphModel = GraphModel.createEmpty()
+  @Prop @Watch('onDataVersionChange') dataVersion: number = 0
   @Prop xml: string = ''
   @Prop drawioXml: string = ''
   @Prop canvasHeight: number = 600
-  @Prop showGrid: boolean = true
+  @Prop showGrid: boolean = false
   @Prop gridType: GridType = GridType.DOT
   @Prop @Watch('onHighlightChange') highlightNodeId: string = ''
   @Prop readonly: boolean = true
@@ -119,7 +120,6 @@ export struct FlowViewer {
         this.model = GraphModel.createEmpty()
       }
     }
-    this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     this._needFit = true
     this._highlightId = ''
   }
@@ -168,20 +168,7 @@ export struct FlowViewer {
   }
 
   build() {
-    Row() {
-      if (this._approvalPanelVisible && this._approvalSelectedId.length > 0) {
-        ApprovalInfoPanel({
-          model: this.getActiveModel(),
-          nodeStatuses: this.nodeStatuses,
-          selectedNodeId: this._approvalSelectedId,
-          visible: true,
-          canvasHeight: this.canvasHeight,
-          approvalConfig: this.approvalConfig,
-          onClose: () => {
-            this._approvalPanelVisible = false
-          }
-        })
-      }
+    Stack() {
       Stack() {
         Canvas(this.ctx)
         .width('100%')
@@ -336,27 +323,38 @@ export struct FlowViewer {
         .position({ top: 8 })
       }
 
-      // "i" button — shown when approval data is available and panel is hidden
-      if (this._approvalSelectedId.length > 0 && !this._approvalPanelVisible) {
-        Button({ type: ButtonType.Circle }) {
-          Text('i')
-            .fontSize(20)
-            .fontColor('#333')
-            .textAlign(TextAlign.Center)
-        }
-        .width(40)
-        .height(40)
-        .backgroundColor(Color.White)
-        .border({ width: 1, color: '#D0D0D0' })
-        .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
-        .position({ left: 14, bottom: 14 })
-        .onClick(() => { this._approvalPanelVisible = true })
-      }
-
       }
       .width('100%')
       .height(this.canvasHeight)
-      .layoutWeight(1)
+
+      // ── 审批信息浮动气泡（定位在 i 按钮上方）──
+      if (this._approvalPanelVisible && this._approvalSelectedId.length > 0) {
+        ApprovalInfoPanel({
+          model: this.getActiveModel(),
+          nodeStatuses: this.nodeStatuses,
+          selectedNodeId: this._approvalSelectedId,
+          visible: true,
+          canvasHeight: this.canvasHeight,
+          approvalConfig: this.approvalConfig,
+          onClose: () => { this._approvalPanelVisible = false }
+        })
+          .position({ left: 4, bottom: 54 })
+      }
+
+      // ── "i" 按钮 — 始终显示 ──
+      Button({ type: ButtonType.Circle }) {
+        Text('i')
+          .fontSize(16)
+          .fontColor('#333')
+          .textAlign(TextAlign.Center)
+      }
+      .width(30)
+      .height(30)
+      .backgroundColor(Color.White)
+      .border({ width: 1, color: '#D0D0D0' })
+      .shadow({ radius: 4, color: '#00000020', offsetY: 2 })
+      .position({ left: 14, bottom: 14 })
+      .onClick(() => { this._approvalPanelVisible = !this._approvalPanelVisible })
     }
     .width('100%')
     .height(this.canvasHeight)
@@ -475,7 +473,6 @@ export struct FlowViewer {
   onColorModeChange(): void {
     if (!this._userConfig) {
       this.applyTheme()
-      this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
       this._needFit = true
       if (this._canvasReady) {
         this.renderAll()
@@ -498,7 +495,21 @@ export struct FlowViewer {
     }
   }
 
+  onDataVersionChange(): void {
+    this._needFit = true
+    this._highlightId = ''
+    this._approvalSelectedId = ''
+    this._approvalPanelVisible = false
+    // 延迟到下一帧：确保所有 @Prop（model/nodeStatuses/edgeTrails）同步到达
+    setTimeout(() => {
+      if (this._canvasReady) {
+        this.renderAll()
+      }
+    }, 0)
+  }
+
   renderAll(): void {
+    this.hitTestManager.rebuild(this.getActiveModel(), this.canvasManager, this.renderConfig)
     let w: number = this._canvasWidth
     let h: number = this._canvasHeight
     // 用 canvasHeight prop 兜底初始渲染尺寸
@@ -666,9 +677,10 @@ export struct FlowViewer {
 
     // Highlight overlay
     this.canvasManager.applyTransform(this.ctx)
-    let activeHighlightId: string = this.highlightNodeId.length > 0
-      ? this.highlightNodeId
-      : this._highlightId
+    // 内部点击选中优先；外部 highlightNodeId 作为后备
+    let activeHighlightId: string = this._highlightId.length > 0
+      ? this._highlightId
+      : this.highlightNodeId
     if (activeHighlightId.length > 0) {
       let hlNode: GraphNode | null
       hlNode = this.getActiveModel().getNode(activeHighlightId)
@@ -683,15 +695,17 @@ export struct FlowViewer {
     let hp: number = this.renderConfig.highlightPadding
     let color: string = this.renderConfig.highlightColor
     let lw: number = this.renderConfig.highlightLineWidth
+    // semi-transparent fill + visible stroke for diagnostics
     this.ctx.strokeStyle = color
     this.ctx.lineWidth = lw
-    this.ctx.fillStyle = 'none'
+    this.ctx.fillStyle = 'rgba(24, 144, 255, 0.18)'
 
     let kind: PerimeterKind = ShapeConfig.perimeterKind(nodeType)
 
     if (kind === PerimeterKind.ELLIPSE) {
       this.ctx.beginPath()
       this.ctx.ellipse(x + w / 2, y + h / 2, w / 2 + hp, h / 2 + hp, 0, 0, 2 * Math.PI)
+      this.ctx.fill()
       this.ctx.stroke()
     } else if (kind === PerimeterKind.RHOMBUS) {
       this.ctx.beginPath()
@@ -700,9 +714,9 @@ export struct FlowViewer {
       this.ctx.lineTo(x + w / 2, y + h + hp)
       this.ctx.lineTo(x - hp, y + h / 2)
       this.ctx.closePath()
+      this.ctx.fill()
       this.ctx.stroke()
     } else {
-      // Rounded rectangle with corner radius expanded proportionally
       let cr: number = this.renderConfig.cornerRadiusRatio * Math.min(w, h)
       let ex: number = x - hp
       let ey: number = y - hp
@@ -723,6 +737,7 @@ export struct FlowViewer {
       this.ctx.lineTo(ex, ey + r)
       this.ctx.arcTo(ex, ey, ex + r, ey, r)
       this.ctx.closePath()
+      this.ctx.fill()
       this.ctx.stroke()
     }
   }

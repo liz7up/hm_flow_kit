@@ -117,7 +117,7 @@ struct BpmnViewerPage {
         FlowViewer({
           model: this.model,
           planeHierarchy: this.planeHierarchy,
-          showGrid: true,
+          showGrid: false,
           onNodeClick: (id: string) => { console.info('BPMN node clicked: ' + id) }
         })
           .width('100%')

@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-06-29
+
+### Added — 审批流状态可视化 (Spec 09)
+
+- **`ApprovalTypes` 数据模型**: 10 个类型类，含 `NodeStatus`（审批状态/操作人/时间戳/意见）、`EdgeTrail`（流转路径四态染色）、`MultiInstanceStatus`（会签进度）、`ApprovalOverlayConfig`（覆盖层参数）
+- **`StatusOverlayRenderer`**: 节点状态内边框 + 角标渲染，连线流转路径着色，脉冲动画（setTimeout 驱动）
+- **3 套预设配色**: `CLASSIC`（琥珀蓝）、`GOVERNMENT`（红蓝灰）、`DARK`（暗色适配版）
+- **`IApprovalAdapter` 可插拔适配器**: 解耦审批数据源，用户实现 `getNodeStatus()` / `getEdgeTrails()` 即可接入自有审批系统
+- **`FlowableHistoryAdapter`**: Flowable 引擎历史数据适配器实现（6 项单元测试）
+- **`ApprovalInfoPanel`**: 浮动信息面板，支持节点详情/操作人/意见/时间戳/会签子项展开 + 一键剪贴板复制
+- **`ApprovalDemoPage`**: BPMN Kitchen Sink + drawio Swimlane 双格式审批场景全量 mock 演示
+- `FlowViewer` 新增 5 个审批 Props: `nodeStatuses`、`edgeTrails`、`approvalConfig`、`approvalColorPreset`、`onNodeDecorator`
+
+### Added — 审批流视觉细节
+
+- 节点内边框（椭圆事件、矩形任务自适应）
+- 角标与边框角 1/4 重叠贴合
+- `isInterrupting=false` 虚线双层圆（非中断型）vs 实线双层圆（中断型）
+- 任务图标左移 2px + taskIconOffset 可配置
+
+### Changed — 工程化
+
+- **Demo 分离**至 `hm_flow_kit_feat` 独立仓库，本项目回归纯库（HAR）
+- **SdkVersion 降级**: 6.1.0(23) → 5.0.1(13)，兼容政企 HarmonyOS 5.0 设备
+- 调试侧边栏 `debugMode` prop 移除，侧边栏常驻可用
+- `showGrid` 默认值改为 `false`
+
+### Added — Public API
+
+- `NodeStatus`, `NodeStatusMap`, `EdgeTrail`, `EdgeTrailKind`, `MultiInstanceStatus`
+- `ApprovalOverlayConfig`, `ApprovalStatusColorMap`, `StatusColor`, `BadgePosition`
+- `ApprovalColorPresets`, `PresetId`, `StatusOverlayRenderer`
+- `IApprovalAdapter`, `FlowableHistoryAdapter`, `FlowableActivity`
+- `ApprovalInfoPanel`, `OnNodeDecorator`, `NodeDrawRect`
+
+### Tests
+
+- ApprovalTypes 15 项 + FlowableHistoryAdapter 6 项，总计 255 项编译通过
+
 ## [1.1.0] - 2026-06-24
 
 ### Added — Drawio Support (Phase 8)

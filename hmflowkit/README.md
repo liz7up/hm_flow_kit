@@ -22,17 +22,27 @@ ohpm install hmflowkit
 | SequenceFlow、MessageFlow、Association | 多页 drawio diagram 支持 | 数据驱动形状几何（ShapeDefinition + PerimeterRouter + PathRenderer） |
 | 多平面钻取导航（展开/折叠 + 面包屑） | per-edge 颜色 / 虚线样式 | INodeDrawer 扩展接口 + ShapeConfig 跨格式注册表 |
 | — | — | 调试侧边栏（7 区段可折叠面板，含时间线/性能/统计） |
-| — | — | 234 项自动化单元测试，鸿蒙 PC + 移动端通用 |
-
-> 更多审批流功能即将上线！
+| — | — | **审批流状态可视化**：节点内边框+角标、流转路径四态染色、会签进度、脉冲动画、浮动信息面板、可插拔适配器 |
+| — | — | 255 项自动化单元测试，鸿蒙 PC + 移动端通用，兼容 HarmonyOS 5.0+
 
 ## 快速开始
 
 ```typescript
 import { FlowViewer } from 'hmflowkit'
 
-// 推荐：直接传入 BPMN XML，自动解析、渲染、多平面钻取检测
+// 渲染 BPMN 流程图
 FlowViewer({ xml: this.bpmnXmlString })
+
+// 渲染 drawio 流程图
+FlowViewer({ drawioXml: this.drawioXmlStr })
+
+// 渲染 + 审批流状态覆盖
+FlowViewer({
+  xml: this.bpmnXmlString,
+  nodeStatuses: this.statusMap,
+  edgeTrails: this.trails,
+  approvalConfig: this.config
+})
 ```
 
 ## 核心 API
@@ -47,11 +57,15 @@ FlowViewer({ xml: this.bpmnXmlString })
 | drawioXml | string | '' | drawio mxGraph XML 字符串 |
 | model | GraphModel | 空模型 | 编程构建场景 |
 | canvasHeight | number | 600 | 画布高度 |
-| showGrid | boolean | true | 背景网格 |
+| showGrid | boolean | false | 背景网格 |
 | renderConfig | RenderConfig | 默认配置 | 自定义配色 |
-| debugMode | boolean | false | 启用调试侧边栏 |
+| nodeStatuses | NodeStatusMap | 空 | 节点审批状态（启用审批覆盖层） |
+| edgeTrails | EdgeTrail[] | [] | 流转路径轨迹 |
+| approvalConfig | ApprovalOverlayConfig | 默认 | 审批覆盖层视觉参数 |
+| approvalColorPreset | PresetId | 'CLASSIC' | 配色预设（CLASSIC/GOVERNMENT/DARK） |
 | onNodeClick | (nodeId: string) => void | — | 节点点击回调 |
 | onCanvasReady | () => void | — | 画布就绪回调 |
+| onNodeDecorator | OnNodeDecorator | — | 自定义节点装饰回调 |
 
 ### RenderConfig
 
@@ -105,6 +119,30 @@ interface INodeDrawer {
   draw(ctx, node, config, offsetX, offsetY, zoom): void
 }
 NodeRenderer.register('myShape', myDrawer)  // 用户可注册自定义形状
+```
+
+### 审批流状态可视化 (Approval)
+
+```typescript
+// 数据模型
+new NodeStatus(nodeId, status, operator, avatar, timestamp, comment, result)
+new EdgeTrail(edgeId, kind, label, timestamp, operator)  // kind: active|rejected|historical|skipped
+new ApprovalOverlayConfig()  // 内边框、角标、脉冲、气泡面板参数
+
+// 适配器接口（接自有审批系统）
+interface IApprovalAdapter {
+  getNodeStatus(nodeId: string): NodeStatus | null
+  getEdgeTrails(): EdgeTrail[]
+}
+
+// 内置适配器
+new FlowableHistoryAdapter(historyEntries)  // Flowable 引擎 → 状态贴图
+
+// 配色预设
+ApprovalColorPresets.CLASSIC     // 琥珀(审批中) + 蓝(已批) + 红(驳回)
+ApprovalColorPresets.GOVERNMENT  // 红蓝灰政务风格
+ApprovalColorPresets.DARK        // 暗色适配
+```
 
 ### GraphModel
 

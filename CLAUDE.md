@@ -67,20 +67,10 @@ hm-flow-kit/
 │   ├── Index.ets                         # 公开 API 导出入口
 │   └── oh-package.json5                 # 库的包配置
 ├── test_all.sh                           # 单元测试编译验证脚本
-├── specs/                                # 开发规格文档
-│   ├── 01-graph-model.md
-│   ├── 02-canvas-renderer.md
-│   ├── 03-bpmn-parser.md
-│   ├── 06-flowviewer.md
-│   └── 07-xml-parser-v2.md               # Spec 03 重写（XmlPullParser）
-├── examples/                             # 可运行的示例
-│   ├── hello-graph/                      # 最简渲染示例
-│   └── bpmn-viewer/                      # BPMN 查看器示例
 ├── .bitfun/
 │   └── build-latest.log                  # 最新编译日志（build.sh 产出）
-├── CLAUDE.md                             # 本文件（BitFun 项目记忆）
+├── CLAUDE.md                             # 本文件（项目文档）
 ├── build.sh                              # 编译桥接脚本（DevEco 终端中运行）
-└── .mcp.json                             # MCP 服务配置
 ```
 
 ## 架构约束（必须遵守）

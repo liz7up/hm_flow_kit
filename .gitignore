@@ -34,6 +34,11 @@ local.properties
 
 # 内部待办
 TODO.md
+build_har.sh
+
+# 内部开发文档
+specs/
+examples/
 
 # 文档（内部开发文档，不提交）
 docs/

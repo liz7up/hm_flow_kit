@@ -14,13 +14,20 @@
 | 依赖 | 零第三方库 | MVP 阶段不引入任何 ohpm/npm 依赖 |
 | 目标平台 | OpenHarmony 5.0+ / HarmonyOS 5.0+ | 优先兼容 OpenHarmony |
 
+## 项目组织（双仓）
+
+| 仓库 | 定位 | 编译产物 |
+|------|------|---------|
+| **hm_flow_kit** (本项目) | 纯库，无 demo | HAR + Test HAP |
+| **hm_flow_kit_feat** | Demo 应用，引用本地 HAR | entry HAP |
+| **hm_flow_kit_ref** | 线上包验证，引用 ohpm 已发布版本 | entry HAP |
+
+hm_flow_kit_feat 通过 `build-profile.json5` 将 hmflowkit 注册为同项目模块（`srcPath: "../hm_flow_kit/hmflowkit"`），使 ArkTS 编译器正确处理模块内相对 import。同时 `entry/oh-package.json5` 声明 `"hmflowkit": "file:../../hm_flow_kit/hmflowkit"`。
+
 ## 项目结构
 
 ```
 hm-flow-kit/
-├── entry/                                # Demo 应用（Empty Ability）
-│   └── src/main/ets/pages/
-│       └── Index.ets                     # 库的演示页面
 ├── hmflowkit/                            # 核心库（Static Library HAR）
 │   ├── src/main/ets/
 │   │   ├── model/
@@ -560,6 +567,25 @@ PlaneHierarchy.getPlaneCount(): number
 
 ## DevOps
 
+### 双仓编译
+
+两个项目各有一套 `build.sh`，均在 DevEco Studio Terminal 中后台运行。
+
+**hm_flow_kit（库编译）：** 启动后轮询 `.bitfun/build-flag`
+
+| Step | 内容 |
+|------|------|
+| 0 | `ohpm install --all` |
+| 1 | `assembleHar`（hmflowkit 库模块） |
+| 2 | `genOnDeviceTestHap`（ohosTest 单元测试） |
+
+**hm_flow_kit_feat（Demo 编译）：** 启动后轮询 `.bitfun/build-flag`
+
+| Step | 内容 |
+|------|------|
+| 0 | `ohpm install --all`（拉取本地 hmflowkit HAR） |
+| 1 | `assembleHap`（entry Demo 应用） |
+
 ### 编译桥接流程（BitFun ↔ DevEco Studio）
 
 无法直接编译鸿蒙项目。通过 `build.sh` 后台监听 + `.bitfun/build-flag` 触发编译：
@@ -569,7 +595,7 @@ PlaneHierarchy.getPlaneCount(): number
                     │   你的 DevEco Studio       │
                     │                          │
                     │  1. 打开 Terminal         │
-                    │  2. sh build.sh &         │
+                    │  2. sh build.sh           │
                     │     (后台持续监听)         │
                     │     └→ 检测 build-flag=1  │
                     │        → sync → build    │
@@ -588,19 +614,22 @@ PlaneHierarchy.getPlaneCount(): number
                     └──────────────────────────┘
 ```
 
-**操作步骤（一次性启动）：**
+**操作步骤**（两个项目各需在 DevEco Studio 中分别打开并启动 build.sh）：
 
 在 DevEco Studio 中：
-1. `File → Sync Project` 同步项目
+1. `File → Open` 打开 hm_flow_kit（或 hm_flow_kit_feat）
 2. 打开底部 Terminal 面板
 3. 启动后台监听：`sh build.sh`
-4. 保持 Terminal 打开（或 `nohup sh build.sh &`）
+4. 保持 Terminal 打开
 
 **Claude 触发编译：**
 
 ```bash
-echo "1" > .bitfun/build-flag
-# 等待 flag 变回 0（编译完成信号），最多等待 120s
+# 触发库编译
+echo "1" > /path/to/hm_flow_kit/.bitfun/build-flag
+# 触发 Demo 编译
+echo "1" > /path/to/hm_flow_kit_feat/.bitfun/build-flag
+# 等待 flag 变回 0（编译完成信号）
 until [ "$(cat .bitfun/build-flag 2>/dev/null)" = "0" ]; do sleep 2; done
 cat .bitfun/build-latest.log
 ```
@@ -612,18 +641,11 @@ cat .bitfun/build-latest.log
 | `sh build.sh --once` | 单次编译（手动触发） |
 | `sh build.sh --sync` | 仅 ohpm install |
 
-**编译流程（每次）：**
-- Step 0: `ohpm install --all`（刷新依赖 + 文件变更）
-- Step 1: `hvigorw assembleHar`（库模块）
-- Step 2: `hvigorw assembleHap`（Demo 应用）
-- Step 3: `hvigorw genOnDeviceTestHap`（ohosTest 单元测试编译）
-- 写入 `.bitfun/build-latest.log` + 重置 build-flag=0
-
 ### 测试
 
-测试编译已集成到 `build.sh` Step 3，无需单独运行。`build.sh` 一次触发即可完成 HAR + HAP + Test 全部编译。
+测试编译已集成到 hm_flow_kit `build.sh` Step 2，无需单独运行。
 
 ### 其他操作
 
 - 发布：`ohpm publish` 到 OHPM 三方库中心仓
-- 版本号：遵循 SemVer（当前 0.1.0）
+- 版本号：遵循 SemVer（当前 1.1.0）

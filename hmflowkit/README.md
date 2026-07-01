@@ -2,6 +2,19 @@
 
 鸿蒙原生流程图引擎，支持 BPMN、drawio 格式。纯 ArkTS + Canvas 2D 实现，零第三方依赖。
 
+## 演示
+
+<table>
+  <tr>
+    <td><img src="../assets/ezgif-45d8d6578a10ae47.gif" width="100%"/></td>
+    <td><img src="../assets/ezgif-46272577891251b5.gif" width="100%"/></td>
+  </tr>
+  <tr>
+    <td><img src="../assets/ezgif-4428ffb3c78b57e6.gif" width="100%"/></td>
+    <td><img src="../assets/ezgif-48247fb8f0fcbf61.gif" width="100%"/></td>
+  </tr>
+</table>
+
 ## 安装
 
 ```bash
@@ -24,19 +37,6 @@ ohpm install hmflowkit
 | — | — | 调试侧边栏（7 区段可折叠面板，含时间线/性能/统计） |
 | — | — | **审批流状态可视化**：节点内边框+角标、流转路径四态染色、会签进度、脉冲动画、浮动信息面板、可插拔适配器 |
 | — | — | 255 项自动化单元测试，鸿蒙 PC + 移动端通用，兼容 HarmonyOS 5.0+
-
-## 演示
-
-<table>
-  <tr>
-    <td><img src="../assets/ezgif-45d8d6578a10ae47.gif" width="100%"/></td>
-    <td><img src="../assets/ezgif-46272577891251b5.gif" width="100%"/></td>
-  </tr>
-  <tr>
-    <td><img src="../assets/ezgif-4428ffb3c78b57e6.gif" width="100%"/></td>
-    <td><img src="../assets/ezgif-48247fb8f0fcbf61.gif" width="100%"/></td>
-  </tr>
-</table>
 
 ## 快速开始
 

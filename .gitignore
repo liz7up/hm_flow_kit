@@ -48,6 +48,9 @@ specs/plans/
 .DS_Store
 Thumbs.db
 
+# 中间产物
+assets/
+
 # 离线文档归档
 *.mhtml
 
